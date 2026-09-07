@@ -101,10 +101,16 @@ const STATUS = {
   "ปกติ": { emoji: "✅", dot: "#22C55E" },
   "กล้องดับ": { emoji: "🔴", dot: "#F59E0B" },
   "ปรับมุมกล้อง": { emoji: "🎥", dot: "#8B5CF6" },
+  "ถอดกล้อง": { emoji: "🔌", dot: "#0EA5E9" },
   "เหตุการณ์อื่น": { emoji: "⚠️", dot: "#14B8A6" },
 };
-const needsFix = (s) => s==="กล้องดับ" || s==="ปรับมุมกล้อง";
-const FIX = { "รอแก้": "#F59E0B", "กำลังแก้": "#14B8A6", "แก้แล้ว": "#22C55E", "-": "#94A3B8" };
+const needsFix = (s) => s==="กล้องดับ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง";
+// ขั้นตอนติดตามงาน — ถอดกล้องใช้คำว่า "ติดตั้งกลับ" แทน "ซ่อม"
+const FIX_FLOW = { "ถอดกล้อง": ["รอติดตั้งกลับ","กำลังติดตั้ง","ติดตั้งแล้ว"] };
+const DEFAULT_FLOW = ["รอแก้","กำลังแก้","แก้แล้ว"];
+const fixFlow = (status) => FIX_FLOW[status] || DEFAULT_FLOW;
+const fixDone = (l) => !!l && l.fix === fixFlow(l.status)[2];
+const FIX = { "รอแก้": "#F59E0B", "กำลังแก้": "#14B8A6", "แก้แล้ว": "#22C55E", "รอติดตั้งกลับ": "#F59E0B", "กำลังติดตั้ง": "#14B8A6", "ติดตั้งแล้ว": "#22C55E", "-": "#94A3B8" };
 const SHIFTS = [
   { key: "เช้า", time: "07.00-15.00", grp: "cctv" },
   { key: "บ่าย", time: "15.00-23.00", grp: "cctv" },
@@ -121,6 +127,7 @@ const RKEY = "cctv_reporters_v3";
 const AUTH_KEY = "cctv_auth_v1";
 const PKEY = "cctv_pw_v1";
 const UKEY = "cctv_users_v2";
+const FIX_BY = ["ช่างผู้รับเหมา", "IT"];
 const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ."];
 const DEFAULT_USERS = {
   admin:   { pass: "@Rayong123", role: "admin", name: "ผู้ดูแลระบบ", dept: "IT" },
@@ -181,9 +188,10 @@ function App() {
   const [editIpCam, setEditIpCam] = useState("");
   const [editIpVal, setEditIpVal] = useState("");
   const [confirmBox, setConfirmBox] = useState(null); // {msg, onYes}
-  const askConfirm = (msg, onYes) => setConfirmBox({ msg, onYes });
+  const askConfirm = (msg, onYes, okText) => setConfirmBox({ msg, onYes, okText });
   const [promptBox, setPromptBox] = useState(null); // {msg, val, onOk}
   const [fixBox, setFixBox] = useState(null); // {id, fixDate, fixBy, fixNote}
+  const [editBox, setEditBox] = useState(null); // แก้ไขบันทึกในหน้าประวัติ
   const askPrompt = (msg, val, onOk) => setPromptBox({ msg, val:val||"", onOk });
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState("");
@@ -281,16 +289,16 @@ function App() {
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
     return [...a].sort((x,y)=>x.date<y.date?1:-1);
   }, [logs, mFilter, sFilter, zFilter, histMode, histDay]);
-  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
+  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
     if (dashMode==="day") return logs.filter(l=>l.date===dayFilter);
     if (mFilter!=="all") return logs.filter(l=>l.date.startsWith(mFilter));
     return logs;
   }, [logs, dashMode, dayFilter, mFilter]);
-  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
-  const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && l.fix!=="แก้แล้ว").length, [dashView]);
-  const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && l.fix!=="แก้แล้ว").length, [logs]);
+  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
+  const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
+  const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && !fixDone(l)).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
@@ -331,34 +339,87 @@ function App() {
     setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg("");
     setTimeout(()=>setToast(""), 2600);
   };
-  const cycleFix = (id) => {
-    const o=["รอแก้","กำลังแก้","แก้แล้ว"];
+  const openFix = (id) => {
     const cur = logs.find(l=>l.id===id);
     if(!cur || !needsFix(cur.status)) return;
-    const next = o[(o.indexOf(cur.fix)+1)%o.length];
-    if(next==="แก้แล้ว"){
-      // เปิด modal ถามรายละเอียดการซ่อม
-      setFixBox({ id, fixDate: todayISO(), fixBy: "ช่างผู้รับเหมา", fixNote: "" });
-    } else {
-      setLogs(logs.map(l=> l.id===id ? {...l, fix:next, fixDate:"", fixBy:"", fixNote:""} : l));
-    }
+    const o = fixFlow(cur.status);
+    setFixBox({
+      id, status: cur.status,
+      locked: cur.fix === o[2], // เสร็จแล้ว = ล็อก ห้ามย้อนสถานะจากปุ่มนี้
+      fix: o.includes(cur.fix) ? cur.fix : o[0],
+      fixDate: cur.fixDate || todayISO(),
+      fixBy: cur.fixBy || "ช่างผู้รับเหมา",
+      fixNote: cur.fixNote || "",
+    });
   };
   const saveFix = () => {
     if(!fixBox) return;
-    setLogs(logs.map(l=> l.id===fixBox.id ? {...l, fix:"แก้แล้ว", fixDate:fixBox.fixDate, fixBy:fixBox.fixBy.trim(), fixNote:fixBox.fixNote.trim()} : l));
+    const o = fixFlow(fixBox.status);
+    // ล็อกไว้: รายการที่เสร็จแล้วจะย้อนสถานะผ่านหน้าต่างนี้ไม่ได้
+    const val = fixBox.locked ? o[2] : (o.includes(fixBox.fix) ? fixBox.fix : o[0]);
+    const done = val===o[2];
+    setLogs(logs.map(l=> l.id===fixBox.id ? {...l,
+      fix: val,
+      fixDate: done ? (fixBox.fixDate||todayISO()) : "",
+      fixBy: done ? fixBox.fixBy.trim() : "",
+      fixNote: done ? fixBox.fixNote.trim() : "",
+    } : l));
+    const isRemove = fixBox.status==="ถอดกล้อง";
     setFixBox(null);
-    setToast("✅ บันทึกการซ่อมแล้ว"); setTimeout(()=>setToast(""),2400);
+    setToast(done ? (isRemove ? "✅ บันทึกการติดตั้งกลับแล้ว" : "✅ บันทึกการซ่อมแล้ว") : `อัปเดตสถานะเป็น "${val}"`);
+    setTimeout(()=>setToast(""),2400);
   };
   const del = (id) => {
     const l = logs.find(x=>x.id===id);
     const label = l ? `${l.cam||l.status} (${fmtTH(l.date)})` : "รายการนี้";
     askConfirm(`ลบบันทึก "${label}" ?\nการลบนี้ย้อนกลับไม่ได้`, ()=>setLogs(logs.filter(x=>x.id!==id)));
   };
+  // ── แก้ไขบันทึก (หน้าประวัติ) ──
+  const openEdit = (id) => {
+    const l = logs.find(x=>x.id===id); if(!l) return;
+    setEditBox({
+      id: l.id, date: l.date||todayISO(), shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
+      zone: l.zone||ZONES[0], cam: l.cam||"", area: l.area||"", detail: l.detail||"",
+      by: l.by||"", img: l.img||"", fix: l.fix||"-",
+      fixDate: l.fixDate||"", fixBy: l.fixBy||"", fixNote: l.fixNote||"",
+    });
+  };
+  const pickEditImg = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { const im = new Image(); im.onload = () => {
+      const cv = document.createElement("canvas"); const mx=1000; const sc=Math.min(1,mx/im.width);
+      cv.width=im.width*sc; cv.height=im.height*sc; cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
+      setEditBox(b => b ? {...b, img: cv.toDataURL("image/jpeg",0.72)} : b);
+    }; im.src=rd.result; };
+    rd.readAsDataURL(f);
+  };
+  const saveLogEdit = () => {
+    if (!editBox) return;
+    const e = editBox;
+    const normal = e.status==="ปกติ";
+    if (!normal && needsFix(e.status) && !e.cam.trim()) { setToast("กรุณาระบุชื่อกล้อง"); setTimeout(()=>setToast(""),2400); return; }
+    if (e.status==="เหตุการณ์อื่น" && !e.detail.trim()) { setToast("กรุณากรอกรายละเอียดเหตุการณ์"); setTimeout(()=>setToast(""),2400); return; }
+    const flow = fixFlow(e.status);
+    const fixVal = needsFix(e.status) ? (flow.includes(e.fix) ? e.fix : flow[0]) : "-";
+    const done = fixVal===flow[2];
+    const upd = {
+      id: e.id, date: e.date, shift: e.shift, status: e.status,
+      zone: normal ? "" : e.zone, cam: normal ? "" : e.cam.trim(),
+      area: normal ? "" : e.area.trim(), detail: normal ? "" : e.detail.trim(),
+      by: (e.by||"").trim() || "—", img: normal ? "" : e.img, fix: fixVal,
+      fixDate: done ? (e.fixDate||todayISO()) : "", fixBy: done ? (e.fixBy||"").trim() : "", fixNote: done ? (e.fixNote||"").trim() : "",
+    };
+    setLogs(logs.map(l => l.id===e.id ? upd : l));
+    setEditBox(null);
+    setToast("✏️ แก้ไขบันทึกแล้ว"); setTimeout(()=>setToast(""),2400);
+  };
   const buildSummary = () => {
     const d = dashMode==="day" ? dayFilter : todayISO();
     const rows = logs.filter(l=>l.date===d);
     const down = rows.filter(l=>l.status==="กล้องดับ");
     const adjust = rows.filter(l=>l.status==="ปรับมุมกล้อง");
+    const removed = rows.filter(l=>l.status==="ถอดกล้อง");
     const other = rows.filter(l=>l.status==="เหตุการณ์อื่น");
     const reporters = [...new Set(rows.map(l=>l.by).filter(Boolean))];
     let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
@@ -367,11 +428,15 @@ function App() {
     if (rows.length===0) { s += `✅ ไม่มีเหตุการณ์บันทึกในวันนี้`; return s; }
     if (down.length) {
       s += `🔴 กล้องดับ ${down.length} จุด\n`;
-      down.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&l.fix!=="แก้แล้ว"?" ["+l.fix+"]":""}\n`; });
+      down.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     } else { s += `🟢 ไม่มีกล้องดับ\n`; }
     if (adjust.length) {
       s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
-      adjust.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&l.fix!=="แก้แล้ว"?" ["+l.fix+"]":""}\n`; });
+      adjust.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+    }
+    if (removed.length) {
+      s += `🔌 ถอดกล้อง ${removed.length} จุด\n`;
+      removed.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     }
     if (other.length) {
       s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
@@ -588,7 +653,7 @@ function App() {
         <div style={t.sideCard} className="rb-hideM">
           <div style={t.sideCardTitle}>สถานะระบบ</div>
           <div style={t.sideStat}><span>📹 กล้องทั้งหมด</span><b>{totalCams}</b></div>
-          <div style={t.sideStat}><span>🔴 ค้างซ่อม</span><b style={{color:pendingFix?"#F59E0B":t.dim}}>{pendingFix}</b></div>
+          <div style={t.sideStat}><span>🔴 ค้างตามงาน</span><b style={{color:pendingFix?"#F59E0B":t.dim}}>{pendingFix}</b></div>
           <div style={t.sideStat}><span>📄 บันทึกรวม</span><b>{logs.length}</b></div>
         </div>
 
@@ -702,7 +767,7 @@ function App() {
                   <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
                   <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>รายวัน</button>
                 </div>
-                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
+                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
                 <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
                 {histMode==="day"
                   ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
@@ -726,8 +791,8 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && <img src={l.img} style={t.tdImg} onClick={()=>setPreview(l.img)}/>}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>cycleFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}}>{l.fix} ▸</button>{l.fix==="แก้แล้ว" && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td}><button onClick={()=>del(l.id)} className="tap" style={t.delBtn}>🗑</button></td>
+                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td}><div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div></td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
@@ -760,7 +825,7 @@ function App() {
                   <div style={t.bigLabel}>{k}</div>
                 </div>
               ))}
-              <div style={t.bigStat}><div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashPending?"#F59E0B":t.dim}}>{dashPending}</div><div style={t.bigLabel}>ค้างซ่อม</div></div>
+              <div style={t.bigStat}><div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashPending?"#F59E0B":t.dim}}>{dashPending}</div><div style={t.bigLabel}>ค้างตามงาน</div></div>
             </div>
             <div style={t.dashGrid} className="rb-dashGrid">
               <div style={t.panel}>
@@ -973,13 +1038,13 @@ function App() {
 
       {preview && <div style={t.modal} onClick={()=>setPreview("")}><img src={preview} style={t.modalImg}/></div>}
       {confirmBox && (
-        <Modal><div style={t.modalBg} onClick={()=>setConfirmBox(null)}>
+        <Modal><div style={{...t.modalBg, zIndex:60}} onClick={()=>setConfirmBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34, textAlign:"center", marginBottom:12}}>⚠️</div>
             <div style={{fontSize:15.5, lineHeight:1.6, textAlign:"center", whiteSpace:"pre-line", marginBottom:22}}>{confirmBox.msg}</div>
             <div style={{display:"flex", gap:10}}>
               <button onClick={()=>setConfirmBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
-              <button onClick={()=>{ const fn=confirmBox.onYes; setConfirmBox(null); if(fn)fn(); }} className="tap" style={{...t.submit, marginTop:0, flex:1, background:"#EF4444"}}>ยืนยันลบ</button>
+              <button onClick={()=>{ const fn=confirmBox.onYes; setConfirmBox(null); if(fn)fn(); }} className="tap" style={{...t.submit, marginTop:0, flex:1, background:"#EF4444"}}>{confirmBox.okText || "ยืนยันลบ"}</button>
             </div>
           </div>
         </div></Modal>
@@ -1000,24 +1065,152 @@ function App() {
       {fixBox && (
         <Modal><div style={t.modalBg} onClick={()=>setFixBox(null)}>
           <div style={{...t.modalCard, maxWidth:420}} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>🔧 บันทึกการซ่อม</div>
-            <div style={t.pwHint}>ระบุว่าซ่อมเสร็จเมื่อไหร่ ใครแก้ และแก้อะไร</div>
-            <div style={{marginTop:14}}>
-              <div style={t.label}>📅 วันที่ซ่อมเสร็จ</div>
+            <div style={t.panelTitle}>{fixBox.status==="ถอดกล้อง" ? "🔌 สถานะการติดตั้งกลับ" : "🔧 สถานะการซ่อม"}</div>
+            <div style={t.pwHint}>{fixBox.locked ? "รายการนี้จบงานแล้ว — ย้อนสถานะจากหน้านี้ไม่ได้ แก้ไขได้เฉพาะวันที่ / ผู้ดำเนินการ / หมายเหตุ" : "เลือกสถานะ แล้วระบุวันที่เสร็จถ้างานจบแล้ว"}</div>
+            <div style={t.chipRow}>
+              {fixFlow(fixBox.status).map(f=>{
+                const isDone = f===fixFlow(fixBox.status)[2];
+                const blocked = fixBox.locked && !isDone;
+                return <button key={f} disabled={blocked}
+                  onClick={()=>{ if(blocked){ setToast("ต้องย้อนสถานะผ่านปุ่ม ✏️ แก้ไข"); setTimeout(()=>setToast(""),2800); return; } setFixBox({...fixBox, fix:f}); }}
+                  className={blocked?"":"tap"}
+                  style={fixBox.fix===f ? {...t.chipOn, borderColor:FIX[f], background:hex(FIX[f],dark?.16:.11), color:FIX[f]} : {...t.chip, opacity:blocked?.4:1, cursor:blocked?"not-allowed":"pointer"}}>{blocked?"🔒 ":""}{f}</button>;
+              })}
+            </div>
+            {fixBox.locked && <div style={{...t.pwHint, marginTop:10, marginBottom:0}}>ถ้าลงสถานะผิด ให้ปิดหน้านี้แล้วกดปุ่ม ✏️ ในตารางเพื่อย้อนสถานะ</div>}
+            {fixBox.fix===fixFlow(fixBox.status)[2] ? (<>
+            <div style={{marginTop:4}}>
+              <div style={t.label}>📅 {fixBox.status==="ถอดกล้อง" ? "วันที่ติดตั้งกลับ" : "วันที่ซ่อมเสร็จ"}</div>
               <input type="date" value={fixBox.fixDate} onChange={e=>setFixBox({...fixBox, fixDate:e.target.value})} style={t.input}/>
+              <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
+                <button onClick={()=>setFixBox({...fixBox, fixDate:todayISO()})} className="tap" style={t.chip}>วันนี้</button>
+                <button onClick={()=>{const d=new Date(); d.setDate(d.getDate()-1); setFixBox({...fixBox, fixDate:d.toISOString().slice(0,10)});}} className="tap" style={t.chip}>เมื่อวาน</button>
+              </div>
             </div>
             <div style={{marginTop:12}}>
-              <div style={t.label}>👷 ผู้แก้ไข</div>
+              <div style={t.label}>👷 {fixBox.status==="ถอดกล้อง" ? "ผู้ติดตั้ง" : "ผู้แก้ไข"}</div>
               <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา / IT" style={t.input}/>
-              <datalist id="fixbylist"><option value="ช่างผู้รับเหมา"/><option value="IT"/></datalist>
+              <datalist id="fixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+              <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
+                {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
+              </div>
             </div>
             <div style={{marginTop:12}}>
-              <div style={t.label}>📝 หมายเหตุการซ่อม</div>
-              <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder="เช่น เปลี่ยนสาย LAN, รีสตาร์ท, เปลี่ยนกล้อง" style={t.input}/>
+              <div style={t.label}>📝 หมายเหตุ</div>
+              <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder={fixBox.status==="ถอดกล้อง" ? "เช่น ติดตั้งกลับจุดเดิม, ย้ายไปจุดใหม่" : "เช่น เปลี่ยนสาย LAN, รีสตาร์ท, เปลี่ยนกล้อง"} style={t.input}/>
             </div>
+            </>) : (
+              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่ (รายการนี้จะค้างอยู่ในยอด "ค้างตามงาน")</div>
+            )}
             <div style={{display:"flex", gap:10, marginTop:18}}>
               <button onClick={()=>setFixBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
-              <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}>✅ บันทึกว่าซ่อมเสร็จ</button>
+              <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึก</button>
+            </div>
+          </div>
+        </div></Modal>
+      )}
+      {editBox && (
+        <Modal><div style={t.modalBg} onClick={()=>setEditBox(null)}>
+          <div style={{...t.modalCard, maxWidth:560, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={t.panelTitle}>✏️ แก้ไขบันทึก</div>
+            <div style={t.pwHint}>แก้ไขข้อมูลรายการนี้ แล้วกด "บันทึกการแก้ไข"</div>
+
+            <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+              <div style={{flex:1, minWidth:150}}>
+                <div style={t.label}>📅 วันที่</div>
+                <input type="date" value={editBox.date} onChange={e=>setEditBox({...editBox, date:e.target.value})} style={t.input}/>
+              </div>
+              <div style={{flex:1, minWidth:150}}>
+                <div style={t.label}>🕐 กะ</div>
+                <select value={editBox.shift} onChange={e=>setEditBox({...editBox, shift:e.target.value})} style={{...t.input, cursor:"pointer"}}>
+                  {SHIFTS.map(s=><option key={s.key} value={s.key}>{s.key} ({s.time})</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={t.label}>📌 สถานะ</div>
+            <div style={t.chipRow}>
+              {Object.keys(STATUS).map(s=>(
+                <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (fixFlow(s).includes(editBox.fix) ? editBox.fix : fixFlow(s)[0]) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}>{STATUS[s].emoji} {s}</button>
+              ))}
+            </div>
+
+            {editBox.status!=="ปกติ" && (<>
+              <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+                <div style={{flex:1, minWidth:150}}>
+                  <div style={t.label}>📍 พื้นที่</div>
+                  <select value={editBox.zone} onChange={e=>setEditBox({...editBox, zone:e.target.value, cam:""})} style={{...t.input, cursor:"pointer"}}>
+                    {ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}
+                  </select>
+                </div>
+                <div style={{flex:1, minWidth:150}}>
+                  <div style={t.label}>📹 ชื่อกล้อง{needsFix(editBox.status) && <span style={{color:"#EF4444"}}> *</span>}</div>
+                  <input list="editcamlist" value={editBox.cam} onChange={e=>setEditBox({...editBox, cam:e.target.value})} placeholder="พิมพ์หรือเลือกชื่อกล้อง" style={{...t.input, fontFamily:mono}}/>
+                  <datalist id="editcamlist">{(CAMERAS[editBox.zone]||[]).map(c=><option key={c} value={c}/>)}</datalist>
+                </div>
+              </div>
+
+              <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+                <div style={{flex:1, minWidth:150}}>
+                  <div style={t.label}>📍 บริเวณ / สถานที่</div>
+                  <input value={editBox.area} onChange={e=>setEditBox({...editBox, area:e.target.value})} placeholder="เช่น กำแพงหลังบ่อน้ำ RP" style={t.input}/>
+                </div>
+                <div style={{flex:1, minWidth:150}}>
+                  <div style={t.label}>📝 รายละเอียด{editBox.status==="เหตุการณ์อื่น" && <span style={{color:"#EF4444"}}> *</span>}</div>
+                  <input value={editBox.detail} onChange={e=>setEditBox({...editBox, detail:e.target.value})} placeholder="เช่น ภาพไม่ขึ้นตั้งแต่ 19:20" style={t.input}/>
+                </div>
+              </div>
+            </>)}
+
+            <div style={t.label}>👤 ผู้รายงาน</div>
+            <input list="editbylist" value={editBox.by} onChange={e=>setEditBox({...editBox, by:e.target.value})} placeholder="ชื่อผู้รายงาน" style={t.input}/>
+            <datalist id="editbylist">{reporters.map(r=><option key={r} value={r}/>)}</datalist>
+
+            {needsFix(editBox.status) && (<>
+              <div style={t.label}>🔧 {editBox.status==="ถอดกล้อง" ? "สถานะการติดตั้งกลับ" : "สถานะการแก้ไข"}</div>
+              <div style={t.chipRow}>
+                {fixFlow(editBox.status).map(f=>{
+                  const doneVal = fixFlow(editBox.status)[2];
+                  const isRevert = editBox.fix===doneVal && f!==doneVal;
+                  const apply = () => setEditBox(b => b ? {...b, fix:f, fixDate: f===doneVal ? (b.fixDate||todayISO()) : b.fixDate} : b);
+                  return <button key={f} onClick={()=>{
+                    if (isRevert) askConfirm(`ย้อนสถานะจาก "${doneVal}" กลับเป็น "${f}" ?\nวันที่ ผู้ดำเนินการ และหมายเหตุที่บันทึกไว้จะถูกล้าง`, apply, "ยืนยันย้อนสถานะ");
+                    else apply();
+                  }} className="tap" style={editBox.fix===f?t.chipOn:t.chip}>{f}</button>;
+                })}
+              </div>
+              {editBox.fix===fixFlow(editBox.status)[2] && (
+                <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
+                  <div style={{flex:1, minWidth:140}}>
+                    <div style={t.label}>📅 {editBox.status==="ถอดกล้อง" ? "วันที่ติดตั้งกลับ" : "วันที่ซ่อมเสร็จ"}</div>
+                    <input type="date" value={editBox.fixDate} onChange={e=>setEditBox({...editBox, fixDate:e.target.value})} style={t.input}/>
+                  </div>
+                  <div style={{flex:1, minWidth:140}}>
+                    <div style={t.label}>👷 ผู้แก้ไข</div>
+                    <input list="editfixbylist" value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา / IT" style={t.input}/>
+                    <datalist id="editfixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+                    <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
+                      {FIX_BY.map(v=><button key={v} onClick={()=>setEditBox({...editBox, fixBy:v})} className="tap" style={editBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
+                    </div>
+                  </div>
+                  <div style={{flex:"1 1 100%"}}>
+                    <div style={t.label}>📝 หมายเหตุการซ่อม</div>
+                    <input value={editBox.fixNote} onChange={e=>setEditBox({...editBox, fixNote:e.target.value})} placeholder="เช่น เปลี่ยนสาย LAN, รีสตาร์ท" style={t.input}/>
+                  </div>
+                </div>
+              )}
+            </>)}
+
+            {editBox.status!=="ปกติ" && (<>
+              <div style={t.label}>📷 รูปแนบ</div>
+              {editBox.img
+                ? <div style={t.imgWrap}><img src={editBox.img} style={t.imgPrev} onClick={()=>setPreview(editBox.img)}/><button onClick={()=>setEditBox({...editBox, img:""})} style={t.imgDel}>✕ ลบรูป</button></div>
+                : <label style={t.upload}><span style={{fontSize:24}}>📸</span><span>แตะเพื่อถ่าย / เลือกรูป</span><input type="file" accept="image/*" onChange={pickEditImg} style={{display:"none"}}/></label>}
+            </>)}
+
+            <div style={{display:"flex", gap:10, marginTop:18}}>
+              <button onClick={()=>setEditBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
+              <button onClick={saveLogEdit} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึกการแก้ไข</button>
             </div>
           </div>
         </div></Modal>
@@ -1153,8 +1346,9 @@ function mk(dark){
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
     fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:11.5, fontWeight:700, fontFamily:mono, whiteSpace:"nowrap"},
     delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#EF4444", fontWeight:600},
+    editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#3B82F6", fontWeight:600},
 
-    statGrid:{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20},
+    statGrid:{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:20},
     bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
     bigNum:{fontSize:44, fontWeight:600, fontFamily:mono, lineHeight:1, margin:"12px 0 7px"},
     bigLabel:{fontSize:14, color:dim, fontWeight:500},
