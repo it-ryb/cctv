@@ -180,6 +180,7 @@ function App() {
   const [bulkText, setBulkText] = useState("");
   const [bulkDate, setBulkDate] = useState(todayISO());
   const [showSummary, setShowSummary] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
   const [summaryText, setSummaryText] = useState("");
   const [zFilter, setZFilter] = useState("all");
   const [preview, setPreview] = useState("");
@@ -367,25 +368,25 @@ function App() {
   };
   const copySummary = async () => {
     const text = buildSummary();
+    let copied = false;
     // วิธีที่ 1: clipboard API (ถ้ามีและใช้ได้)
     if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setToast("📋 คัดลอกสรุปแล้ว — วางในไลน์ได้เลย"); setTimeout(()=>setToast(""),2800);
-        return;
-      } catch(e) {}
+      try { await navigator.clipboard.writeText(text); copied = true; } catch(e) {}
     }
     // วิธีที่ 2: execCommand (เบราว์เซอร์เก่า/file://)
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
-      document.body.appendChild(ta); ta.focus(); ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      if (ok) { setToast("📋 คัดลอกสรุปแล้ว — วางในไลน์ได้เลย"); setTimeout(()=>setToast(""),2800); return; }
-    } catch(e) {}
-    // วิธีที่ 3: เปิด modal ให้ก๊อปเอง (สำรองสุดท้าย เห็นข้อความเสมอ)
-    setSummaryText(text); setShowSummary(true);
+    if (!copied) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch(e) {}
+    }
+    // เด้งกล่องโชว์ข้อความที่คัดลอกเสมอ (พร้อมสถานะว่าคัดลอกสำเร็จไหม)
+    setSummaryText(text);
+    setSummaryCopied(copied);
+    setShowSummary(true);
   };
   const exportX = async () => {
     const lb = mFilter==="all"?"ทั้งหมด":TH_M[+mFilter.slice(5)-1];
@@ -642,12 +643,11 @@ function App() {
                     <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setZone(z);setCam("");setCamQuery("");setSubGrp("");}} className="tap" style={zone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}>{ZONE_EMOJI[z]} {z}</button>)}</div>
                     <div style={t.label}>โซน <span style={t.dimLabel}>({subGroups.length})</span></div>
                     <div style={t.chipRow}>{subGroups.map(sg=><button key={sg} onClick={()=>{setSubGrp(sg===subGrp?"":sg);setCam("");setCamQuery("");}} className="tap" style={subGrp===sg?t.chipOn:t.chip}>{sg} <span style={t.miniCount}>{(tree[zone][sg]||[]).length}</span></button>)}</div>
-                    <div style={t.label}>🔍 ค้นหากล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":"ทั้งพื้นที่"} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว)</span></div>
+                    <div style={t.label}>🔍 เลือกกล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":""} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว · เลื่อนดูหรือพิมพ์ค้นหา)</span></div>
                     <input value={camQuery} onChange={e=>{setCamQuery(e.target.value); if(e.target.value)setSubGrp("");}} placeholder="พิมพ์ชื่อกล้อง เช่น SR1, Wall, FirePump…" style={t.input}/>
                     {(subGrp||camQuery) ? (
-                      <div style={t.camGrid}>{camOpts.slice(0,24).map(c=><button key={c} onClick={()=>setCam(c)} className="tap" style={cam===c?t.camOn:t.camChip}>{c}</button>)}
+                      <div style={t.camGrid}>{camOpts.map(c=><button key={c} onClick={()=>setCam(c)} className="tap" style={cam===c?t.camOn:t.camChip}>{c}</button>)}
                         {camOpts.length===0 && <div style={t.empty}>ไม่พบกล้อง</div>}
-                        {camOpts.length>24 && <div style={t.empty}>+ อีก {camOpts.length-24} ตัว (พิมพ์ค้นหา)</div>}
                       </div>
                     ) : <div style={t.hint}>👆 เลือกโซน หรือพิมพ์ค้นหา</div>}
                     {cam && <div style={t.picked}>✓ เลือกกล้อง: <b>{cam}</b></div>}
@@ -1051,7 +1051,10 @@ function App() {
         <div style={t.modalBg} onClick={()=>setShowSummary(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}>📋 สรุปประจำวัน</div>
-            <div style={t.pwHint}>คัดลอกข้อความด้านล่างไปวางในไลน์</div>
+            {summaryCopied
+              ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย</div>
+              : <div style={t.pwHint}>คัดลอกอัตโนมัติไม่ได้ — กดปุ่มคัดลอกด้านล่าง หรือเลือกข้อความเอง</div>
+            }
             <textarea id="sumArea" readOnly value={summaryText} style={t.summaryArea} onFocus={e=>e.target.select()}/>
             <div style={{display:"flex", gap:10, marginTop:14}}>
               <button onClick={()=>{ const ta=document.querySelector("#sumArea"); if(ta){ta.focus();ta.select();} let ok=false; try{ok=document.execCommand("copy");}catch(e){} if(!ok&&navigator.clipboard){navigator.clipboard.writeText(summaryText).catch(()=>{});} setToast("📋 คัดลอกแล้ว — วางในไลน์ได้เลย"); setTimeout(()=>setToast(""),2400);}} className="tap" style={{...t.submit, marginTop:0}}>📋 คัดลอก</button>
@@ -1121,7 +1124,7 @@ function mk(dark){
     chipOn:{padding:"11px 16px", borderRadius:12, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.11,dark), color:dark?"#5FD16E":accent, fontSize:14, fontWeight:600, display:"flex", alignItems:"center", gap:7},
     miniCount:{fontSize:10.5, padding:"1px 7px", borderRadius:20, background:dark?"rgba(255,255,255,.08)":"rgba(15,23,42,.06)", color:dim, fontFamily:mono},
     input:{width:"100%", padding:"14px 16px", borderRadius:13, border:`1px solid ${border}`, background:inputBg, color:text, fontSize:15, outline:"none", fontFamily:sans, transition:"border-color .15s"},
-    camGrid:{display:"flex", flexWrap:"wrap", gap:6, marginTop:10, maxHeight:210, overflowY:"auto"},
+    camGrid:{display:"flex", flexWrap:"wrap", gap:6, marginTop:10, maxHeight:280, overflowY:"auto", padding:"2px 4px 2px 0"},
     camChip:{padding:"8px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf2, color:dark?"#AEB7C4":"#475569", fontSize:12, fontFamily:mono},
     camOn:{padding:"8px 12px", borderRadius:10, border:`1px solid ${accent}`, background:hexA(accent,dark?.2:.12,dark), color:dark?"#5FD16E":accent, fontSize:12, fontFamily:mono, fontWeight:700},
     empty:{fontSize:12, color:dim, padding:"8px 2px", width:"100%"},
@@ -1197,6 +1200,7 @@ function mk(dark){
     miniEmpty:{textAlign:"center", padding:"40px 20px", color:dim, fontSize:14, lineHeight:1.6},
     modalBg:{position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:20},
     modalCard:{background:surf, borderRadius:18, padding:24, maxWidth:480, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,.3)"},
+    copiedBanner:{fontSize:13.5, fontWeight:600, color:"#16A34A", background:hexA("#16A34A",dark?.14:.1,dark), border:`1px solid ${hexA("#16A34A",.25,dark)}`, borderRadius:10, padding:"10px 14px", marginBottom:12},
     summaryArea:{width:"100%", height:220, padding:14, borderRadius:12, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13.5, fontFamily:mono, lineHeight:1.6, resize:"none", outline:"none"},
     dashBtnRow:{display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginTop:24},
     bulkBtn:{width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${hexA("#6366F1",.3,dark)}`, background:hexA("#6366F1",dark?.1:.07,dark), color:"#6366F1", fontSize:14, fontWeight:600, marginBottom:16},
