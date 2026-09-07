@@ -210,6 +210,7 @@ function App() {
   const [preview, setPreview] = useState("");
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
+  const [dateDesc, setDateDesc] = useState(true); // true = ใหม่ → เก่า
   const [pageSize, setPageSize] = useState(20); // จำนวนรายการต่อหน้า (0 = ทั้งหมด)
   const [page, setPage] = useState(1);
   const t = dark ? T.dark : T.light;
@@ -330,7 +331,7 @@ function App() {
 
   const isVendor = !!(auth && auth.role === "vendor");
   const byOpts = useMemo(() => [...new Set((logs||[]).map(l=>l.by).filter(Boolean))].sort(), [logs]);
-  const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort(); }, [logs]); // เรียงเดือนเก่า → ใหม่
+  const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]); // เรียงเดือนใหม่ → เก่า
   const view = useMemo(() => {
     if(!logs) return [];
     let a = logs;
@@ -349,11 +350,12 @@ function App() {
       if (fFilter==="doing") return l.fix===o[1];
       return true;
     });
-    return [...a].sort((x,y)=>x.date<y.date?1:-1);
-  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter, byFilter]);
+    const dir = dateDesc ? 1 : -1;
+    return [...a].sort((x,y)=> x.date===y.date ? ((y.id-x.id)*dir) : (x.date<y.date ? dir : -dir));
+  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter, byFilter, dateDesc]);
   const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
-  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, pageSize]);
+  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, pageSize, dateDesc]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
@@ -901,19 +903,17 @@ function App() {
                   ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
                   : <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
                 }
-                <select value={pageSize} onChange={e=>setPageSize(+e.target.value)} style={t.select}>
-                  <option value={20}>20 ต่อหน้า</option>
-                  <option value={50}>50 ต่อหน้า</option>
-                  <option value={100}>100 ต่อหน้า</option>
-                  <option value={0}>ดูทั้งหมด</option>
-                </select>
                 <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
               </div>
             </div>
             <div style={t.tableWrap} className="rb-tableWrap">
               <table style={t.table}>
                 <thead><tr>
-                  {["วันที่","กะ","สถานะ","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
+                  <th style={{...t.th, cursor:"pointer", userSelect:"none"}} onClick={()=>setDateDesc(v=>!v)}
+                      title={dateDesc ? "กดเพื่อเรียงจากเก่าไปใหม่" : "กดเพื่อเรียงจากใหม่ไปเก่า"}>
+                    วันที่ <span style={{color:"#2E8B3D", fontSize:11}}>{dateDesc ? "▼" : "▲"}</span>
+                  </th>
+                  {["กะ","สถานะ","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
@@ -933,11 +933,26 @@ function App() {
                 </tbody>
               </table>
             </div>
-            {pageSize>0 && view.length>pageSize && (
+            {view.length>0 && (
               <div style={t.pager}>
-                <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="tap" style={{...t.pageBtn, opacity:page<=1?.4:1}}>‹ ก่อนหน้า</button>
-                <span style={t.pageInfo}>หน้า {page} / {totalPages} · แสดง {(page-1)*pageSize+1}–{Math.min(page*pageSize, view.length)} จาก {view.length} รายการ</span>
-                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="tap" style={{...t.pageBtn, opacity:page>=totalPages?.4:1}}>ถัดไป ›</button>
+                <div style={t.pageInfo}>
+                  {pageSize>0
+                    ? `แสดง ${(page-1)*pageSize+1}–${Math.min(page*pageSize, view.length)} จาก ${view.length} รายการ`
+                    : `แสดงทั้งหมด ${view.length} รายการ`}
+                </div>
+                <div style={{display:"flex", alignItems:"center", gap:10}}>
+                  {pageSize>0 && view.length>pageSize && (<>
+                    <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="tap" style={{...t.pageBtn, opacity:page<=1?.4:1}}>‹</button>
+                    <span style={t.pageInfo}>หน้า {page} / {totalPages}</span>
+                    <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="tap" style={{...t.pageBtn, opacity:page>=totalPages?.4:1}}>›</button>
+                  </>)}
+                  <select value={pageSize} onChange={e=>setPageSize(+e.target.value)} style={{...t.select, padding:"9px 12px"}}>
+                    <option value={20}>20 ต่อหน้า</option>
+                    <option value={50}>50 ต่อหน้า</option>
+                    <option value={100}>100 ต่อหน้า</option>
+                    <option value={0}>ดูทั้งหมด</option>
+                  </select>
+                </div>
               </div>
             )}
           </div>
@@ -1491,8 +1506,8 @@ function mk(dark){
 
     select:{padding:"11px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:13, outline:"none"},
     exportBtn:{padding:"11px 17px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.13:.1,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, whiteSpace:"nowrap"},
-    pager:{display:"flex", alignItems:"center", justifyContent:"center", gap:14, marginTop:16, flexWrap:"wrap"},
-    pageBtn:{padding:"10px 16px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
+    pager:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, marginTop:14, flexWrap:"wrap"},
+    pageBtn:{padding:"9px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
     pageInfo:{fontSize:13, color:dim},
     tableWrap:{background:surf, border:`1px solid ${border}`, borderRadius:16, overflow:"hidden", boxShadow:shadow},
     table:{width:"100%", borderCollapse:"collapse", fontSize:14.5},
