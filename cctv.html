@@ -375,19 +375,27 @@ function App() {
     const rd = new FileReader();
     rd.onerror = () => { setToast("❌ อ่านไฟล์รูปไม่ได้ ลองเลือกใหม่"); setTimeout(()=>setToast(""),3000); };
     rd.onload = () => {
+      const raw = rd.result;
       const im = new Image();
       im.onerror = () => { setToast("❌ เบราว์เซอร์เปิดไฟล์รูปนี้ไม่ได้ ลองถ่ายใหม่หรือเลือกไฟล์ JPG"); setTimeout(()=>setToast(""),3800); };
       im.onload = () => {
+        const shrink = (maxW, q) => {
+          const cv = document.createElement("canvas"); const sc = Math.min(1, maxW/im.width);
+          cv.width = im.width*sc; cv.height = im.height*sc;
+          cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+          return cv.toDataURL("image/jpeg", q);
+        };
+        let data;
         try {
-          const cv = document.createElement("canvas"); const mx=1000; const sc=Math.min(1,mx/im.width);
-          cv.width=im.width*sc; cv.height=im.height*sc; cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
-          onDone(cv.toDataURL("image/jpeg",0.72));
-          setToast("📷 แนบรูปแล้ว"); setTimeout(()=>setToast(""),1800);
+          data = shrink(1000, 0.72);
+          if (data.length > 700000) data = shrink(800, 0.6); // ใหญ่ไป ย่อซ้ำ กันพื้นที่เก็บเต็ม
         } catch(err) {
-          setToast("❌ ย่อรูปไม่สำเร็จ ลองเลือกรูปที่เล็กลง"); setTimeout(()=>setToast(""),3200);
+          data = raw; // แคนวาสใช้ไม่ได้ ใช้ไฟล์เดิมไปก่อน ดีกว่าไม่ได้รูปเลย
         }
+        onDone(data);
+        setToast("📷 แนบรูปแล้ว กดบันทึกเพื่อยืนยัน"); setTimeout(()=>setToast(""),2600);
       };
-      im.src = rd.result;
+      im.src = raw;
     };
     rd.readAsDataURL(file);
   };
@@ -1382,7 +1390,11 @@ function App() {
               <div style={t.label}>📷 รูปแนบ</div>
               {editBox.img
                 ? <div style={t.imgWrap}><img src={editBox.img} style={t.imgPrev} onClick={()=>setPreview(editBox.img)}/><button onClick={()=>setEditBox({...editBox, img:""})} style={t.imgDel}>✕ ลบรูป</button></div>
-                : <label style={t.upload}><span style={{fontSize:24}}>📸</span><span>แตะเพื่อถ่าย / เลือกรูป</span><input type="file" accept="image/*" onChange={pickEditImg} style={{display:"none"}}/></label>}
+                : <div style={t.uploadBox}>
+                    <div style={{fontSize:22, marginBottom:6}}>📸</div>
+                    <input type="file" accept="image/*" onChange={pickEditImg} style={t.fileInput}/>
+                    <div style={{fontSize:12, color:t.dim, marginTop:8}}>เลือกไฟล์รูป (JPG หรือ PNG) รูปจะขึ้นให้ดูตรงนี้ก่อนกดบันทึก</div>
+                  </div>}
             </>)}
 
             <div style={{display:"flex", gap:10, marginTop:18}}>
@@ -1500,6 +1512,8 @@ function mk(dark){
     hint:{marginTop:10, fontSize:12.5, color:dim, textAlign:"center", padding:"16px", borderRadius:12, border:`1.5px dashed ${border}`},
     picked:{marginTop:12, fontSize:13, color:dark?"#5FD16E":accent, fontFamily:mono, padding:"11px 13px", borderRadius:11, background:hexA(accent,dark?.1:.07,dark)},
     note:{marginTop:14, padding:"16px", borderRadius:13, background:hexA("#22C55E",dark?.08:.09,dark), border:`1px solid ${hexA("#22C55E",.22,dark)}`, fontSize:13.5, color:dark?"#86EFAC":"#15803D"},
+    uploadBox:{padding:"18px", borderRadius:13, border:`1.5px dashed ${border}`, background:inputBg, textAlign:"center"},
+    fileInput:{fontSize:13, color:text, maxWidth:"100%"},
     upload:{display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:7, padding:"26px", borderRadius:13, border:`1.5px dashed ${border}`, background:inputBg, color:dim, fontSize:13, cursor:"pointer"},
     imgWrap:{position:"relative", borderRadius:13, overflow:"hidden"},
     imgPrev:{width:"100%", maxHeight:260, objectFit:"cover", borderRadius:13, display:"block", cursor:"pointer"},
