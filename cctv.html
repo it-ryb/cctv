@@ -374,26 +374,10 @@ function App() {
     if (reporters.length) s += `👤 ผู้รายงาน: ${reporters.join(", ")}`;
     return s;
   };
-  const copySummary = async () => {
-    const text = buildSummary();
-    let copied = false;
-    // วิธีที่ 1: clipboard API (ถ้ามีและใช้ได้)
-    if (navigator.clipboard && window.isSecureContext) {
-      try { await navigator.clipboard.writeText(text); copied = true; } catch(e) {}
-    }
-    // วิธีที่ 2: execCommand (เบราว์เซอร์เก่า/file://)
-    if (!copied) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
-        document.body.appendChild(ta); ta.focus(); ta.select();
-        copied = document.execCommand("copy");
-        document.body.removeChild(ta);
-      } catch(e) {}
-    }
-    // เด้งกล่องโชว์ข้อความที่คัดลอกเสมอ (พร้อมสถานะว่าคัดลอกสำเร็จไหม)
-    setSummaryText(text);
-    setSummaryCopied(copied);
+  const copySummary = () => {
+    // เปิดกล่องให้แก้ข้อความก่อน แล้วค่อยกดคัดลอกในกล่อง
+    setSummaryText(buildSummary());
+    setSummaryCopied(false);
     setShowSummary(true);
   };
   const exportX = async () => {
@@ -1058,14 +1042,14 @@ function App() {
       {showSummary && (<Modal>
         <div style={t.modalBg} onClick={()=>setShowSummary(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>📋 สรุปประจำวัน</div>
+            <div style={t.panelTitle}>📋 สรุปประจำวัน (แก้ไขได้)</div>
             {summaryCopied
-              ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย</div>
-              : <div style={t.pwHint}>คัดลอกอัตโนมัติไม่ได้ — กดปุ่มคัดลอกด้านล่าง หรือเลือกข้อความเอง</div>
+              ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย · แก้ข้อความแล้วกดคัดลอกอีกครั้งได้</div>
+              : <div style={t.pwHint}>✏️ แก้ไขข้อความได้ตามต้องการ แล้วกดปุ่ม "คัดลอก" ด้านล่าง</div>
             }
-            <textarea id="sumArea" readOnly value={summaryText} style={t.summaryArea} onFocus={e=>e.target.select()}/>
+            <textarea id="sumArea" value={summaryText} onChange={e=>setSummaryText(e.target.value)} style={t.summaryArea} placeholder="ข้อความสรุป..."/>
             <div style={{display:"flex", gap:10, marginTop:14}}>
-              <button onClick={()=>{ const ta=document.querySelector("#sumArea"); if(ta){ta.focus();ta.select();} let ok=false; try{ok=document.execCommand("copy");}catch(e){} if(!ok&&navigator.clipboard){navigator.clipboard.writeText(summaryText).catch(()=>{});} setToast("📋 คัดลอกแล้ว — วางในไลน์ได้เลย"); setTimeout(()=>setToast(""),2400);}} className="tap" style={{...t.submit, marginTop:0}}>📋 คัดลอก</button>
+              <button onClick={async()=>{ let ok=false; if(navigator.clipboard&&window.isSecureContext){try{await navigator.clipboard.writeText(summaryText);ok=true;}catch(e){}} if(!ok){const ta=document.querySelector("#sumArea"); if(ta){ta.focus();ta.select();} try{ok=document.execCommand("copy");}catch(e){}} setSummaryCopied(ok); setToast(ok?"📋 คัดลอกแล้ว — วางในไลน์ได้เลย":"เลือกข้อความแล้วคัดลอกเอง"); setTimeout(()=>setToast(""),2400);}} className="tap" style={{...t.submit, marginTop:0}}>📋 คัดลอก</button>
               <button onClick={()=>setShowSummary(false)} className="tap" style={{...t.dashExport, flex:"none"}}>ปิด</button>
             </div>
           </div>
