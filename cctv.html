@@ -71,7 +71,12 @@
       listen: (key, cb) => {
         try {
           return onSnapshot(doc(db, "cctv", key), (snap)=>{
-            if(snap.exists()){ const v=snap.data(); if(v&&v.data){ try{ cb(JSON.parse(v.data), v.ts); }catch(e){} } }
+            // exists=false หรืออ่านไม่ได้ ต้องแจ้งกลับด้วย ไม่งั้นฝั่ง React จะไม่รู้ว่า cloud ว่าง
+            if(snap.exists()){
+              const v=snap.data();
+              if(v&&v.data){ try{ cb(JSON.parse(v.data), v.ts, true); }catch(e){ cb(null, 0, false); } }
+              else cb(null, 0, false);
+            } else cb(null, 0, false);
           }, (err)=>console.warn("fb listen fail", key, err));
         } catch(e){ console.warn("fb listen setup fail", key, e); return null; }
       }
@@ -224,29 +229,56 @@ function App() {
     } catch(e){}
   })(); }, []);
   useEffect(() => { if (logs===null) return; try { localStorage.setItem(KEY, JSON.stringify(logs)); } catch(e){} }, [logs]);
+  // สำรองอัตโนมัติวันละชุด เก็บ 7 ชุดล่าสุด (กันข้อมูลหายซ้ำรอยเดิม)
+  useEffect(() => {
+    if (!logs || !logs.length) return;
+    try {
+      localStorage.setItem("cctv_backup_" + todayISO(), JSON.stringify(logs));
+      const keys = [];
+      for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("cctv_backup_")===0) keys.push(k); }
+      keys.sort().slice(0, Math.max(0, keys.length-7)).forEach(k=>localStorage.removeItem(k));
+    } catch(e){}
+  }, [logs]);
   useEffect(() => { try { localStorage.setItem(RKEY, JSON.stringify(reporters)); } catch(e){} }, [reporters]);
   useEffect(() => { try { localStorage.setItem(UKEY, JSON.stringify(accounts)); } catch(e){} }, [accounts]);
   useEffect(() => { try { localStorage.setItem(IPKEY, JSON.stringify(ips)); } catch(e){} }, [ips]);
   useEffect(() => { try { localStorage.setItem(CKEY, JSON.stringify(tree)); } catch(e){} }, [tree]);
 
   // ─────────── Firebase Cloud Sync ───────────
+  // ว่าง = null / [] / {} — ใช้ตัดสินว่าห้ามเขียนทับ
+  const isEmptyVal = (v) => v===null || v===undefined
+    || (Array.isArray(v) && v.length===0)
+    || (typeof v==="object" && !Array.isArray(v) && Object.keys(v).length===0);
+  latest.current = { logs, accounts, ips, tree, reporters, passwords };
   const fbReady = React.useRef(false);
   const fbSkip = React.useRef({}); // กันเขียนวน: key -> true เมื่อเพิ่งรับจาก cloud
+  const cloudSeen = React.useRef({}); // key -> true เมื่อได้รับ snapshot แรกจาก cloud แล้ว
+  const allowClear = React.useRef({}); // key -> true เฉพาะตอนผู้ใช้ตั้งใจลบ
+  const latest = React.useRef({}); // ค่าล่าสุดของแต่ละ state ให้ listener เทียบได้
   useEffect(() => {
     let unsubs = [];
     const setup = () => {
       if (!window.__fb || !window.__fb.ready) return;
       fbReady.current = true;
-      // map: key -> [getter setter]
-      const binds = [
-        ["logs", (d)=>{ fbSkip.current.logs=true; setLogs(d); }],
-        ["accounts", (d)=>{ fbSkip.current.accounts=true; setAccounts(d); }],
-        ["ips", (d)=>{ fbSkip.current.ips=true; setIps(d); }],
-        ["tree", (d)=>{ fbSkip.current.tree=true; setTree(d); }],
-        ["reporters", (d)=>{ fbSkip.current.reporters=true; setReporters(d); }],
-        ["passwords", (d)=>{ fbSkip.current.passwords=true; setPasswords(d); }],
-      ];
-      binds.forEach(([k,fn])=>{ const u = window.__fb.listen(k, (data)=>{ if(data!=null) fn(data); }); if(u) unsubs.push(u); });
+      // map: key -> setter
+      const setters = {
+        logs: setLogs, accounts: setAccounts, ips: setIps,
+        tree: setTree, reporters: setReporters, passwords: setPasswords,
+      };
+      Object.keys(setters).forEach(k=>{
+        const u = window.__fb.listen(k, (data, ts, exists)=>{
+          cloudSeen.current[k] = true;              // รู้แล้วว่า cloud มีอะไรอยู่ ถึงจะยอมให้เขียนขึ้นได้
+          const local = latest.current[k];
+          if (!exists || isEmptyVal(data)) {
+            // cloud ว่าง: ถ้าเครื่องนี้มีข้อมูล ให้ดันขึ้นแทน ห้ามรับค่าว่างมาทับของในเครื่อง
+            if (!isEmptyVal(local)) { try{ window.__fb.save(k, local); }catch(e){} }
+            return;
+          }
+          fbSkip.current[k] = true;
+          setters[k](data);
+        });
+        if(u) unsubs.push(u);
+      });
     };
     if (window.__fb && window.__fb.ready) setup();
     else window.addEventListener("firebase-ready", setup, { once:true });
@@ -258,6 +290,11 @@ function App() {
     if (!fbReady.current) return;
     if (fbSkip.current[key]) { fbSkip.current[key]=false; return; }
     if (val===null || val===undefined) return;
+    // การ์ด 1: ยังไม่เคยได้ยินเสียงจาก cloud = ยังไม่รู้ว่ามีอะไรอยู่ ห้ามเขียนทับ
+    if (!cloudSeen.current[key]) return;
+    // การ์ด 2: ห้ามเขียนค่าว่างทับ เว้นแต่ผู้ใช้สั่งลบเอง (ตั้งธงไว้ก่อน)
+    if (isEmptyVal(val) && !allowClear.current[key]) return;
+    allowClear.current[key] = false;
     window.__fb.save(key, val);
   };
   useEffect(()=>{ pushCloud("logs", logs); }, [logs]);
@@ -372,7 +409,10 @@ function App() {
   const del = (id) => {
     const l = logs.find(x=>x.id===id);
     const label = l ? `${l.cam||l.status} (${fmtTH(l.date)})` : "รายการนี้";
-    askConfirm(`ลบบันทึก "${label}" ?\nการลบนี้ย้อนกลับไม่ได้`, ()=>setLogs(logs.filter(x=>x.id!==id)));
+    askConfirm(`ลบบันทึก "${label}" ?\nการลบนี้ย้อนกลับไม่ได้`, ()=>{
+      if (logs.length<=1) allowClear.current.logs = true; // ลบรายการสุดท้าย = ตั้งใจให้ว่าง
+      setLogs(logs.filter(x=>x.id!==id));
+    });
   };
   // ── แก้ไขบันทึก (หน้าประวัติ) ──
   const openEdit = (id) => {
@@ -577,8 +617,40 @@ function App() {
     setPwEdit({...pwEdit, [user]:""});
     setToast(`เปลี่ยนรหัสผ่าน ${user} แล้ว`); setTimeout(()=>setToast(""),2400);
   };
+  // ── สำรอง / กู้คืนข้อมูล ──
+  const exportBackup = () => {
+    const payload = { app:"cctv-rayongboard", type:"backup", savedAt:new Date().toISOString(),
+      logs, tree, ips, reporters, accounts };
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "cctv_backup_" + todayISO() + ".json";
+    a.click(); URL.revokeObjectURL(a.href);
+    setToast("💾 ดาวน์โหลดไฟล์สำรองแล้ว"); setTimeout(()=>setToast(""),2600);
+  };
+  const importBackup = (e) => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      let o; try { o = JSON.parse(rd.result); } catch(err){ setToast("❌ ไฟล์ไม่ถูกต้อง"); setTimeout(()=>setToast(""),2600); return; }
+      const rows = Array.isArray(o) ? o : (Array.isArray(o.logs) ? o.logs : null);
+      if(!rows){ setToast("❌ ไม่พบข้อมูลประวัติในไฟล์"); setTimeout(()=>setToast(""),2800); return; }
+      askConfirm(`กู้คืนประวัติ ${rows.length} รายการจากไฟล์สำรอง?\nระบบจะรวมกับรายการที่มีอยู่ ไม่ลบของเดิม`, ()=>{
+        const seen = new Set((logs||[]).map(l=>l.id));
+        const add = rows.filter(r=>r && r.id!=null && !seen.has(r.id));
+        setLogs([...(logs||[]), ...add].sort((x,y)=>x.date<y.date?1:-1));
+        if(o.tree && typeof o.tree==="object" && Object.keys(o.tree).length) setTree(o.tree);
+        if(o.ips && typeof o.ips==="object" && Object.keys(o.ips).length) setIps({...ips, ...o.ips});
+        if(Array.isArray(o.reporters) && o.reporters.length) setReporters([...new Set([...reporters, ...o.reporters])]);
+        setToast(`✅ กู้คืนแล้ว เพิ่มใหม่ ${add.length} รายการ`); setTimeout(()=>setToast(""),3200);
+      }, "ยืนยันกู้คืน");
+    };
+    rd.readAsText(f);
+    e.target.value = "";
+  };
   const clearAllLogs = () => {
     askConfirm("ล้างประวัติการบันทึกทั้งหมด? แดชบอร์ดและประวัติจะว่างเปล่า เริ่มบันทึกใหม่ตั้งแต่ต้น\nการกระทำนี้ย้อนกลับไม่ได้", ()=>{
+      allowClear.current.logs = true; // ผู้ใช้สั่งลบเอง อนุญาตให้ค่าว่างซิงก์ขึ้น cloud
       setLogs([]); setToast("ล้างข้อมูลแล้ว เริ่มบันทึกใหม่ได้เลย"); setTimeout(()=>setToast(""),2600);
     });
   };
@@ -1024,6 +1096,18 @@ function App() {
                     </select>
                   </div>
                   <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:14}}>➕ เพิ่มบัญชี</button>
+                </div>
+              </div>
+
+              <div style={t.panel}>
+                <div style={t.panelTitle}>💾 สำรอง & กู้คืนข้อมูล</div>
+                <div style={t.dangerText}>ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นประจำ ถ้าข้อมูลหายให้เลือกไฟล์สำรองเพื่อกู้กลับ ระบบจะรวมกับของเดิมโดยไม่ลบทับ</div>
+                <div style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
+                  <button onClick={exportBackup} className="tap" style={{...t.exportBtn, padding:"13px 20px", fontSize:14}}>💾 ดาวน์โหลดไฟล์สำรอง ({(logs||[]).length} รายการ)</button>
+                  <label className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14, display:"inline-block", cursor:"pointer"}}>
+                    ♻️ กู้คืนจากไฟล์
+                    <input type="file" accept=".json,application/json" onChange={importBackup} style={{display:"none"}}/>
+                  </label>
                 </div>
               </div>
 
