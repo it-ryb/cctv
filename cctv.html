@@ -883,28 +883,36 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · เลือกเดือน/วันเพื่อกรอง แล้วกดส่งออก")}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
-              <div style={{display:"flex", gap:10}}>
-                <div style={t.dashToggle}>
-                  <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
-                  <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>รายวัน</button>
-                </div>
-                <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={t.select}>
-                  <option value="all">🔧 ทุกงานซ่อม</option>
-                  <option value="open">⏳ ยังไม่เสร็จ</option>
-                  <option value="pending">🟠 รอแก้ / รอติดตั้ง</option>
-                  <option value="doing">🔵 กำลังแก้ / กำลังติดตั้ง</option>
-                  <option value="done">✅ เสร็จแล้ว</option>
-                </select>
-                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
-                <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
-                <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={t.select}><option value="all">👤 ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
-                {histMode==="day"
-                  ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
-                  : <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
-                }
-                <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน")}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
+              <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
+            </div>
+
+            <div style={t.filterBar}>
+              <div style={t.dashToggle}>
+                <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>เลือกเดือน</button>
+                <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>เลือกวัน</button>
               </div>
+              {histMode==="day"
+                ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
+                : <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
+              }
+
+              <div style={t.filterDiv} className="rb-hideM"/>
+
+              <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={sFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกสถานะกล้อง</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
+              <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={fFilter!=="all"?t.selectOn:t.select}>
+                <option value="all">ทุกงานซ่อม</option>
+                <option value="open">⏳ ยังไม่เสร็จ</option>
+                <option value="pending">🟠 รอแก้ / รอติดตั้ง</option>
+                <option value="doing">🔵 กำลังแก้ / กำลังติดตั้ง</option>
+                <option value="done">✅ เสร็จแล้ว</option>
+              </select>
+              <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={zFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
+              <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={byFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
+
+              {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||histMode==="day") && (
+                <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setHistMode("month");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
+              )}
             </div>
             <div style={t.tableWrap} className="rb-tableWrap">
               <table style={t.table}>
@@ -1506,6 +1514,10 @@ function mk(dark){
 
     select:{padding:"11px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:13, outline:"none"},
     exportBtn:{padding:"11px 17px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.13:.1,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, whiteSpace:"nowrap"},
+    filterBar:{display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", background:surf, border:`1px solid ${border}`, borderRadius:15, padding:"12px 14px", marginBottom:16, boxShadow:shadow},
+    filterDiv:{width:1, height:26, background:border, margin:"0 3px"},
+    selectOn:{padding:"11px 14px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.09,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:600, outline:"none"},
+    clearFilter:{padding:"11px 14px", borderRadius:11, border:`1px solid ${hexA("#EF4444",.3,dark)}`, background:"transparent", color:"#EF4444", fontSize:13, fontWeight:600, marginLeft:"auto"},
     pager:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, marginTop:14, flexWrap:"wrap"},
     pageBtn:{padding:"9px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
     pageInfo:{fontSize:13, color:dim},
