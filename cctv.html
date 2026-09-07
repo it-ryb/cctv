@@ -249,12 +249,12 @@ function App() {
   const isEmptyVal = (v) => v===null || v===undefined
     || (Array.isArray(v) && v.length===0)
     || (typeof v==="object" && !Array.isArray(v) && Object.keys(v).length===0);
-  latest.current = { logs, accounts, ips, tree, reporters, passwords };
   const fbReady = React.useRef(false);
   const fbSkip = React.useRef({}); // กันเขียนวน: key -> true เมื่อเพิ่งรับจาก cloud
   const cloudSeen = React.useRef({}); // key -> true เมื่อได้รับ snapshot แรกจาก cloud แล้ว
   const allowClear = React.useRef({}); // key -> true เฉพาะตอนผู้ใช้ตั้งใจลบ
   const latest = React.useRef({}); // ค่าล่าสุดของแต่ละ state ให้ listener เทียบได้
+  latest.current = { logs, accounts, ips, tree, reporters, passwords }; // ต้องอยู่หลังประกาศ ref
   useEffect(() => {
     let unsubs = [];
     const setup = () => {
