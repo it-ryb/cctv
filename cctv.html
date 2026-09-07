@@ -392,7 +392,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ":l.area, "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"", "รูป":l.img?"มีรูป":"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูป]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -402,9 +402,9 @@ function App() {
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("รายงานกล้อง");
-      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูป"];
+      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูป","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม"];
       ws.columns = [
-        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:24},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:18}
+        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26}
       ];
       // หัวตาราง
       const hr = ws.addRow(headers);
@@ -415,17 +415,18 @@ function App() {
       // ข้อมูล
       for (let i=0; i<view.length; i++) {
         const l = view[i];
-        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
         if (l.img && l.img.startsWith("data:image")) {
           try {
             const ext = l.img.includes("png") ? "png" : "jpeg";
             const imgId = wb.addImage({ base64: l.img, extension: ext });
-            r.height = 60;
-            // คอลัมน์รูปคือคอลัมน์ที่ 15 (index 14)
-            ws.addImage(imgId, { tl:{col:14, row:r.number-1}, ext:{width:80, height:76} });
-          } catch(e){ r.getCell(15).value = "มีรูป (ฝังไม่ได้)"; }
+            r.height = 70;
+            // ฝังรูปในคอลัมน์ "บริเวณ" (index 7) — ข้อความ area จัดชิดบน รูปวางใต้
+            r.getCell(8).alignment = { vertical:"top", wrapText:true };
+            ws.addImage(imgId, { tl:{col:7.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
+          } catch(e){}
         }
       }
       const buf = await wb.xlsx.writeBuffer();
