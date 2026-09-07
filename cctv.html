@@ -100,8 +100,10 @@ const SEED = [];
 const STATUS = {
   "ปกติ": { emoji: "✅", dot: "#22C55E" },
   "กล้องดับ": { emoji: "🔴", dot: "#F59E0B" },
+  "ปรับมุมกล้อง": { emoji: "🎥", dot: "#8B5CF6" },
   "เหตุการณ์อื่น": { emoji: "⚠️", dot: "#14B8A6" },
 };
+const needsFix = (s) => s==="กล้องดับ" || s==="ปรับมุมกล้อง";
 const FIX = { "รอแก้": "#F59E0B", "กำลังแก้": "#14B8A6", "แก้แล้ว": "#22C55E", "-": "#94A3B8" };
 const SHIFTS = [
   { key: "เช้า", time: "07.00-15.00", grp: "cctv" },
@@ -279,16 +281,16 @@ function App() {
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
     return [...a].sort((x,y)=>x.date<y.date?1:-1);
   }, [logs, mFilter, sFilter, zFilter, histMode, histDay]);
-  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
+  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
     if (dashMode==="day") return logs.filter(l=>l.date===dayFilter);
     if (mFilter!=="all") return logs.filter(l=>l.date.startsWith(mFilter));
     return logs;
   }, [logs, dashMode, dayFilter, mFilter]);
-  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
-  const dashPending = useMemo(()=> dashView.filter(l=>l.status==="กล้องดับ" && l.fix!=="แก้แล้ว").length, [dashView]);
-  const pendingFix = useMemo(()=> (logs||[]).filter(l=>l.status==="กล้องดับ" && l.fix!=="แก้แล้ว").length, [logs]);
+  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
+  const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && l.fix!=="แก้แล้ว").length, [dashView]);
+  const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && l.fix!=="แก้แล้ว").length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
@@ -323,7 +325,7 @@ function App() {
     setToast(msg); setTimeout(()=>setToast(""),4000);
   };
   const submit = () => {
-    const e = { id:Date.now(), date:dateVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:status==="กล้องดับ"?"รอแก้":"-", img:status==="ปกติ"?"":img };
+    const e = { id:Date.now(), date:dateVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?"รอแก้":"-", img:status==="ปกติ"?"":img };
     setLogs([e, ...logs]);
     setToast(status==="ปกติ" ? "✅ บันทึกเหตุการณ์ปกติ" : `${STATUS[status].emoji} บันทึก ${cam||"เหตุการณ์"} แล้ว`);
     setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg("");
@@ -332,7 +334,7 @@ function App() {
   const cycleFix = (id) => {
     const o=["รอแก้","กำลังแก้","แก้แล้ว"];
     const cur = logs.find(l=>l.id===id);
-    if(!cur || cur.status!=="กล้องดับ") return;
+    if(!cur || !needsFix(cur.status)) return;
     const next = o[(o.indexOf(cur.fix)+1)%o.length];
     if(next==="แก้แล้ว"){
       // เปิด modal ถามรายละเอียดการซ่อม
@@ -356,6 +358,7 @@ function App() {
     const d = dashMode==="day" ? dayFilter : todayISO();
     const rows = logs.filter(l=>l.date===d);
     const down = rows.filter(l=>l.status==="กล้องดับ");
+    const adjust = rows.filter(l=>l.status==="ปรับมุมกล้อง");
     const other = rows.filter(l=>l.status==="เหตุการณ์อื่น");
     const reporters = [...new Set(rows.map(l=>l.by).filter(Boolean))];
     let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
@@ -366,6 +369,10 @@ function App() {
       s += `🔴 กล้องดับ ${down.length} จุด\n`;
       down.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&l.fix!=="แก้แล้ว"?" ["+l.fix+"]":""}\n`; });
     } else { s += `🟢 ไม่มีกล้องดับ\n`; }
+    if (adjust.length) {
+      s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
+      adjust.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&l.fix!=="แก้แล้ว"?" ["+l.fix+"]":""}\n`; });
+    }
     if (other.length) {
       s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
       other.forEach(l=>{ s += `  • ${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`; });
@@ -527,7 +534,7 @@ function App() {
   const addRep = () => { const v=newRep.trim(); if(!v||reporters.includes(v))return; setReporters([...reporters,v]); setNewRep(""); setToast("เพิ่มพนักงานแล้ว"); setTimeout(()=>setToast(""),2000); };
   const delRep = (i) => { const name=reporters[i]; askConfirm(`ลบชื่อ "${name}" ออกจากรายชื่อพนักงาน?`, ()=>{ setReporters(reporters.filter((_,x)=>x!==i)); if(by===name)setBy(""); }); };
   const saveEdit = () => { const v=editVal.trim(); if(!v){setEditIdx(-1);return;} setReporters(reporters.map((r,i)=>i===editIdx?v:r)); setEditIdx(-1); setEditVal(""); };
-  const canSubmit = by && (status==="ปกติ" || (status==="กล้องดับ" && cam) || (status==="เหตุการณ์อื่น" && detail.trim()));
+  const canSubmit = by && (status==="ปกติ" || (needsFix(status) && cam) || (status==="เหตุการณ์อื่น" && detail.trim()));
   // ── หน้า Login ──
   if (auth === undefined) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}></div>;
   if (!auth) return (
@@ -695,7 +702,7 @@ function App() {
                   <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
                   <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>รายวัน</button>
                 </div>
-                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
+                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
                 <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
                 {histMode==="day"
                   ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
@@ -719,7 +726,7 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && <img src={l.img} style={t.tdImg} onClick={()=>setPreview(l.img)}/>}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td}>{l.status==="กล้องดับ" ? <div><button onClick={()=>cycleFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}}>{l.fix} ▸</button>{l.fix==="แก้แล้ว" && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>cycleFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}}>{l.fix} ▸</button>{l.fix==="แก้แล้ว" && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td}><button onClick={()=>del(l.id)} className="tap" style={t.delBtn}>🗑</button></td>
                     </tr>
                   ))}
