@@ -105,11 +105,12 @@ const SEED = [];
 const STATUS = {
   "ปกติ": { emoji: "✅", dot: "#22C55E" },
   "กล้องดับ": { emoji: "🔴", dot: "#F59E0B" },
+  "ภาพผิดปกติ": { emoji: "📺", dot: "#EC4899" },
   "ปรับมุมกล้อง": { emoji: "🎥", dot: "#8B5CF6" },
   "ถอดกล้อง": { emoji: "🔌", dot: "#0EA5E9" },
   "เหตุการณ์อื่น": { emoji: "⚠️", dot: "#14B8A6" },
 };
-const needsFix = (s) => s==="กล้องดับ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง";
+const needsFix = (s) => s==="กล้องดับ" || s==="ภาพผิดปกติ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง";
 // ขั้นตอนติดตามงาน — ถอดกล้องใช้คำว่า "ติดตั้งกลับ" แทน "ซ่อม"
 const FIX_FLOW = { "ถอดกล้อง": ["รอติดตั้งกลับ","กำลังติดตั้ง","ติดตั้งแล้ว"] };
 const DEFAULT_FLOW = ["รอแก้","กำลังแก้","แก้แล้ว"];
@@ -132,13 +133,14 @@ const RKEY = "cctv_reporters_v3";
 const AUTH_KEY = "cctv_auth_v1";
 const PKEY = "cctv_pw_v1";
 const UKEY = "cctv_users_v2";
-const FIX_BY = ["ช่างผู้รับเหมา", "IT"];
-const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ."];
+const FIX_BY = ["ช่างผู้รับเหมา (DD)", "IT"];
+const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
 const DEFAULT_USERS = {
   admin:   { pass: "@Rayong123", role: "admin", name: "ผู้ดูแลระบบ", dept: "IT" },
   atchara: { pass: "atchara123", role: "admin", name: "อัจฉรา สุรภาพ (IT)", reporter: "อัจฉรา สุรภาพ", dept: "IT" },
   sasina:  { pass: "sasina123",  role: "admin", name: "ศศินา แซ่เตียว (IT)", reporter: "ศศินา แซ่เตียว", dept: "IT" },
   mon:     { pass: "rayong123",  role: "staff", name: "mon (พนักงาน CCTV)", dept: "CCTV" },
+  dd:      { pass: "dd123456",   role: "vendor", name: "ช่างผู้รับเหมา (DD)", reporter: "ช่างผู้รับเหมา (DD)", dept: "ผู้รับเหมา" },
 };
 
 function App() {
@@ -206,6 +208,7 @@ function App() {
   const [summaryText, setSummaryText] = useState("");
   const [zFilter, setZFilter] = useState("all");
   const [preview, setPreview] = useState("");
+  const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const t = dark ? T.dark : T.light;
 
   useEffect(() => {
@@ -305,6 +308,8 @@ function App() {
   useEffect(()=>{ pushCloud("passwords", passwords); }, [passwords]);
   // กันพนักงานเข้าหน้า admin (วางกับ hooks อื่นก่อน early return)
   useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
+  useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
+  useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
   useEffect(() => { if (auth && accounts[auth.user] && accounts[auth.user].reporter) setBy(accounts[auth.user].reporter); }, [auth]);
   useEffect(() => { if (myShifts.length && !myShifts.some(s=>s.key===shift)) setShift(myShifts[0].key); }, [myShifts]);
 
@@ -316,6 +321,7 @@ function App() {
     return [];
   }, [zone, subGrp, camQuery, tree, CAMERAS]);
 
+  const isVendor = !!(auth && auth.role === "vendor");
   const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]);
   const view = useMemo(() => {
     if(!logs) return [];
@@ -324,16 +330,26 @@ function App() {
     else if (mFilter!=="all") a = a.filter(l=>l.date.startsWith(mFilter));
     if (zFilter!=="all") a = a.filter(l=>l.zone===zFilter);
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
+    if (isVendor) a = a.filter(l=>needsFix(l.status)); // ผู้รับเหมาเห็นเฉพาะรายการที่ต้องซ่อม
+    if (fFilter!=="all") a = a.filter(l=>{
+      if (!needsFix(l.status)) return false;
+      const o = fixFlow(l.status);
+      if (fFilter==="done") return l.fix===o[2];
+      if (fFilter==="open") return l.fix!==o[2];
+      if (fFilter==="pending") return l.fix===o[0] || !o.includes(l.fix);
+      if (fFilter==="doing") return l.fix===o[1];
+      return true;
+    });
     return [...a].sort((x,y)=>x.date<y.date?1:-1);
-  }, [logs, mFilter, sFilter, zFilter, histMode, histDay]);
-  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
+  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter]);
+  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
     if (dashMode==="day") return logs.filter(l=>l.date===dayFilter);
     if (mFilter!=="all") return logs.filter(l=>l.date.startsWith(mFilter));
     return logs;
   }, [logs, dashMode, dayFilter, mFilter]);
-  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
+  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
   const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && !fixDone(l)).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
@@ -385,7 +401,7 @@ function App() {
       locked: cur.fix === o[2], // เสร็จแล้ว = ล็อก ห้ามย้อนสถานะจากปุ่มนี้
       fix: o.includes(cur.fix) ? cur.fix : o[0],
       fixDate: cur.fixDate || todayISO(),
-      fixBy: cur.fixBy || "ช่างผู้รับเหมา",
+      fixBy: cur.fixBy || ((auth && accounts[auth.user] && accounts[auth.user].reporter) || "ช่างผู้รับเหมา (DD)"),
       fixNote: cur.fixNote || "",
     });
   };
@@ -460,6 +476,7 @@ function App() {
     const down = rows.filter(l=>l.status==="กล้องดับ");
     const adjust = rows.filter(l=>l.status==="ปรับมุมกล้อง");
     const removed = rows.filter(l=>l.status==="ถอดกล้อง");
+    const badimg = rows.filter(l=>l.status==="ภาพผิดปกติ");
     const other = rows.filter(l=>l.status==="เหตุการณ์อื่น");
     const reporters = [...new Set(rows.map(l=>l.by).filter(Boolean))];
     let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
@@ -473,6 +490,10 @@ function App() {
     if (adjust.length) {
       s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
       adjust.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+    }
+    if (badimg.length) {
+      s += `📺 ภาพผิดปกติ ${badimg.length} จุด\n`;
+      badimg.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     }
     if (removed.length) {
       s += `🔌 ถอดกล้อง ${removed.length} จุด\n`;
@@ -606,7 +627,8 @@ function App() {
     if (u === "admin") { setToast("เปลี่ยนสิทธิ์ผู้ดูแลหลักไม่ได้"); setTimeout(()=>setToast(""),2400); return; }
     const cur = accounts[u].role;
     if (cur==="admin") { const admins = Object.values(accounts).filter(a=>a.role==="admin").length; if(admins<=1){ setToast("ต้องมีผู้ดูแลอย่างน้อย 1 บัญชี"); setTimeout(()=>setToast(""),2600); return; } }
-    setAccounts({...accounts, [u]: {...accounts[u], role: cur==="admin"?"staff":"admin"}});
+    const next = cur==="staff" ? "admin" : (cur==="admin" ? "vendor" : "staff"); // พนักงาน → ผู้ดูแล → ผู้รับเหมา
+    setAccounts({...accounts, [u]: {...accounts[u], role: next}});
   };
   const changePassword = (user) => {
     const np = (pwEdit[user]||"").trim();
@@ -664,7 +686,7 @@ function App() {
     const a = { user: u, role: rec.role, name: rec.name };
     setAuth(a); try { sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch(e){}
     setLoginUser(""); setLoginPass(""); setLoginErr("");
-    setNav("record");
+    setNav(rec.role==="vendor" ? "history" : "record");
   };
   const doLogout = () => { setAuth(null); try { sessionStorage.removeItem(AUTH_KEY); } catch(e){} };
 
@@ -703,7 +725,9 @@ function App() {
 
   const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
-  const NAV = ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
+  const NAV = isVendor
+    ? [["history","🔧","งานซ่อม"]]
+    : ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
 
   return (
     <div style={t.app} className="rb-app">
@@ -734,7 +758,7 @@ function App() {
           <div style={t.userAvatar}>{isAdmin?"🛡️":"👤"}</div>
           <div style={{flex:1, minWidth:0}}>
             <div style={t.userName}>{auth.name}</div>
-            <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":"พนักงาน"}</div>
+            <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":"พนักงาน")}</div>
           </div>
         </div>
         <button onClick={doLogout} className="tap" style={t.logoutBtn}>🚪 ออกจากระบบ</button>
@@ -833,13 +857,20 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>ประวัติการบันทึก</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · เลือกเดือน/วันเพื่อกรอง แล้วกดส่งออก")}</div></div>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · เลือกเดือน/วันเพื่อกรอง แล้วกดส่งออก")}</div></div>
               <div style={{display:"flex", gap:10}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
                   <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>รายวัน</button>
                 </div>
-                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
+                <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={t.select}>
+                  <option value="all">🔧 ทุกงานซ่อม</option>
+                  <option value="open">⏳ ยังไม่เสร็จ</option>
+                  <option value="pending">🟠 รอแก้ / รอติดตั้ง</option>
+                  <option value="doing">🔵 กำลังแก้ / กำลังติดตั้ง</option>
+                  <option value="done">✅ เสร็จแล้ว</option>
+                </select>
+                <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
                 <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
                 {histMode==="day"
                   ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
@@ -864,7 +895,7 @@ function App() {
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && <img src={l.img} style={t.tdImg} onClick={()=>setPreview(l.img)}/>}</td>
                       <td style={t.td}>{l.by}</td>
                       <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td}><div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div></td>
+                      <td style={t.td}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
@@ -1071,7 +1102,7 @@ function App() {
                           <div style={t.accName}>{a.name}</div>
                           <div style={t.accMeta}>@{u}<span onClick={()=>askPrompt(`แผนก/ตำแหน่งของ ${a.name}`, a.dept||"", (d)=>setAccounts({...accounts, [u]:{...a, dept:d.trim()}}))} className="tap" style={t.deptBadge} title="แตะเพื่อแก้แผนก">{a.dept||"+ แผนก"}</span></div>
                         </div>
-                        <button onClick={()=>toggleRole(u)} className="tap" style={a.role==="admin"?t.roleAdmin:t.roleStaff} title="แตะเพื่อเปลี่ยนสิทธิ์">{a.role==="admin"?"🛡️ ผู้ดูแล":"👤 พนักงาน"}</button>
+                        <button onClick={()=>toggleRole(u)} className="tap" style={a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:t.roleStaff)} title="แตะเพื่อเปลี่ยนสิทธิ์">{a.role==="admin"?"🛡️ ผู้ดูแล":(a.role==="vendor"?"🔧 ผู้รับเหมา":"👤 พนักงาน")}</button>
                         <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}>🗑</button>
                       </div>
                       <div style={t.accPwRow}>
@@ -1093,6 +1124,7 @@ function App() {
                     <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={t.input}>
                       <option value="staff">👤 พนักงาน (บันทึก/ดูอย่างเดียว)</option>
                       <option value="admin">🛡️ ผู้ดูแล (จัดการได้ทุกอย่าง)</option>
+                      <option value="vendor">🔧 ผู้รับเหมา (เห็นเฉพาะงานซ่อม อัปเดตสถานะได้)</option>
                     </select>
                   </div>
                   <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:14}}>➕ เพิ่มบัญชี</button>
@@ -1173,7 +1205,7 @@ function App() {
             </div>
             <div style={{marginTop:12}}>
               <div style={t.label}>👷 {fixBox.status==="ถอดกล้อง" ? "ผู้ติดตั้ง" : "ผู้แก้ไข"}</div>
-              <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา / IT" style={t.input}/>
+              <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
               <datalist id="fixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
@@ -1271,7 +1303,7 @@ function App() {
                   </div>
                   <div style={{flex:1, minWidth:140}}>
                     <div style={t.label}>👷 ผู้แก้ไข</div>
-                    <input list="editfixbylist" value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา / IT" style={t.input}/>
+                    <input list="editfixbylist" value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
                     <datalist id="editfixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
                     <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                       {FIX_BY.map(v=><button key={v} onClick={()=>setEditBox({...editBox, fixBy:v})} className="tap" style={editBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
@@ -1432,7 +1464,7 @@ function mk(dark){
     delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#EF4444", fontWeight:600},
     editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#3B82F6", fontWeight:600},
 
-    statGrid:{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:20},
+    statGrid:{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20},
     bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
     bigNum:{fontSize:44, fontWeight:600, fontFamily:mono, lineHeight:1, margin:"12px 0 7px"},
     bigLabel:{fontSize:14, color:dim, fontWeight:500},
@@ -1453,6 +1485,7 @@ function mk(dark){
     accMeta:{fontSize:12, color:dim, fontFamily:mono, marginTop:3, display:"flex", alignItems:"center", gap:7, flexWrap:"wrap"},
     deptBadge:{fontFamily:sans, fontSize:11, fontWeight:600, padding:"2px 9px", borderRadius:20, background:hexA("#6366F1",dark?.16:.1,dark), color:"#6366F1"},
     roleAdmin:{padding:"7px 12px", borderRadius:9, border:`1px solid ${hexA("#6366F1",.3,dark)}`, background:hexA("#6366F1",dark?.12:.08,dark), color:"#6366F1", fontSize:12, fontWeight:600, whiteSpace:"nowrap"},
+    roleVendor:{padding:"7px 12px", borderRadius:9, border:`1px solid ${hexA("#F59E0B",.35,dark)}`, background:hexA("#F59E0B",dark?.12:.09,dark), color:"#F59E0B", fontSize:12, fontWeight:600, whiteSpace:"nowrap"},
     roleStaff:{padding:"7px 12px", borderRadius:9, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:12, fontWeight:600, whiteSpace:"nowrap"},
     accAddBox:{padding:15, borderRadius:13, background:hexA(accent,dark?.06:.05,dark), border:`1px solid ${hexA(accent,.18,dark)}`},
     accAddTitle:{fontSize:14, fontWeight:600, marginBottom:12, color:dark?"#5FD16E":accent},
