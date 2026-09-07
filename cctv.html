@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   html,body{margin:0;padding:0;background:#EEF1F6;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -386,14 +387,57 @@ function App() {
     // วิธีที่ 3: เปิด modal ให้ก๊อปเอง (สำรองสุดท้าย เห็นข้อความเสมอ)
     setSummaryText(text); setShowSummary(true);
   };
-  const exportX = () => {
-    const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ":l.area, "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"]=[{wch:6},{wch:12},{wch:6},{wch:14},{wch:13},{wch:20},{wch:16},{wch:26},{wch:30},{wch:10},{wch:11}];
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
+  const exportX = async () => {
     const lb = mFilter==="all"?"ทั้งหมด":TH_M[+mFilter.slice(5)-1];
-    XLSX.writeFile(wb, `รายงานกล้อง_${lb}_2569.xlsx`);
-    setToast("⬇️ ส่งออกรายงานแล้ว"); setTimeout(()=>setToast(""),2600);
+    const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
+    // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
+    if (typeof ExcelJS === "undefined") {
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ":l.area, "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"", "รูป":l.img?"มีรูป":"" }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
+      XLSX.writeFile(wb, fname);
+      setToast("⬇️ ส่งออกแล้ว (ไม่มีรูป)"); setTimeout(()=>setToast(""),2600); return;
+    }
+    setToast("⏳ กำลังสร้างไฟล์ Excel...");
+    try {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("รายงานกล้อง");
+      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูป"];
+      ws.columns = [
+        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:24},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:18}
+      ];
+      // หัวตาราง
+      const hr = ws.addRow(headers);
+      hr.font = { bold:true, color:{argb:"FFFFFFFF"} };
+      hr.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF2E8B3D"} };
+      hr.alignment = { vertical:"middle", horizontal:"center" };
+      hr.height = 22;
+      // ข้อมูล
+      for (let i=0; i<view.length; i++) {
+        const l = view[i];
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
+        r.alignment = { vertical:"middle", wrapText:true };
+        // ฝังรูปถ้ามี
+        if (l.img && l.img.startsWith("data:image")) {
+          try {
+            const ext = l.img.includes("png") ? "png" : "jpeg";
+            const imgId = wb.addImage({ base64: l.img, extension: ext });
+            r.height = 60;
+            // คอลัมน์รูปคือคอลัมน์ที่ 15 (index 14)
+            ws.addImage(imgId, { tl:{col:14, row:r.number-1}, ext:{width:80, height:76} });
+          } catch(e){ r.getCell(15).value = "มีรูป (ฝังไม่ได้)"; }
+        }
+      }
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download=fname; a.click();
+      URL.revokeObjectURL(url);
+      setToast("⬇️ ส่งออกรายงาน (พร้อมรูป) แล้ว"); setTimeout(()=>setToast(""),2800);
+    } catch(e) {
+      console.error("export fail", e);
+      setToast("❌ สร้างไฟล์ไม่สำเร็จ ลองใหม่"); setTimeout(()=>setToast(""),3000);
+    }
   };
   // ── จัดการกล้อง/โซน ──
   const mSubGroups = useMemo(()=> Object.keys(tree[mZone]||{}), [tree, mZone]);
