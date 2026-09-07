@@ -209,6 +209,9 @@ function App() {
   const [zFilter, setZFilter] = useState("all");
   const [preview, setPreview] = useState("");
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
+  const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
+  const [pageSize, setPageSize] = useState(20); // จำนวนรายการต่อหน้า (0 = ทั้งหมด)
+  const [page, setPage] = useState(1);
   const t = dark ? T.dark : T.light;
 
   useEffect(() => {
@@ -231,12 +234,16 @@ function App() {
       }
     } catch(e){}
   })(); }, []);
-  useEffect(() => { if (logs===null) return; try { localStorage.setItem(KEY, JSON.stringify(logs)); } catch(e){} }, [logs]);
+  useEffect(() => {
+    if (logs===null) return;
+    try { localStorage.setItem(KEY, JSON.stringify(logs)); }
+    catch(e){ setToast("⚠️ พื้นที่เก็บในเครื่องเต็ม รูปที่แนบอาจไม่ถูกบันทึก แจ้งไอที"); setTimeout(()=>setToast(""),5000); }
+  }, [logs]);
   // สำรองอัตโนมัติวันละชุด เก็บ 7 ชุดล่าสุด (กันข้อมูลหายซ้ำรอยเดิม)
   useEffect(() => {
     if (!logs || !logs.length) return;
     try {
-      localStorage.setItem("cctv_backup_" + todayISO(), JSON.stringify(logs));
+      localStorage.setItem("cctv_backup_" + todayISO(), JSON.stringify(logs.map(({img, ...r}) => r))); // ไม่เก็บรูป กันพื้นที่เต็ม
       const keys = [];
       for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("cctv_backup_")===0) keys.push(k); }
       keys.sort().slice(0, Math.max(0, keys.length-7)).forEach(k=>localStorage.removeItem(k));
@@ -322,7 +329,8 @@ function App() {
   }, [zone, subGrp, camQuery, tree, CAMERAS]);
 
   const isVendor = !!(auth && auth.role === "vendor");
-  const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]);
+  const byOpts = useMemo(() => [...new Set((logs||[]).map(l=>l.by).filter(Boolean))].sort(), [logs]);
+  const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort(); }, [logs]); // เรียงเดือนเก่า → ใหม่
   const view = useMemo(() => {
     if(!logs) return [];
     let a = logs;
@@ -330,6 +338,7 @@ function App() {
     else if (mFilter!=="all") a = a.filter(l=>l.date.startsWith(mFilter));
     if (zFilter!=="all") a = a.filter(l=>l.zone===zFilter);
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
+    if (byFilter!=="all") a = a.filter(l=>l.by===byFilter);
     if (isVendor) a = a.filter(l=>needsFix(l.status)); // ผู้รับเหมาเห็นเฉพาะรายการที่ต้องซ่อม
     if (fFilter!=="all") a = a.filter(l=>{
       if (!needsFix(l.status)) return false;
@@ -341,7 +350,11 @@ function App() {
       return true;
     });
     return [...a].sort((x,y)=>x.date<y.date?1:-1);
-  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter]);
+  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter, byFilter]);
+  const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
+  const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
+  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, pageSize]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
@@ -355,15 +368,31 @@ function App() {
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
+  // ย่อรูปให้เล็กลงก่อนเก็บ ถ้าเบราว์เซอร์เปิดไฟล์ไม่ได้ (เช่น HEIC จาก iPhone) จะแจ้งให้ผู้ใช้รู้
+  const compressImg = (file, onDone) => {
+    const rd = new FileReader();
+    rd.onerror = () => { setToast("❌ อ่านไฟล์รูปไม่ได้ ลองเลือกใหม่"); setTimeout(()=>setToast(""),3000); };
+    rd.onload = () => {
+      const im = new Image();
+      im.onerror = () => { setToast("❌ เบราว์เซอร์เปิดไฟล์รูปนี้ไม่ได้ ลองถ่ายใหม่หรือเลือกไฟล์ JPG"); setTimeout(()=>setToast(""),3800); };
+      im.onload = () => {
+        try {
+          const cv = document.createElement("canvas"); const mx=1000; const sc=Math.min(1,mx/im.width);
+          cv.width=im.width*sc; cv.height=im.height*sc; cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
+          onDone(cv.toDataURL("image/jpeg",0.72));
+          setToast("📷 แนบรูปแล้ว"); setTimeout(()=>setToast(""),1800);
+        } catch(err) {
+          setToast("❌ ย่อรูปไม่สำเร็จ ลองเลือกรูปที่เล็กลง"); setTimeout(()=>setToast(""),3200);
+        }
+      };
+      im.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  };
   const pickImg = (e) => {
     const f = e.target.files?.[0]; if (!f) return;
-    const rd = new FileReader();
-    rd.onload = () => { const im = new Image(); im.onload = () => {
-      const cv = document.createElement("canvas"); const mx=1000; const sc=Math.min(1,mx/im.width);
-      cv.width=im.width*sc; cv.height=im.height*sc; cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
-      setImg(cv.toDataURL("image/jpeg",0.72));
-    }; im.src=rd.result; };
-    rd.readAsDataURL(f);
+    compressImg(f, setImg);
+    e.target.value = "";
   };
   const camZoneMap = useMemo(() => {
     const m = {};
@@ -442,13 +471,8 @@ function App() {
   };
   const pickEditImg = (e) => {
     const f = e.target.files?.[0]; if (!f) return;
-    const rd = new FileReader();
-    rd.onload = () => { const im = new Image(); im.onload = () => {
-      const cv = document.createElement("canvas"); const mx=1000; const sc=Math.min(1,mx/im.width);
-      cv.width=im.width*sc; cv.height=im.height*sc; cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
-      setEditBox(b => b ? {...b, img: cv.toDataURL("image/jpeg",0.72)} : b);
-    }; im.src=rd.result; };
-    rd.readAsDataURL(f);
+    compressImg(f, (data)=> setEditBox(b => b ? {...b, img:data} : b));
+    e.target.value = "";
   };
   const saveLogEdit = () => {
     if (!editBox) return;
@@ -741,7 +765,7 @@ function App() {
           {NAV.map(([k,ic,label])=>(
             <button key={k} onClick={()=>setNav(k)} className="tap" style={nav===k?t.navOn:t.navBtn}>
               <span style={{fontSize:17}}>{ic}</span><span>{label}</span>
-              {k==="history" && pendingFix>0 && <span style={t.navBadge}>{pendingFix}</span>}
+              {k==="history" && pendingFix>0 && <span style={t.navBadge} title={`งานซ่อมค้างอยู่ ${pendingFix} รายการ`}>{pendingFix}</span>}
             </button>
           ))}
         </nav>
@@ -857,7 +881,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · เลือกเดือน/วันเพื่อกรอง แล้วกดส่งออก")}</div></div>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · เลือกเดือน/วันเพื่อกรอง แล้วกดส่งออก")}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
               <div style={{display:"flex", gap:10}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
@@ -872,10 +896,17 @@ function App() {
                 </select>
                 <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={t.select}><option value="all">ทุกสถานะ</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
                 <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
+                <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={t.select}><option value="all">👤 ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
                 {histMode==="day"
                   ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
                   : <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
                 }
+                <select value={pageSize} onChange={e=>setPageSize(+e.target.value)} style={t.select}>
+                  <option value={20}>20 ต่อหน้า</option>
+                  <option value={50}>50 ต่อหน้า</option>
+                  <option value={100}>100 ต่อหน้า</option>
+                  <option value={0}>ดูทั้งหมด</option>
+                </select>
                 <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
               </div>
             </div>
@@ -885,7 +916,7 @@ function App() {
                   {["วันที่","กะ","สถานะ","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {view.map(l=>(
+                  {pageRows.map(l=>(
                     <tr key={l.id} style={t.tr}>
                       <td style={t.td}>{fmtTH(l.date)}</td>
                       <td style={t.td}>{l.shift}</td>
@@ -902,6 +933,13 @@ function App() {
                 </tbody>
               </table>
             </div>
+            {pageSize>0 && view.length>pageSize && (
+              <div style={t.pager}>
+                <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="tap" style={{...t.pageBtn, opacity:page<=1?.4:1}}>‹ ก่อนหน้า</button>
+                <span style={t.pageInfo}>หน้า {page} / {totalPages} · แสดง {(page-1)*pageSize+1}–{Math.min(page*pageSize, view.length)} จาก {view.length} รายการ</span>
+                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="tap" style={{...t.pageBtn, opacity:page>=totalPages?.4:1}}>ถัดไป ›</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1453,6 +1491,9 @@ function mk(dark){
 
     select:{padding:"11px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:13, outline:"none"},
     exportBtn:{padding:"11px 17px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.13:.1,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, whiteSpace:"nowrap"},
+    pager:{display:"flex", alignItems:"center", justifyContent:"center", gap:14, marginTop:16, flexWrap:"wrap"},
+    pageBtn:{padding:"10px 16px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
+    pageInfo:{fontSize:13, color:dim},
     tableWrap:{background:surf, border:`1px solid ${border}`, borderRadius:16, overflow:"hidden", boxShadow:shadow},
     table:{width:"100%", borderCollapse:"collapse", fontSize:14.5},
     th:{textAlign:"left", padding:"16px 18px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
