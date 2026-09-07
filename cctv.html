@@ -104,9 +104,10 @@ const STATUS = {
 };
 const FIX = { "รอแก้": "#F59E0B", "กำลังแก้": "#14B8A6", "แก้แล้ว": "#22C55E", "-": "#94A3B8" };
 const SHIFTS = [
-  { key: "เช้า", time: "07.00-15.00" },
-  { key: "บ่าย", time: "15.00-23.00" },
-  { key: "ดึก", time: "23.00-07.00" },
+  { key: "เช้า", time: "07.00-15.00", grp: "cctv" },
+  { key: "บ่าย", time: "15.00-23.00", grp: "cctv" },
+  { key: "ดึก", time: "23.00-07.00", grp: "cctv" },
+  { key: "Day (IT)", time: "08.00-17.00", grp: "it" },
 ];
 const TH_M = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const fmtTH = (iso) => { const [y,m,d]=iso.split("-"); return `${d}/${m}/${+y+543}`; };
@@ -159,6 +160,12 @@ function App() {
   const [detail, setDetail] = useState("");
   const [by, setBy] = useState("");
   const [shift, setShift] = useState("ดึก");
+  const myShifts = useMemo(() => {
+    const dept = (auth && accounts[auth.user] && accounts[auth.user].dept) || "";
+    if (auth && auth.user === "admin") return SHIFTS; // admin เห็นทุกกะ
+    if (dept === "IT") return SHIFTS.filter(s=>s.grp==="it"); // IT เห็นแค่ Day
+    return SHIFTS.filter(s=>s.grp==="cctv"); // พนักงานอื่นเห็น 3 กะเวร
+  }, [auth, accounts]);
   const [dateVal, setDateVal] = useState(todayISO());
   const [img, setImg] = useState("");
   const [toast, setToast] = useState("");
@@ -252,6 +259,7 @@ function App() {
   // กันพนักงานเข้าหน้า admin (วางกับ hooks อื่นก่อน early return)
   useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
   useEffect(() => { if (auth && accounts[auth.user] && accounts[auth.user].reporter) setBy(accounts[auth.user].reporter); }, [auth]);
+  useEffect(() => { if (myShifts.length && !myShifts.some(s=>s.key===shift)) setShift(myShifts[0].key); }, [myShifts]);
 
   const CAMERAS = useMemo(() => Object.fromEntries(Object.entries(tree).map(([z,g])=>[z,Object.values(g).flat()])), [tree]);
   const subGroups = useMemo(() => Object.keys(tree[zone] || {}), [zone, tree]);
@@ -627,7 +635,7 @@ function App() {
                 </div>
                 <div style={t.label}>⏰ กะการทำงาน</div>
                 <div style={t.shiftGrid}>
-                  {SHIFTS.map(s=>{ const on=shift===s.key;
+                  {myShifts.map(s=>{ const on=shift===s.key;
                     return <button key={s.key} onClick={()=>setShift(s.key)} className="tap" style={on?t.shiftCardOn:t.shiftCard}>
                       <span style={t.shiftName}>{s.key}</span>
                       <span style={{...t.shiftClock, color:on?(dark?"#5FD16E":"#2E8B3D"):t.dim}}>{s.time}</span>
