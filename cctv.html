@@ -223,6 +223,7 @@ function App() {
   const [preview, setPreview] = useState("");
   const [syncErr, setSyncErr] = useState(""); // ข้อความเตือนเมื่อซิงก์ขึ้นคลาวด์ไม่สำเร็จ
   const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
+  const [detailBox, setDetailBox] = useState(null); // การ์ดรายละเอียดของบันทึกที่กดดู
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
   const [camQ, setCamQ] = useState(""); // ค้นหาชื่อกล้องในหน้าประวัติ
@@ -1084,7 +1085,7 @@ function App() {
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
-                    <tr key={l.id} style={t.tr}>
+                    <tr key={l.id} style={{...t.tr, cursor:"pointer"}} onClick={()=>setDetailBox(l)} title="กดเพื่อดูรายละเอียด">
                       <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div></td>
                       <td style={t.td}>{l.shift}</td>
                       <td style={t.td}><span style={{...t.badge, background:hex(STATUS[l.status].dot,dark?.15:.12), color:STATUS[l.status].dot}}>{STATUS[l.status].emoji} {l.status}</span></td>
@@ -1092,8 +1093,8 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
@@ -1473,6 +1474,57 @@ function App() {
           </div>
         </div></Modal>
       )}
+      {detailBox && (()=>{ const l = (logs||[]).find(x=>x.id===detailBox.id) || detailBox; const before=imgOf(l), after=imgFixOf(l); const done=fixDone(l);
+        return (
+        <Modal><div style={t.modalBg} onClick={()=>setDetailBox(null)}>
+          <div style={{...t.modalCard, maxWidth:540, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={t.dHead}>
+              <span style={{...t.badge, background:hexA(STATUS[l.status].dot,dark?.18:.12,dark), color:STATUS[l.status].dot, borderColor:hexA(STATUS[l.status].dot,.35,dark)}}>{STATUS[l.status].emoji} {l.status}</span>
+              <span style={t.dDate}>{fmtTH(l.date)} · กะ{l.shift}</span>
+            </div>
+
+            {l.cam && <div style={t.dCam}>{l.cam}</div>}
+            {l.cam && ips[l.cam] && isAdmin && <div style={t.dIp}>{ips[l.cam]}</div>}
+
+            <div style={t.dRows}>
+              {l.zone && <div style={t.dRow}><span style={t.dK}>พื้นที่</span><span style={t.dV}>{ZONE_EMOJI[l.zone]} {l.zone}</span></div>}
+              {l.area && <div style={t.dRow}><span style={t.dK}>บริเวณ</span><span style={t.dV}>{l.area}</span></div>}
+              {l.detail && <div style={t.dRow}><span style={t.dK}>รายละเอียด</span><span style={t.dV}>{l.detail}</span></div>}
+              <div style={t.dRow}><span style={t.dK}>ผู้รายงาน</span><span style={t.dV}>{l.by||"—"}</span></div>
+            </div>
+
+            {needsFix(l.status) && (
+              <div style={{...t.dRows, borderLeft:`3px solid ${FIX[l.fix]||"#94A3B8"}`, paddingLeft:12}}>
+                <div style={t.dRow}><span style={t.dK}>สถานะงาน</span><span style={{...t.dV, color:FIX[l.fix], fontWeight:700}}>{done?"✓ ":""}{l.fix}</span></div>
+                {l.fixDate && <div style={t.dRow}><span style={t.dK}>วันที่เสร็จ</span><span style={t.dV}>{fmtTH(l.fixDate)}</span></div>}
+                {l.fixBy && <div style={t.dRow}><span style={t.dK}>ผู้ดำเนินการ</span><span style={t.dV}>{l.fixBy}</span></div>}
+                {l.fixNote && <div style={t.dRow}><span style={t.dK}>หมายเหตุ</span><span style={t.dV}>{l.fixNote}</span></div>}
+              </div>
+            )}
+
+            {(before || after) && (
+              <div style={t.baGrid}>
+                <div style={t.baCell}>
+                  <div style={t.baTag}>{after ? "ก่อนแก้" : "รูปที่แนบ"}</div>
+                  {before ? <img src={before} style={t.baImg} onClick={()=>setPreview(before)}/> : <div style={t.baEmpty}>ไม่มีรูป</div>}
+                </div>
+                {after && (
+                  <div style={t.baCell}>
+                    <div style={{...t.baTag, color:"#16A34A", borderColor:hexA("#22C55E",.35,dark)}}>หลังแก้</div>
+                    <img src={after} style={t.baImg} onClick={()=>setPreview(after)}/>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{display:"flex", gap:10, marginTop:18, flexWrap:"wrap"}}>
+              {needsFix(l.status) && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={{...t.submit, marginTop:0, flex:1, minWidth:150}}>🔧 อัปเดตสถานะงาน</button>}
+              {!isVendor && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={{...t.dashExport, flex:1, minWidth:110}}>✏️ แก้ไข</button>}
+              <button onClick={()=>setDetailBox(null)} className="tap" style={{...t.dashExport, flex:1, minWidth:90}}>ปิด</button>
+            </div>
+          </div>
+        </div></Modal>
+        ); })()}
       {editBox && (
         <Modal><div style={t.modalBg} onClick={()=>setEditBox(null)}>
           <div style={{...t.modalCard, maxWidth:560, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
@@ -1721,6 +1773,14 @@ function mk(dark){
     th:{textAlign:"left", padding:"16px 18px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
     tr:{borderBottom:`1px solid ${border}`},
     td:{padding:"15px 18px", verticalAlign:"top", fontSize:14.5},
+    dHead:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap", marginBottom:12},
+    dDate:{fontSize:13, color:dim, fontWeight:600},
+    dCam:{fontFamily:mono, fontSize:19, fontWeight:700, color:text, wordBreak:"break-all"},
+    dIp:{fontFamily:mono, fontSize:12.5, color:dim, marginTop:2},
+    dRows:{marginTop:14, display:"flex", flexDirection:"column", gap:8},
+    dRow:{display:"flex", gap:12, fontSize:14, alignItems:"flex-start"},
+    dK:{width:92, flexShrink:0, color:dim, fontSize:12.5, paddingTop:1},
+    dV:{color:text, flex:1, wordBreak:"break-word"},
     baGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4},
     baCell:{background:inputBg, border:`1px solid ${border}`, borderRadius:12, padding:10, textAlign:"center"},
     baTag:{fontSize:11, fontWeight:700, color:dim, border:`1px solid ${border}`, borderRadius:20, padding:"2px 9px", display:"inline-block", marginBottom:8},
