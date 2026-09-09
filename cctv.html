@@ -123,6 +123,7 @@ const SHIFTS = [
   { key: "ดึก", time: "23.00-07.00", grp: "cctv" },
   { key: "Day (IT)", time: "08.00-17.00", grp: "it" },
 ];
+const TH_MS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]; // ชื่อเดือนย่อ ใช้ในตาราง
 const TH_M = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const fmtTH = (iso) => { const [y,m,d]=iso.split("-"); return `${d}/${m}/${+y+543}`; };
 const todayISO = () => new Date().toISOString().slice(0,10);
@@ -210,6 +211,8 @@ function App() {
   const [preview, setPreview] = useState("");
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
+  const [histFrom, setHistFrom] = useState(""); // ช่วงวันที่: ตั้งแต่
+  const [histTo, setHistTo] = useState("");     // ช่วงวันที่: ถึง
   const [dateDesc, setDateDesc] = useState(true); // true = ใหม่ → เก่า
   const [pageSize, setPageSize] = useState(20); // จำนวนรายการต่อหน้า (0 = ทั้งหมด)
   const [page, setPage] = useState(1);
@@ -336,6 +339,10 @@ function App() {
     if(!logs) return [];
     let a = logs;
     if (histMode==="day") a = a.filter(l=>l.date===histDay);
+    else if (histMode==="range") {
+      if (histFrom) a = a.filter(l=>l.date >= histFrom);
+      if (histTo)   a = a.filter(l=>l.date <= histTo);
+    }
     else if (mFilter!=="all") a = a.filter(l=>l.date.startsWith(mFilter));
     if (zFilter!=="all") a = a.filter(l=>l.zone===zFilter);
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
@@ -352,10 +359,10 @@ function App() {
     });
     const dir = dateDesc ? 1 : -1;
     return [...a].sort((x,y)=> x.date===y.date ? ((y.id-x.id)*dir) : (x.date<y.date ? dir : -dir));
-  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, isVendor, fFilter, byFilter, dateDesc]);
+  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, histFrom, histTo, isVendor, fFilter, byFilter, dateDesc]);
   const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
-  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, pageSize, dateDesc]);
+  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
@@ -504,8 +511,8 @@ function App() {
     setEditBox(null);
     setToast("✏️ แก้ไขบันทึกแล้ว"); setTimeout(()=>setToast(""),2400);
   };
-  const buildSummary = () => {
-    const d = dashMode==="day" ? dayFilter : todayISO();
+  const buildSummary = (dArg) => {
+    const d = dArg || (dashMode==="day" ? dayFilter : todayISO());
     const rows = logs.filter(l=>l.date===d);
     const down = rows.filter(l=>l.status==="กล้องดับ");
     const adjust = rows.filter(l=>l.status==="ปรับมุมกล้อง");
@@ -516,7 +523,8 @@ function App() {
     let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
     s += `RAYONGBOARD\n`;
     s += `━━━━━━━━━━━━━\n`;
-    if (rows.length===0) { s += `✅ ไม่มีเหตุการณ์บันทึกในวันนี้`; return s; }
+    if (rows.length===0) { s += `✅ ยังไม่มีการบันทึกของวันที่ ${fmtTH(d)}`; return s; }
+    const normal = rows.filter(l=>l.status==="ปกติ");
     if (down.length) {
       s += `🔴 กล้องดับ ${down.length} จุด\n`;
       down.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
@@ -537,13 +545,18 @@ function App() {
       s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
       other.forEach(l=>{ s += `  • ${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`; });
     }
+    if (normal.length && !down.length && !adjust.length && !badimg.length && !removed.length && !other.length) {
+      s += `✅ ตรวจสอบแล้ว ไม่พบความผิดปกติ\n`;
+    }
     s += `━━━━━━━━━━━━━\n`;
-    if (reporters.length) s += `👤 ผู้รายงาน: ${reporters.join(", ")}`;
+    const shifts = [...new Set(rows.map(l=>l.shift).filter(Boolean))];
+    if (shifts.length) s += `🕐 กะ: ${shifts.join(", ")}\n`;
+    s += `👤 ผู้รายงาน: ${reporters.length ? reporters.join(", ") : "—"}`;
     return s;
   };
-  const copySummary = () => {
+  const copySummary = (dArg) => {
     // เปิดกล่องให้แก้ข้อความก่อน แล้วค่อยกดคัดลอกในกล่อง
-    setSummaryText(buildSummary());
+    setSummaryText(buildSummary(dArg));
     setSummaryCopied(false);
     setShowSummary(true);
   };
@@ -866,7 +879,7 @@ function App() {
               {/* รายการล่าสุดขวา */}
               <div style={t.panel}>
                 <div style={t.panelTitle}>🕒 บันทึกล่าสุด</div>
-                <button onClick={copySummary} className="tap" style={t.lineSummaryBtn}>📋 คัดลอกสรุปวันนี้ (ส่งไลน์)</button>
+                <button onClick={()=>copySummary(dateVal)} className="tap" style={t.lineSummaryBtn}>📋 คัดลอกสรุปวันที่ {fmtTH(dateVal)} (ส่งไลน์)</button>
                 {isAdmin && <button onClick={()=>{setShowBulk(true); setBulkDate(dateVal);}} className="tap" style={t.bulkBtn}>📥 นำเข้ากล้องดับหลายตัว</button>}
                 <div style={{display:"flex", flexDirection:"column", gap:10, overflowY:"auto", maxHeight:640}}>
                   {logs.length===0 && <div style={t.miniEmpty}><div style={{fontSize:30, marginBottom:8}}>📋</div>ยังไม่มีบันทึก<br/><span style={{fontSize:12}}>เริ่มบันทึกเหตุการณ์แรกได้เลย</span></div>}
@@ -891,7 +904,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน")}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : " · ยังไม่ได้เลือกช่วง") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
               <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
@@ -899,11 +912,15 @@ function App() {
               <div style={t.dashToggle}>
                 <button onClick={()=>setHistMode("month")} className="tap" style={histMode==="month"?t.dashTgOn:t.dashTg}>เลือกเดือน</button>
                 <button onClick={()=>setHistMode("day")} className="tap" style={histMode==="day"?t.dashTgOn:t.dashTg}>เลือกวัน</button>
+                <button onClick={()=>setHistMode("range")} className="tap" style={histMode==="range"?t.dashTgOn:t.dashTg}>ช่วงวันที่</button>
               </div>
-              {histMode==="day"
-                ? <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>
-                : <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
-              }
+              {histMode==="day" && <input type="date" value={histDay} onChange={e=>setHistDay(e.target.value)} style={t.select}/>}
+              {histMode==="range" && (<>
+                <input type="date" value={histFrom} onChange={e=>setHistFrom(e.target.value)} style={histFrom?t.selectOn:t.select} title="ตั้งแต่วันที่"/>
+                <span style={{color:t.dim, fontSize:13}}>ถึง</span>
+                <input type="date" value={histTo} onChange={e=>setHistTo(e.target.value)} style={histTo?t.selectOn:t.select} title="ถึงวันที่"/>
+              </>)}
+              {histMode==="month" && <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={mFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>}
 
               <div style={t.filterDiv} className="rb-hideM"/>
 
@@ -918,23 +935,23 @@ function App() {
               <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={zFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
               <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={byFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
 
-              {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||histMode==="day") && (
-                <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setHistMode("month");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
+              {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||histMode!=="month") && (
+                <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
               )}
             </div>
             <div style={t.tableWrap} className="rb-tableWrap">
               <table style={t.table}>
                 <thead><tr>
                   <th style={{...t.th, cursor:"pointer", userSelect:"none"}} onClick={()=>setDateDesc(v=>!v)}
-                      title={dateDesc ? "กดเพื่อเรียงจากเก่าไปใหม่" : "กดเพื่อเรียงจากใหม่ไปเก่า"}>
-                    วันที่ <span style={{color:"#2E8B3D", fontSize:11}}>{dateDesc ? "▼" : "▲"}</span>
+                      title="กดเพื่อสลับลำดับวันที่">
+                    วันที่ <span style={t.sortTag}>{dateDesc ? "▼ ใหม่→เก่า" : "▲ เก่า→ใหม่"}</span>
                   </th>
                   {["กะ","สถานะ","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
                     <tr key={l.id} style={t.tr}>
-                      <td style={t.td}>{fmtTH(l.date)}</td>
+                      <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div></td>
                       <td style={t.td}>{l.shift}</td>
                       <td style={t.td}><span style={{...t.badge, background:hex(STATUS[l.status].dot,dark?.15:.12), color:STATUS[l.status].dot}}>{STATUS[l.status].emoji} {l.status}</span></td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
@@ -1532,6 +1549,7 @@ function mk(dark){
     filterDiv:{width:1, height:26, background:border, margin:"0 3px"},
     selectOn:{padding:"11px 14px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.09,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:600, outline:"none"},
     clearFilter:{padding:"11px 14px", borderRadius:11, border:`1px solid ${hexA("#EF4444",.3,dark)}`, background:"transparent", color:"#EF4444", fontSize:13, fontWeight:600, marginLeft:"auto"},
+    sortTag:{color:accent, fontSize:10.5, fontWeight:700, background:hexA(accent,dark?.16:.1,dark), padding:"2px 7px", borderRadius:7, marginLeft:5, whiteSpace:"nowrap"},
     pager:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, marginTop:14, flexWrap:"wrap"},
     pageBtn:{padding:"9px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
     pageInfo:{fontSize:13, color:dim},
