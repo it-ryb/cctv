@@ -1384,7 +1384,7 @@ function App() {
           </div>
         )}
 
-      {preview && <div style={t.modal} onClick={()=>setPreview("")}><img src={preview} style={t.modalImg}/></div>}
+
       {confirmBox && (
         <Modal><div style={{...t.modalBg, zIndex:60}} onClick={()=>setConfirmBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
@@ -1472,6 +1472,12 @@ function App() {
               <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึก</button>
             </div>
           </div>
+        </div></Modal>
+      )}
+      {preview && (
+        <Modal><div style={t.modal} onClick={()=>setPreview("")}>
+          <img src={preview} style={t.modalImg} onClick={e=>e.stopPropagation()}/>
+          <button onClick={()=>setPreview("")} className="tap" style={t.previewClose}>✕ ปิด</button>
         </div></Modal>
       )}
       {detailBox && (()=>{ const l = (logs||[]).find(x=>x.id===detailBox.id) || detailBox; const before=imgOf(l), after=imgFixOf(l); const done=fixDone(l);
@@ -1883,7 +1889,8 @@ function mk(dark){
     userName:{fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
     userRole:{fontSize:11, color:dim, marginTop:1},
     logoutBtn:{padding:"11px", borderRadius:11, border:`1px solid ${hexA("#EF4444",.25,dark)}`, background:hexA("#EF4444",dark?.08:.06,dark), color:"#EF4444", fontSize:13, fontWeight:600, marginBottom:12},
-    modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.88)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:30},
+    modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
+    previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
     toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1E293B", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
   };
