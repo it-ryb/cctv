@@ -47,7 +47,7 @@
 <div id="root"></div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCmeP1hFKsFGBHxTs3so6h4ngD1UsbQBr0",
     authDomain: "cctv-rayongboard.firebaseapp.com",
@@ -64,8 +64,20 @@
       db, ready: true,
       // เขียนข้อมูล 1 key ขึ้น cloud
       save: async (key, data) => {
-        try { await setDoc(doc(db, "cctv", key), { data: JSON.stringify(data), ts: Date.now() }); }
-        catch(e){ console.warn("fb save fail", key, e); }
+        const payload = JSON.stringify(data);
+        const notify = (reason) => window.dispatchEvent(new CustomEvent("fb-sync", { detail:{ key, ok:!reason, reason, size:payload.length } }));
+        // Firestore จำกัด 1 MB ต่อเอกสาร กันไว้ก่อนยิง จะได้บอกผู้ใช้ได้ตรง ๆ
+        if (payload.length > 950000) { console.warn("fb save too big", key, payload.length); notify("too-big"); return; }
+        try { await setDoc(doc(db, "cctv", key), { data: payload, ts: Date.now() }); notify(null); }
+        catch(e){ console.warn("fb save fail", key, e); notify(e.code || e.message || "error"); }
+      },
+      // อ่านเอกสารเดี่ยวแบบครั้งเดียว ใช้ดึงรูปตามต้องการ
+      get: async (key) => {
+        try {
+          const snap = await getDoc(doc(db, "cctv", key));
+          if (snap.exists()) { const v = snap.data(); if (v && v.data) return JSON.parse(v.data); }
+          return null;
+        } catch(e){ console.warn("fb get fail", key, e); return null; }
       },
       // ฟังการเปลี่ยนแปลงของ 1 key
       listen: (key, cb) => {
@@ -85,7 +97,7 @@
     console.log("Firebase connected:", firebaseConfig.projectId);
   } catch(e) {
     console.warn("Firebase init failed, using localStorage only:", e);
-    window.__fb = { ready:false, save:()=>{}, listen:()=>null };
+    window.__fb = { ready:false, save:()=>{}, get:async()=>null, listen:()=>null };
   }
 </script>
 <script type="text/babel" data-presets="react">
@@ -209,6 +221,8 @@ function App() {
   const [summaryText, setSummaryText] = useState("");
   const [zFilter, setZFilter] = useState("all");
   const [preview, setPreview] = useState("");
+  const [syncErr, setSyncErr] = useState(""); // ข้อความเตือนเมื่อซิงก์ขึ้นคลาวด์ไม่สำเร็จ
+  const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
   const [histFrom, setHistFrom] = useState(""); // ช่วงวันที่: ตั้งแต่
@@ -257,6 +271,39 @@ function App() {
   useEffect(() => { try { localStorage.setItem(UKEY, JSON.stringify(accounts)); } catch(e){} }, [accounts]);
   useEffect(() => { try { localStorage.setItem(IPKEY, JSON.stringify(ips)); } catch(e){} }, [ips]);
   useEffect(() => { try { localStorage.setItem(CKEY, JSON.stringify(tree)); } catch(e){} }, [tree]);
+
+  // ─────────── รูปแนบ: เก็บแยกเอกสารละรูป ───────────
+  // บันทึกจะเก็บแค่ตัวอ้างอิง "img:<id>" ส่วนรูปจริงอยู่ในเอกสาร cctv/img_<id>
+  // ทำให้เอกสารหลักเล็ก ไม่ชนเพดาน 1 MB ของ Firestore
+  const IMGREF = "img:";
+  const isImgRef = (v) => typeof v==="string" && v.startsWith(IMGREF);
+  const isImgData = (v) => typeof v==="string" && v.startsWith("data:");
+  const imgIdOf = (v) => isImgRef(v) ? v.slice(IMGREF.length) : "";
+  const imgLocalKey = (id) => "cctv_img_" + id;
+  const saveImage = (id, data) => {
+    setImgCache(c => ({...c, [id]: data}));
+    try { localStorage.setItem(imgLocalKey(id), data); } catch(e){ /* เครื่องเต็ม ยังใช้จาก cloud ได้ */ }
+    if (window.__fb && window.__fb.ready) window.__fb.save("img_" + id, data);
+    return IMGREF + id;
+  };
+  const imgLoading = React.useRef({});
+  const loadImage = async (id) => {
+    if (!id || imgCache[id] || imgLoading.current[id]) return;
+    imgLoading.current[id] = true;
+    try {
+      const local = localStorage.getItem(imgLocalKey(id));
+      if (local) { setImgCache(c => ({...c, [id]: local})); return; }
+    } catch(e){}
+    if (window.__fb && window.__fb.ready) {
+      const data = await window.__fb.get("img_" + id);
+      if (data) {
+        setImgCache(c => ({...c, [id]: data}));
+        try { localStorage.setItem(imgLocalKey(id), data); } catch(e){}
+      }
+    }
+  };
+  // คืนรูปที่พร้อมแสดง รองรับทั้งแบบเก่า (ฝังในบันทึก) และแบบใหม่ (อ้างอิง)
+  const imgOf = (l) => !l || !l.img ? "" : (isImgData(l.img) ? l.img : (isImgRef(l.img) ? (imgCache[imgIdOf(l.img)] || "") : ""));
 
   // ─────────── Firebase Cloud Sync ───────────
   // ว่าง = null / [] / {} — ใช้ตัดสินว่าห้ามเขียนทับ
@@ -321,6 +368,17 @@ function App() {
   useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
+  useEffect(() => {
+    const onSync = (ev) => {
+      const d = ev.detail || {};
+      if (d.ok) { setSyncErr(""); return; }
+      setSyncErr(d.reason==="too-big"
+        ? `ข้อมูลเกิน 1 MB (${(d.size/1048576).toFixed(2)} MB) ซิงก์ขึ้นคลาวด์ไม่ได้ — รูปที่แนบมีมากเกินไป แจ้งไอทีด่วน`
+        : `ซิงก์ขึ้นคลาวด์ไม่สำเร็จ (${d.reason}) ข้อมูลอยู่ในเครื่องนี้เท่านั้น`);
+    };
+    window.addEventListener("fb-sync", onSync);
+    return () => window.removeEventListener("fb-sync", onSync);
+  }, []);
   useEffect(() => { if (auth && accounts[auth.user] && accounts[auth.user].reporter) setBy(accounts[auth.user].reporter); }, [auth]);
   useEffect(() => { if (myShifts.length && !myShifts.some(s=>s.key===shift)) setShift(myShifts[0].key); }, [myShifts]);
 
@@ -364,6 +422,22 @@ function App() {
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
   useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  // ดึงรูปเฉพาะแถวที่แสดงอยู่ ไม่ต้องโหลดทั้งหมด
+  useEffect(() => { pageRows.forEach(l => { if (isImgRef(l.img)) loadImage(imgIdOf(l.img)); }); }, [pageRows, imgCache]);
+
+  // ย้ายรูปเก่าที่ฝังอยู่ในบันทึกออกไปเก็บแยก ทีละ 2 รูป จนหมด
+  const migrating = React.useRef(false);
+  useEffect(() => {
+    if (!logs || !fbReady.current || !cloudSeen.current.logs || migrating.current) return;
+    const old = logs.filter(l => isImgData(l.img)).slice(0, 2);
+    if (!old.length) return;
+    migrating.current = true;
+    const moved = {};
+    old.forEach(l => { moved[l.id] = saveImage(l.id, l.img); });
+    setLogs(ls => ls.map(l => moved[l.id] ? {...l, img: moved[l.id]} : l));
+    setTimeout(() => { migrating.current = false; }, 900);
+  }, [logs, imgCache]);
+
   const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
@@ -432,7 +506,9 @@ function App() {
     setToast(msg); setTimeout(()=>setToast(""),4000);
   };
   const submit = () => {
-    const e = { id:Date.now(), date:dateVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?"รอแก้":"-", img:status==="ปกติ"?"":img };
+    const id = Date.now();
+    const imgVal = (status==="ปกติ" || !img) ? "" : saveImage(id, img); // เก็บรูปแยก บันทึกเก็บแค่ตัวอ้างอิง
+    const e = { id, date:dateVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?fixFlow(status)[0]:"-", img:imgVal };
     setLogs([e, ...logs]);
     setToast(status==="ปกติ" ? "✅ บันทึกเหตุการณ์ปกติ" : `${STATUS[status].emoji} บันทึก ${cam||"เหตุการณ์"} แล้ว`);
     setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg("");
@@ -482,7 +558,7 @@ function App() {
     setEditBox({
       id: l.id, date: l.date||todayISO(), shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
       zone: l.zone||ZONES[0], cam: l.cam||"", area: l.area||"", detail: l.detail||"",
-      by: l.by||"", img: l.img||"", fix: l.fix||"-",
+      by: l.by||"", img: imgOf(l), fix: l.fix||"-",
       fixDate: l.fixDate||"", fixBy: l.fixBy||"", fixNote: l.fixNote||"",
     });
   };
@@ -504,7 +580,7 @@ function App() {
       id: e.id, date: e.date, shift: e.shift, status: e.status,
       zone: normal ? "" : e.zone, cam: normal ? "" : e.cam.trim(),
       area: normal ? "" : e.area.trim(), detail: normal ? "" : e.detail.trim(),
-      by: (e.by||"").trim() || "—", img: normal ? "" : e.img, fix: fixVal,
+      by: (e.by||"").trim() || "—", img: (normal || !e.img) ? "" : (isImgData(e.img) ? saveImage(e.id, e.img) : e.img), fix: fixVal,
       fixDate: done ? (e.fixDate||todayISO()) : "", fixBy: done ? (e.fixBy||"").trim() : "", fixNote: done ? (e.fixNote||"").trim() : "",
     };
     setLogs(logs.map(l => l.id===e.id ? upd : l));
@@ -591,10 +667,11 @@ function App() {
         const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
-        if (l.img && l.img.startsWith("data:image")) {
+        const lImg = imgOf(l);
+        if (lImg && lImg.startsWith("data:image")) {
           try {
-            const ext = l.img.includes("png") ? "png" : "jpeg";
-            const imgId = wb.addImage({ base64: l.img, extension: ext });
+            const ext = lImg.includes("png") ? "png" : "jpeg";
+            const imgId = wb.addImage({ base64: lImg, extension: ext });
             r.height = 70;
             // ฝังรูปในคอลัมน์ "บริเวณ" (index 7) — ข้อความ area จัดชิดบน รูปวางใต้
             r.getCell(8).alignment = { vertical:"top", wrapText:true };
@@ -687,9 +764,21 @@ function App() {
     setToast(`เปลี่ยนรหัสผ่าน ${user} แล้ว`); setTimeout(()=>setToast(""),2400);
   };
   // ── สำรอง / กู้คืนข้อมูล ──
-  const exportBackup = () => {
+  const exportBackup = async () => {
+    setToast("⏳ กำลังรวบรวมรูป…");
+    // ดึงรูปที่ยังไม่ได้โหลดมาใส่ไฟล์สำรองให้ครบ
+    const full = [];
+    for (const l of logs) {
+      if (isImgRef(l.img)) {
+        const id = imgIdOf(l.img);
+        let data = imgCache[id];
+        if (!data) { try { data = localStorage.getItem(imgLocalKey(id)); } catch(e){} }
+        if (!data && window.__fb && window.__fb.ready) data = await window.__fb.get("img_" + id);
+        full.push({...l, img: data || ""});
+      } else full.push(l);
+    }
     const payload = { app:"cctv-rayongboard", type:"backup", savedAt:new Date().toISOString(),
-      logs, tree, ips, reporters, accounts };
+      logs: full, tree, ips, reporters, accounts };
     const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -798,6 +887,7 @@ function App() {
           <div style={t.sideStat}><span>📹 กล้องทั้งหมด</span><b>{totalCams}</b></div>
           <div style={t.sideStat}><span>🔴 ค้างตามงาน</span><b style={{color:pendingFix?"#F59E0B":t.dim}}>{pendingFix}</b></div>
           <div style={t.sideStat}><span>📄 บันทึกรวม</span><b>{logs.length}</b></div>
+          {syncErr && <div style={t.syncWarn} title={syncErr}>⚠️ {syncErr}</div>}
         </div>
 
         <div style={{flex:1}}/>
@@ -956,7 +1046,7 @@ function App() {
                       <td style={t.td}><span style={{...t.badge, background:hex(STATUS[l.status].dot,dark?.15:.12), color:STATUS[l.status].dot}}>{STATUS[l.status].emoji} {l.status}</span></td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
-                      <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && <img src={l.img} style={t.tdImg} onClick={()=>setPreview(l.img)}/>}</td>
+                      <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
                       <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
@@ -1497,6 +1587,7 @@ function mk(dark){
     navBadge:{position:"absolute", right:11, background:"#F59E0B", color:"#0B0F14", fontSize:11, fontWeight:800, minWidth:20, height:20, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px"},
     sideCard:{marginTop:22, padding:15, borderRadius:14, background:surf2, border:`1px solid ${border}`},
     sideCardTitle:{fontSize:11, fontWeight:700, color:dim, marginBottom:11, letterSpacing:.3, textTransform:"uppercase"},
+    syncWarn:{marginTop:9, padding:"9px 11px", borderRadius:10, background:hexA("#EF4444",dark?.14:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:11, fontWeight:600, lineHeight:1.5},
     sideStat:{display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12.5, padding:"5px 0", color:text},
     themeToggle:{position:"fixed", top:20, right:24, zIndex:40, width:42, height:42, borderRadius:12, border:`1px solid ${border}`, background:surf, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:dark?"0 4px 16px rgba(0,0,0,.3)":"0 2px 10px rgba(15,23,42,.1)"},
     themeBtn:{padding:"11px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13, fontWeight:600, marginBottom:12},
@@ -1558,6 +1649,7 @@ function mk(dark){
     th:{textAlign:"left", padding:"16px 18px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
     tr:{borderBottom:`1px solid ${border}`},
     td:{padding:"15px 18px", verticalAlign:"top", fontSize:14.5},
+    imgLoad:{fontSize:11, color:dim, marginTop:6, fontStyle:"italic"},
     tdImg:{width:60, height:44, objectFit:"cover", borderRadius:7, marginTop:6, cursor:"pointer", display:"block"},
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
     fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:11.5, fontWeight:700, fontFamily:mono, whiteSpace:"nowrap"},
