@@ -225,6 +225,7 @@ function App() {
   const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
+  const [camQ, setCamQ] = useState(""); // ค้นหาชื่อกล้องในหน้าประวัติ
   const [histFrom, setHistFrom] = useState(""); // ช่วงวันที่: ตั้งแต่
   const [histTo, setHistTo] = useState("");     // ช่วงวันที่: ถึง
   const [dateDesc, setDateDesc] = useState(true); // true = ใหม่ → เก่า
@@ -286,6 +287,8 @@ function App() {
     if (window.__fb && window.__fb.ready) window.__fb.save("img_" + id, data);
     return IMGREF + id;
   };
+  const fixImgId = (id) => id + "_fix";                 // รหัสรูปหลังแก้ของบันทึกนั้น
+  const imgFixOf = (l) => !l || !l.imgFix ? "" : (isImgData(l.imgFix) ? l.imgFix : (isImgRef(l.imgFix) ? (imgCache[imgIdOf(l.imgFix)] || "") : ""));
   const imgLoading = React.useRef({});
   const loadImage = async (id) => {
     if (!id || imgCache[id] || imgLoading.current[id]) return;
@@ -405,6 +408,7 @@ function App() {
     if (zFilter!=="all") a = a.filter(l=>l.zone===zFilter);
     if (sFilter!=="all") a = a.filter(l=>l.status===sFilter);
     if (byFilter!=="all") a = a.filter(l=>l.by===byFilter);
+    if (camQ.trim()) a = a.filter(l=>(l.cam||"").toLowerCase().includes(camQ.trim().toLowerCase()));
     if (isVendor) a = a.filter(l=>needsFix(l.status)); // ผู้รับเหมาเห็นเฉพาะรายการที่ต้องซ่อม
     if (fFilter!=="all") a = a.filter(l=>{
       if (!needsFix(l.status)) return false;
@@ -417,13 +421,16 @@ function App() {
     });
     const dir = dateDesc ? 1 : -1;
     return [...a].sort((x,y)=> x.date===y.date ? ((y.id-x.id)*dir) : (x.date<y.date ? dir : -dir));
-  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, histFrom, histTo, isVendor, fFilter, byFilter, dateDesc]);
+  }, [logs, mFilter, sFilter, zFilter, histMode, histDay, histFrom, histTo, isVendor, fFilter, byFilter, camQ, dateDesc]);
   const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
-  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
+  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, camQ, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   // ดึงรูปเฉพาะแถวที่แสดงอยู่ ไม่ต้องโหลดทั้งหมด
-  useEffect(() => { pageRows.forEach(l => { if (isImgRef(l.img)) loadImage(imgIdOf(l.img)); }); }, [pageRows, imgCache]);
+  useEffect(() => { pageRows.forEach(l => {
+    if (isImgRef(l.img)) loadImage(imgIdOf(l.img));
+    if (isImgRef(l.imgFix)) loadImage(imgIdOf(l.imgFix));
+  }); }, [pageRows, imgCache]);
 
   // ย้ายรูปเก่าที่ฝังอยู่ในบันทึกออกไปเก็บแยก ทีละ 2 รูป จนหมด
   const migrating = React.useRef(false);
@@ -447,6 +454,12 @@ function App() {
   }, [logs, dashMode, dayFilter, mFilter]);
   const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
+  // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
+  const dashOpen = useMemo(() => {
+    const c = {};
+    dashView.forEach(l => { if (needsFix(l.status) && !fixDone(l)) c[l.status] = (c[l.status]||0)+1; });
+    return c;
+  }, [dashView]);
   const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && !fixDone(l)).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
@@ -525,6 +538,7 @@ function App() {
       fixDate: cur.fixDate || todayISO(),
       fixBy: cur.fixBy || ((auth && accounts[auth.user] && accounts[auth.user].reporter) || "ช่างผู้รับเหมา (DD)"),
       fixNote: cur.fixNote || "",
+      imgBefore: imgOf(cur), imgFix: imgFixOf(cur),
     });
   };
   const saveFix = () => {
@@ -533,11 +547,15 @@ function App() {
     // ล็อกไว้: รายการที่เสร็จแล้วจะย้อนสถานะผ่านหน้าต่างนี้ไม่ได้
     const val = fixBox.locked ? o[2] : (o.includes(fixBox.fix) ? fixBox.fix : o[0]);
     const done = val===o[2];
+    const imgFixVal = (done && fixBox.imgFix)
+      ? (isImgData(fixBox.imgFix) ? saveImage(fixImgId(fixBox.id), fixBox.imgFix) : fixBox.imgFix)
+      : "";
     setLogs(logs.map(l=> l.id===fixBox.id ? {...l,
       fix: val,
       fixDate: done ? (fixBox.fixDate||todayISO()) : "",
       fixBy: done ? fixBox.fixBy.trim() : "",
       fixNote: done ? fixBox.fixNote.trim() : "",
+      imgFix: imgFixVal,
     } : l));
     const isRemove = fixBox.status==="ถอดกล้อง";
     setFixBox(null);
@@ -558,9 +576,14 @@ function App() {
     setEditBox({
       id: l.id, date: l.date||todayISO(), shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
       zone: l.zone||ZONES[0], cam: l.cam||"", area: l.area||"", detail: l.detail||"",
-      by: l.by||"", img: imgOf(l), fix: l.fix||"-",
+      by: l.by||"", img: imgOf(l), imgFix: l.imgFix||"", fix: l.fix||"-",
       fixDate: l.fixDate||"", fixBy: l.fixBy||"", fixNote: l.fixNote||"",
     });
+  };
+  const pickFixImg = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    compressImg(f, (data)=> setFixBox(b => b ? {...b, imgFix:data} : b));
+    e.target.value = "";
   };
   const pickEditImg = (e) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -581,11 +604,21 @@ function App() {
       zone: normal ? "" : e.zone, cam: normal ? "" : e.cam.trim(),
       area: normal ? "" : e.area.trim(), detail: normal ? "" : e.detail.trim(),
       by: (e.by||"").trim() || "—", img: (normal || !e.img) ? "" : (isImgData(e.img) ? saveImage(e.id, e.img) : e.img), fix: fixVal,
+      imgFix: done ? (e.imgFix || "") : "",
       fixDate: done ? (e.fixDate||todayISO()) : "", fixBy: done ? (e.fixBy||"").trim() : "", fixNote: done ? (e.fixNote||"").trim() : "",
     };
     setLogs(logs.map(l => l.id===e.id ? upd : l));
     setEditBox(null);
     setToast("✏️ แก้ไขบันทึกแล้ว"); setTimeout(()=>setToast(""),2400);
+  };
+  // คลิกจากแดชบอร์ด → เปิดหน้าประวัติพร้อมกรองให้เลย
+  const drillTo = ({ status="all", fix="all", zone="all", cam="" }={}) => {
+    setSFilter(status); setFFilter(fix); setZFilter(zone); setByFilter("all");
+    if (dashMode==="day") { setHistMode("day"); setHistDay(dayFilter); }
+    else { setHistMode("month"); }
+    setCamQ(cam);
+    setPage(1);
+    setNav("history");
   };
   const buildSummary = (dArg) => {
     const d = dArg || (dashMode==="day" ? dayFilter : todayISO());
@@ -641,7 +674,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูป]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -651,9 +684,9 @@ function App() {
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("รายงานกล้อง");
-      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูป","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม"];
+      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูปหลังแก้"];
       ws.columns = [
-        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26}
+        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:16}
       ];
       // หัวตาราง
       const hr = ws.addRow(headers);
@@ -664,7 +697,7 @@ function App() {
       // ข้อมูล
       for (let i=0; i<view.length; i++) {
         const l = view[i];
-        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"" ]);
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
         const lImg = imgOf(l);
@@ -676,6 +709,16 @@ function App() {
             // ฝังรูปในคอลัมน์ "บริเวณ" (index 7) — ข้อความ area จัดชิดบน รูปวางใต้
             r.getCell(8).alignment = { vertical:"top", wrapText:true };
             ws.addImage(imgId, { tl:{col:7.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
+          } catch(e){}
+        }
+        // รูปหลังแก้ ใส่คอลัมน์สุดท้าย (index 14)
+        const lFix = imgFixOf(l);
+        if (lFix && lFix.startsWith("data:image")) {
+          try {
+            const ext2 = lFix.includes("png") ? "png" : "jpeg";
+            const imgId2 = wb.addImage({ base64: lFix, extension: ext2 });
+            r.height = 70;
+            ws.addImage(imgId2, { tl:{col:14.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
           } catch(e){}
         }
       }
@@ -994,7 +1037,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : " · ยังไม่ได้เลือกช่วง") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}</div></div>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : " · ยังไม่ได้เลือกช่วง") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
               <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
@@ -1024,9 +1067,10 @@ function App() {
               </select>
               <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={zFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
               <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={byFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
+              <input value={camQ} onChange={e=>setCamQ(e.target.value)} placeholder="🔍 ค้นหาชื่อกล้อง" style={{...(camQ?t.selectOn:t.select), width:170, fontFamily:camQ?mono:"inherit"}}/>
 
-              {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||histMode!=="month") && (
-                <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
+              {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||camQ||histMode!=="month") && (
+                <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setCamQ("");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
               )}
             </div>
             <div style={t.tableWrap} className="rb-tableWrap">
@@ -1048,7 +1092,7 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
                     </tr>
                   ))}
@@ -1084,7 +1128,7 @@ function App() {
         {nav==="dash" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? `กล้องดับวันที่ ${fmtTH(dayFilter)}` : "ภาพรวมสถานะกล้อง"}</div></div>
+              <div><div style={t.h1}>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? `สรุปวันที่ ${fmtTH(dayFilter)}` : "ภาพรวมสถานะกล้อง"} · เลขใหญ่คือจำนวนที่ยังไม่เสร็จ</div></div>
               <div style={{display:"flex", gap:10, alignItems:"center", marginRight:52, flexWrap:"wrap"}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setDashMode("month")} className="tap" style={dashMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
@@ -1097,21 +1141,32 @@ function App() {
               </div>
             </div>
             <div style={t.statGrid} className="rb-statGrid">
-              {Object.entries(dashCounts).map(([k,v])=>(
-                <div key={k} style={t.bigStat}>
-                  <div style={{fontSize:26}}>{STATUS[k].emoji}</div>
-                  <div style={{...t.bigNum, color:STATUS[k].dot}}>{v}</div>
-                  <div style={t.bigLabel}>{k}</div>
-                </div>
-              ))}
-              <div style={t.bigStat}><div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashPending?"#F59E0B":t.dim}}>{dashPending}</div><div style={t.bigLabel}>ค้างตามงาน</div></div>
+              {Object.entries(dashCounts).map(([k,v])=>{
+                const track = needsFix(k);                    // สถานะที่มีงานซ่อมถึงจะมียอดค้าง
+                const open = dashOpen[k] || 0;
+                return (
+                  <button key={k} onClick={()=>drillTo({status:k, fix:track&&open?"open":"all"})} className="tap"
+                          style={{...t.bigStat, ...t.bigStatBtn, opacity:v?1:.55}}
+                          title={track ? `${k} ค้างอยู่ ${open} จากทั้งหมด ${v}` : `ดูรายการ ${k} ทั้งหมด`}>
+                    <div style={{fontSize:26}}>{STATUS[k].emoji}</div>
+                    <div style={{...t.bigNum, color:track ? (open?"#F59E0B":"#22C55E") : STATUS[k].dot}}>{track ? open : v}</div>
+                    <div style={t.bigLabel}>{k}{track && <span style={{fontWeight:500}}> ค้าง</span>}</div>
+                    {track && <div style={t.bigSub}>จากทั้งหมด {v} ครั้ง</div>}
+                    <div style={t.bigHint}>ดูรายการ →</div>
+                  </button>
+                );
+              })}
+              <button onClick={()=>drillTo({fix:"open"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashPending?1:.55}} title="ดูงานที่ยังไม่เสร็จ">
+                <div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashPending?"#F59E0B":t.dim}}>{dashPending}</div>
+                <div style={t.bigLabel}>ค้างตามงาน</div><div style={t.bigHint}>ดูรายการ →</div>
+              </button>
             </div>
             <div style={t.dashGrid} className="rb-dashGrid">
               <div style={t.panel}>
                 <div style={t.panelTitle}>🔴 กล้องที่ดับบ่อยที่สุด</div>
                 {topCams.length===0 && <div style={t.empty}>ยังไม่มีข้อมูล</div>}
                 {topCams.map(([c,n],i)=>(
-                  <div key={c} style={t.rankRow}>
+                  <div key={c} style={{...t.rankRow, cursor:"pointer"}} onClick={()=>drillTo({cam:c})} title={`ดูประวัติของ ${c}`}>
                     <span style={t.rankNo}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣"][i]}</span>
                     <span style={t.rankCam}>{c}</span>
                     <div style={t.barTrack}><div style={{...t.barFill, width:`${(n/topCams[0][1])*100}%`}}/></div>
@@ -1122,7 +1177,7 @@ function App() {
               <div style={t.panel}>
                 <div style={t.panelTitle}>📍 กล้องดับแยกตามพื้นที่</div>
                 {ZONES.map(z=>{ const n=zoneStats[z]; const mx=Math.max(1,...Object.values(zoneStats));
-                  return <div key={z} style={t.rankRow}>
+                  return <div key={z} style={{...t.rankRow, cursor:"pointer"}} onClick={()=>drillTo({status:"กล้องดับ", zone:z})} title={`ดูกล้องดับในพื้นที่ ${z}`}>
                     <span style={{fontSize:18, width:28}}>{ZONE_EMOJI[z]}</span>
                     <span style={t.rankCam}>{z}</span>
                     <div style={t.barTrack}><div style={{...t.barFill, width:`${(n/mx)*100}%`, background:ZONE_COLOR[z]||"#64748B"}}/></div>
@@ -1391,6 +1446,23 @@ function App() {
               <div style={t.label}>📝 หมายเหตุ</div>
               <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder={fixBox.status==="ถอดกล้อง" ? "เช่น ติดตั้งกลับจุดเดิม, ย้ายไปจุดใหม่" : "เช่น เปลี่ยนสาย LAN, รีสตาร์ท, เปลี่ยนกล้อง"} style={t.input}/>
             </div>
+
+            <div style={t.label}>📷 รูปก่อน / หลัง</div>
+            <div style={t.baGrid}>
+              <div style={t.baCell}>
+                <div style={t.baTag}>ก่อนแก้</div>
+                {fixBox.imgBefore
+                  ? <img src={fixBox.imgBefore} style={t.baImg} onClick={()=>setPreview(fixBox.imgBefore)}/>
+                  : <div style={t.baEmpty}>ไม่มีรูปตอนแจ้ง</div>}
+              </div>
+              <div style={t.baCell}>
+                <div style={{...t.baTag, color:"#16A34A", borderColor:hexA("#22C55E",.35,dark)}}>หลังแก้</div>
+                {fixBox.imgFix
+                  ? <><img src={fixBox.imgFix} style={t.baImg} onClick={()=>setPreview(fixBox.imgFix)}/>
+                      <button onClick={()=>setFixBox({...fixBox, imgFix:""})} style={{...t.imgDel, position:"static", marginTop:6}}>✕ ลบรูป</button></>
+                  : <div style={t.baPick}><input type="file" accept="image/*" onChange={pickFixImg} style={t.fileInput}/></div>}
+              </div>
+            </div>
             </>) : (
               <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่ (รายการนี้จะค้างอยู่ในยอด "ค้างตามงาน")</div>
             )}
@@ -1649,6 +1721,12 @@ function mk(dark){
     th:{textAlign:"left", padding:"16px 18px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
     tr:{borderBottom:`1px solid ${border}`},
     td:{padding:"15px 18px", verticalAlign:"top", fontSize:14.5},
+    baGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4},
+    baCell:{background:inputBg, border:`1px solid ${border}`, borderRadius:12, padding:10, textAlign:"center"},
+    baTag:{fontSize:11, fontWeight:700, color:dim, border:`1px solid ${border}`, borderRadius:20, padding:"2px 9px", display:"inline-block", marginBottom:8},
+    baImg:{width:"100%", maxHeight:120, objectFit:"cover", borderRadius:9, cursor:"pointer", display:"block"},
+    baEmpty:{fontSize:11.5, color:dim, padding:"22px 4px"},
+    baPick:{fontSize:11},
     imgLoad:{fontSize:11, color:dim, marginTop:6, fontStyle:"italic"},
     tdImg:{width:60, height:44, objectFit:"cover", borderRadius:7, marginTop:6, cursor:"pointer", display:"block"},
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
@@ -1659,6 +1737,9 @@ function mk(dark){
     statGrid:{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20},
     bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
     bigNum:{fontSize:44, fontWeight:600, fontFamily:mono, lineHeight:1, margin:"12px 0 7px"},
+    bigStatBtn:{cursor:"pointer", width:"100%", textAlign:"center", fontFamily:"inherit"},
+    bigSub:{fontSize:11, color:dim, marginTop:3},
+    bigHint:{fontSize:10.5, color:accent, fontWeight:600, marginTop:6},
     bigLabel:{fontSize:14, color:dim, fontWeight:500},
     rankRow:{display:"flex", alignItems:"center", gap:12, marginBottom:15},
     rankNo:{width:26, fontSize:17, textAlign:"center"},
