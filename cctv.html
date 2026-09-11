@@ -416,7 +416,8 @@ function App() {
       const o = fixFlow(l.status);
       if (fFilter==="done") return l.fix===o[2];
       if (fFilter==="open") return l.fix!==o[2];
-      if (fFilter==="pending") return l.fix===o[0] || !o.includes(l.fix);
+      if (fFilter==="wait_repair") return l.status!=="ถอดกล้อง" && (l.fix===o[0] || !o.includes(l.fix));
+      if (fFilter==="wait_install") return l.status==="ถอดกล้อง" && (l.fix===o[0] || !o.includes(l.fix));
       if (fFilter==="doing") return l.fix===o[1];
       return true;
     });
@@ -455,6 +456,8 @@ function App() {
   }, [logs, dashMode, dayFilter, mFilter]);
   const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
+  const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && l.status!=="ถอดกล้อง" && !fixDone(l)).length, [dashView]);
+  const dashInstall = useMemo(()=> dashView.filter(l=>l.status==="ถอดกล้อง" && !fixDone(l)).length, [dashView]);
   // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
   const dashOpen = useMemo(() => {
     const c = {};
@@ -462,6 +465,9 @@ function App() {
     return c;
   }, [dashView]);
   const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && !fixDone(l)).length, [logs]);
+  // แยกยอดค้าง: งานซ่อม (ต้องตามช่าง) กับ งานติดตั้งกลับ (รอหน้างานพร้อม)
+  const pendingRepair = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && l.status!=="ถอดกล้อง" && !fixDone(l)).length, [logs]);
+  const pendingInstall = useMemo(()=> (logs||[]).filter(l=>l.status==="ถอดกล้อง" && !fixDone(l)).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
@@ -929,7 +935,8 @@ function App() {
         <div style={t.sideCard} className="rb-hideM">
           <div style={t.sideCardTitle}>สถานะระบบ</div>
           <div style={t.sideStat}><span>📹 กล้องทั้งหมด</span><b>{totalCams}</b></div>
-          <div style={t.sideStat}><span>🔴 ค้างตามงาน</span><b style={{color:pendingFix?"#F59E0B":t.dim}}>{pendingFix}</b></div>
+          <div style={t.sideStat}><span>🔧 รอซ่อม</span><b style={{color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</b></div>
+          <div style={t.sideStat}><span>🔌 รอติดตั้งกลับ</span><b style={{color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</b></div>
           <div style={t.sideStat}><span>📄 บันทึกรวม</span><b>{logs.length}</b></div>
           {syncErr && <div style={t.syncWarn} title={syncErr}>⚠️ {syncErr}</div>}
         </div>
@@ -1062,8 +1069,9 @@ function App() {
               <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={fFilter!=="all"?t.selectOn:t.select}>
                 <option value="all">ทุกงานซ่อม</option>
                 <option value="open">⏳ ยังไม่เสร็จ</option>
-                <option value="pending">🟠 รอแก้ / รอติดตั้ง</option>
-                <option value="doing">🔵 กำลังแก้ / กำลังติดตั้ง</option>
+                <option value="wait_repair">🟠 รอซ่อม</option>
+                <option value="wait_install">🔌 รอติดตั้งกลับ</option>
+                <option value="doing">🔵 กำลังดำเนินการ</option>
                 <option value="done">✅ เสร็จแล้ว</option>
               </select>
               <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={zFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}</select>
@@ -1157,9 +1165,13 @@ function App() {
                   </button>
                 );
               })}
-              <button onClick={()=>drillTo({fix:"open"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashPending?1:.55}} title="ดูงานที่ยังไม่เสร็จ">
-                <div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashPending?"#F59E0B":t.dim}}>{dashPending}</div>
-                <div style={t.bigLabel}>ค้างตามงาน</div><div style={t.bigHint}>ดูรายการ →</div>
+              <button onClick={()=>drillTo({fix:"wait_repair"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashRepair?1:.55}} title="งานที่ต้องตามช่างมาซ่อม">
+                <div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashRepair?"#F59E0B":t.dim}}>{dashRepair}</div>
+                <div style={t.bigLabel}>รอซ่อม</div><div style={t.bigSub}>ต้องตามช่าง</div><div style={t.bigHint}>ดูรายการ →</div>
+              </button>
+              <button onClick={()=>drillTo({fix:"wait_install"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashInstall?1:.55}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
+                <div style={{fontSize:26}}>🔌</div><div style={{...t.bigNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
+                <div style={t.bigLabel}>รอติดตั้งกลับ</div><div style={t.bigSub}>รอหน้างานพร้อม</div><div style={t.bigHint}>ดูรายการ →</div>
               </button>
             </div>
             <div style={t.dashGrid} className="rb-dashGrid">
@@ -1465,7 +1477,7 @@ function App() {
               </div>
             </div>
             </>) : (
-              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่ (รายการนี้จะค้างอยู่ในยอด "ค้างตามงาน")</div>
+              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่ (รายการนี้จะค้างอยู่ในยอด "รอซ่อม" หรือ "รอติดตั้งกลับ")</div>
             )}
             <div style={{display:"flex", gap:10, marginTop:18}}>
               <button onClick={()=>setFixBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
