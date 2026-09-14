@@ -139,6 +139,7 @@ const TH_MS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","ม
 const TH_M = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const fmtTH = (iso) => { const [y,m,d]=iso.split("-"); return `${d}/${m}/${+y+543}`; };
 const todayISO = () => new Date().toISOString().slice(0,10);
+const nowHM = () => { const d=new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
 const KEY = "cctv_desk_v2";
 const DEFAULT_REPORTERS = ["พิมศรี จันที", "ตรัยคุณ ขันติวงษ์"];
 const RKEY = "cctv_reporters_v3";
@@ -196,6 +197,7 @@ function App() {
     return SHIFTS.filter(s=>s.grp==="cctv"); // พนักงานอื่นเห็น 3 กะเวร
   }, [auth, accounts]);
   const [dateVal, setDateVal] = useState(todayISO());
+  const [timeVal, setTimeVal] = useState(nowHM()); // เวลาที่เกิดเหตุ ไม่บังคับกรอก
   const [img, setImg] = useState("");
   const [toast, setToast] = useState("");
   const [mFilter, setMFilter] = useState("all");
@@ -422,7 +424,12 @@ function App() {
       return true;
     });
     const dir = dateDesc ? 1 : -1;
-    return [...a].sort((x,y)=> x.date===y.date ? ((y.id-x.id)*dir) : (x.date<y.date ? dir : -dir));
+    return [...a].sort((x,y)=>{
+      if (x.date !== y.date) return x.date < y.date ? dir : -dir;
+      const tx = x.time || "", ty = y.time || "";          // รายการที่ไม่มีเวลาให้อยู่ท้ายกลุ่มของวันนั้น
+      if (tx !== ty) { if (!tx) return 1; if (!ty) return -1; return tx < ty ? dir : -dir; }
+      return (y.id - x.id) * dir;
+    });
   }, [logs, mFilter, sFilter, zFilter, histMode, histDay, histFrom, histTo, isVendor, fFilter, byFilter, camQ, dateDesc]);
   const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
@@ -528,10 +535,10 @@ function App() {
   const submit = () => {
     const id = Date.now();
     const imgVal = (status==="ปกติ" || !img) ? "" : saveImage(id, img); // เก็บรูปแยก บันทึกเก็บแค่ตัวอ้างอิง
-    const e = { id, date:dateVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?fixFlow(status)[0]:"-", img:imgVal };
+    const e = { id, date:dateVal, time:timeVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?fixFlow(status)[0]:"-", img:imgVal };
     setLogs([e, ...logs]);
     setToast(status==="ปกติ" ? "✅ บันทึกเหตุการณ์ปกติ" : `${STATUS[status].emoji} บันทึก ${cam||"เหตุการณ์"} แล้ว`);
-    setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg("");
+    setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg(""); setTimeVal(nowHM());
     setTimeout(()=>setToast(""), 2600);
   };
   const openFix = (id) => {
@@ -581,7 +588,7 @@ function App() {
   const openEdit = (id) => {
     const l = logs.find(x=>x.id===id); if(!l) return;
     setEditBox({
-      id: l.id, date: l.date||todayISO(), shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
+      id: l.id, date: l.date||todayISO(), time: l.time||"", shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
       zone: l.zone||ZONES[0], cam: l.cam||"", area: l.area||"", detail: l.detail||"",
       by: l.by||"", img: imgOf(l), imgFix: l.imgFix||"", fix: l.fix||"-",
       fixDate: l.fixDate||"", fixBy: l.fixBy||"", fixNote: l.fixNote||"",
@@ -607,7 +614,7 @@ function App() {
     const fixVal = needsFix(e.status) ? (flow.includes(e.fix) ? e.fix : flow[0]) : "-";
     const done = fixVal===flow[2];
     const upd = {
-      id: e.id, date: e.date, shift: e.shift, status: e.status,
+      id: e.id, date: e.date, time: e.time||"", shift: e.shift, status: e.status,
       zone: normal ? "" : e.zone, cam: normal ? "" : e.cam.trim(),
       area: normal ? "" : e.area.trim(), detail: normal ? "" : e.detail.trim(),
       by: (e.by||"").trim() || "—", img: (normal || !e.img) ? "" : (isImgData(e.img) ? saveImage(e.id, e.img) : e.img), fix: fixVal,
@@ -643,23 +650,23 @@ function App() {
     const normal = rows.filter(l=>l.status==="ปกติ");
     if (down.length) {
       s += `🔴 กล้องดับ ${down.length} จุด\n`;
-      down.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      down.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     } else { s += `🟢 ไม่มีกล้องดับ\n`; }
     if (adjust.length) {
       s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
-      adjust.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      adjust.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     }
     if (badimg.length) {
       s += `📺 ภาพผิดปกติ ${badimg.length} จุด\n`;
-      badimg.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      badimg.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     }
     if (removed.length) {
       s += `🔌 ถอดกล้อง ${removed.length} จุด\n`;
-      removed.forEach(l=>{ s += `  • ${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      removed.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
     }
     if (other.length) {
       s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
-      other.forEach(l=>{ s += `  • ${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`; });
+      other.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`; });
     }
     if (normal.length && !down.length && !adjust.length && !badimg.length && !removed.length && !other.length) {
       s += `✅ ตรวจสอบแล้ว ไม่พบความผิดปกติ\n`;
@@ -681,7 +688,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date), "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -691,9 +698,9 @@ function App() {
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("รายงานกล้อง");
-      const headers = ["ลำดับ","วันที่","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูปหลังแก้"];
+      const headers = ["ลำดับ","วันที่","เวลา","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูปหลังแก้"];
       ws.columns = [
-        {width:6},{width:12},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:16}
+        {width:6},{width:12},{width:8},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:16}
       ];
       // หัวตาราง
       const hr = ws.addRow(headers);
@@ -704,7 +711,7 @@ function App() {
       // ข้อมูล
       for (let i=0; i<view.length; i++) {
         const l = view[i];
-        const r = ws.addRow([ i+1, fmtTH(l.date), l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.time||"", l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
         const lImg = imgOf(l);
@@ -715,7 +722,7 @@ function App() {
             r.height = 70;
             // ฝังรูปในคอลัมน์ "บริเวณ" (index 7) — ข้อความ area จัดชิดบน รูปวางใต้
             r.getCell(8).alignment = { vertical:"top", wrapText:true };
-            ws.addImage(imgId, { tl:{col:7.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
+            ws.addImage(imgId, { tl:{col:8.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
           } catch(e){}
         }
         // รูปหลังแก้ ใส่คอลัมน์สุดท้าย (index 14)
@@ -725,7 +732,7 @@ function App() {
             const ext2 = lFix.includes("png") ? "png" : "jpeg";
             const imgId2 = wb.addImage({ base64: lFix, extension: ext2 });
             r.height = 70;
-            ws.addImage(imgId2, { tl:{col:14.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
+            ws.addImage(imgId2, { tl:{col:15.05, row:r.number-1+0.28}, ext:{width:95, height:62} });
           } catch(e){}
         }
       }
@@ -971,7 +978,14 @@ function App() {
                   })}
                 </div>
                 <div style={{display:"flex", gap:12, marginTop:2}}>
-                  <div style={{flex:1}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
+                  <div style={{flex:1, minWidth:150}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
+                  <div style={{flex:1, minWidth:150}}>
+                    <div style={t.label}>🕐 เวลาที่เกิดเหตุ <span style={{color:t.dim, fontWeight:500}}>(ไม่รู้เวลาแน่นอน เว้นว่างได้)</span></div>
+                    <div style={{display:"flex", gap:8}}>
+                      <input type="time" value={timeVal} onChange={e=>setTimeVal(e.target.value)} style={{...t.input, flex:1}}/>
+                      <button onClick={()=>setTimeVal(timeVal ? "" : nowHM())} className="tap" style={t.timeBtn} title={timeVal ? "ลบเวลาออก" : "ใส่เวลาปัจจุบัน"}>{timeVal ? "✕" : "⏱"}</button>
+                    </div>
+                  </div>
                 </div>
                 <div style={t.label}>⏰ กะการทำงาน</div>
                 <div style={t.shiftGrid}>
@@ -1094,7 +1108,7 @@ function App() {
                 <tbody>
                   {pageRows.map(l=>(
                     <tr key={l.id} style={{...t.tr, cursor:"pointer"}} onClick={()=>setDetailBox(l)} title="กดเพื่อดูรายละเอียด">
-                      <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div></td>
+                      <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}>🕐 {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
                       <td style={t.td}><span style={{...t.badge, background:hex(STATUS[l.status].dot,dark?.15:.12), color:STATUS[l.status].dot}}>{STATUS[l.status].emoji} {l.status}</span></td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
@@ -1498,7 +1512,7 @@ function App() {
           <div style={{...t.modalCard, maxWidth:540, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={t.dHead}>
               <span style={{...t.badge, background:hexA(STATUS[l.status].dot,dark?.18:.12,dark), color:STATUS[l.status].dot, borderColor:hexA(STATUS[l.status].dot,.35,dark)}}>{STATUS[l.status].emoji} {l.status}</span>
-              <span style={t.dDate}>{fmtTH(l.date)} · กะ{l.shift}</span>
+              <span style={t.dDate}>{fmtTH(l.date)}{l.time ? ` · ${l.time} น.` : ""} · กะ{l.shift}</span>
             </div>
 
             {l.cam && <div style={t.dCam}>{l.cam}</div>}
@@ -1553,6 +1567,10 @@ function App() {
               <div style={{flex:1, minWidth:150}}>
                 <div style={t.label}>📅 วันที่</div>
                 <input type="date" value={editBox.date} onChange={e=>setEditBox({...editBox, date:e.target.value})} style={t.input}/>
+              </div>
+              <div style={{flex:1, minWidth:130}}>
+                <div style={t.label}>🕐 เวลา</div>
+                <input type="time" value={editBox.time} onChange={e=>setEditBox({...editBox, time:e.target.value})} style={t.input}/>
               </div>
               <div style={{flex:1, minWidth:150}}>
                 <div style={t.label}>🕐 กะ</div>
@@ -1806,6 +1824,8 @@ function mk(dark){
     baEmpty:{fontSize:11.5, color:dim, padding:"22px 4px"},
     baPick:{fontSize:11},
     imgLoad:{fontSize:11, color:dim, marginTop:6, fontStyle:"italic"},
+    timeBtn:{padding:"0 14px", borderRadius:11, border:`1px solid ${border}`, background:inputBg, color:text, fontSize:15, fontWeight:600, flexShrink:0},
+    tdTime:{fontSize:11.5, color:accent, fontWeight:600, marginTop:3},
     tdImg:{width:60, height:44, objectFit:"cover", borderRadius:7, marginTop:6, cursor:"pointer", display:"block"},
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
     fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:11.5, fontWeight:700, fontFamily:mono, whiteSpace:"nowrap"},
