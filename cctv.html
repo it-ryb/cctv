@@ -122,13 +122,29 @@ const STATUS = {
   "ถอดกล้อง": { emoji: "🔌", dot: "#0EA5E9" },
   "เหตุการณ์อื่น": { emoji: "⚠️", dot: "#14B8A6" },
 };
+// รายการเก่าหรือข้อมูลเพี้ยนอาจมีสถานะที่ไม่อยู่ในรายการ ต้องไม่ทำให้ทั้งหน้าพัง
+const UNKNOWN_ST = { emoji: "❓", dot: "#94A3B8" };
+const stOf = (s) => STATUS[s] || UNKNOWN_ST;
 const needsFix = (s) => s==="กล้องดับ" || s==="ภาพผิดปกติ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง";
 // ขั้นตอนติดตามงาน — ถอดกล้องใช้คำว่า "ติดตั้งกลับ" แทน "ซ่อม"
-const FIX_FLOW = { "ถอดกล้อง": ["รอติดตั้งกลับ","กำลังติดตั้ง","ติดตั้งแล้ว"] };
-const DEFAULT_FLOW = ["รอแก้","กำลังแก้","แก้แล้ว"];
-const fixFlow = (status) => FIX_FLOW[status] || DEFAULT_FLOW;
-const fixDone = (l) => !!l && l.fix === fixFlow(l.status)[2];
-const FIX = { "รอแก้": "#F59E0B", "กำลังแก้": "#14B8A6", "แก้แล้ว": "#22C55E", "รอติดตั้งกลับ": "#F59E0B", "กำลังติดตั้ง": "#14B8A6", "ติดตั้งแล้ว": "#22C55E", "-": "#94A3B8" };
+// สถานะงานชุดเดียว ใช้กับทุกประเภทงาน เลือกได้ว่ารอเพราะอะไร
+const WAIT_REPAIR  = "รอซ่อม";
+const WAIT_INSTALL = "รอติดตั้งกลับ";
+const DOING        = "กำลังดำเนินการ";
+const DONE         = "เสร็จแล้ว";
+const FIX_STEPS = [
+  { key: WAIT_REPAIR,  emoji: "🔧", desc: "ต้องตามช่างมาซ่อม" },
+  { key: WAIT_INSTALL, emoji: "🔌", desc: "รอหน้างานพร้อมก่อน" },
+  { key: DOING,        emoji: "🔵", desc: "มีคนลงมือแล้ว" },
+  { key: DONE,         emoji: "✅", desc: "ปิดงานเรียบร้อย" },
+];
+// แปลงคำเก่าให้เป็นคำใหม่ รายการที่บันทึกไว้ก่อนหน้าจะอ่านได้เหมือนเดิม
+const FIX_ALIAS = { "รอแก้":WAIT_REPAIR, "กำลังแก้":DOING, "แก้แล้ว":DONE, "กำลังติดตั้ง":DOING, "ติดตั้งแล้ว":DONE };
+const normFix = (v) => FIX_ALIAS[v] || v;
+const fixDone = (l) => !!l && normFix(l.fix) === DONE;
+const defaultFix = (status) => status==="ถอดกล้อง" ? WAIT_INSTALL : WAIT_REPAIR;
+const FIX = { [WAIT_REPAIR]:"#F59E0B", [WAIT_INSTALL]:"#0EA5E9", [DOING]:"#14B8A6", [DONE]:"#22C55E",
+              "รอแก้":"#F59E0B", "กำลังแก้":"#14B8A6", "แก้แล้ว":"#22C55E", "กำลังติดตั้ง":"#14B8A6", "ติดตั้งแล้ว":"#22C55E", "-":"#94A3B8" };
 const SHIFTS = [
   { key: "เช้า", time: "07.00-15.00", grp: "cctv" },
   { key: "บ่าย", time: "15.00-23.00", grp: "cctv" },
@@ -148,6 +164,8 @@ const AUTH_KEY = "cctv_auth_v1";
 const PKEY = "cctv_pw_v1";
 const UKEY = "cctv_users_v2";
 const FIX_BY = ["ช่างผู้รับเหมา (DD)", "IT"];
+// สาเหตุที่เจอบ่อย กดเติมลงช่องหมายเหตุได้เลย
+const NOTE_PRESETS = ["ถอดกล้องทำฝ้า", "ตัดไฟปรับปรุงพื้นที่", "รออะไหล่", "สาย LAN ขาด", "รอผู้รับเหมาเข้าพื้นที่", "งานโครงสร้างยังไม่เสร็จ"];
 const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
 const DEFAULT_USERS = {
   admin:   { pass: "@Rayong123", role: "admin", name: "ผู้ดูแลระบบ", dept: "IT" },
@@ -226,6 +244,8 @@ function App() {
   const [syncErr, setSyncErr] = useState(""); // ข้อความเตือนเมื่อซิงก์ขึ้นคลาวด์ไม่สำเร็จ
   const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
   const [detailBox, setDetailBox] = useState(null); // การ์ดรายละเอียดของบันทึกที่กดดู
+  const [narrow, setNarrow] = useState(typeof window!=="undefined" && window.innerWidth < 900);
+  const [listMode, setListMode] = useState(null); // null = ตามขนาดจอ, "card" หรือ "table" = ผู้ใช้เลือกเอง
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
   const [byFilter, setByFilter] = useState("all"); // ตัวกรองชื่อผู้รายงาน
   const [camQ, setCamQ] = useState(""); // ค้นหาชื่อกล้องในหน้าประวัติ
@@ -375,6 +395,12 @@ function App() {
   useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
   useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 900);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const asCards = listMode ? listMode==="card" : narrow; // มือถือใช้การ์ด คอมใช้ตาราง
+  useEffect(() => {
     const onSync = (ev) => {
       const d = ev.detail || {};
       if (d.ok) { setSyncErr(""); return; }
@@ -397,6 +423,9 @@ function App() {
   }, [zone, subGrp, camQuery, tree, CAMERAS]);
 
   const isVendor = !!(auth && auth.role === "vendor");
+  const myName = (auth && accounts[auth.user] && (accounts[auth.user].reporter || accounts[auth.user].name)) || (auth && auth.name) || "";
+  // พนักงานลบได้เฉพาะบันทึกของตัวเอง กันเผลอลบงานกะอื่น ผู้ดูแลลบได้ทุกอัน
+  const canDelete = (l) => isAdmin || (!isVendor && !!l.by && l.by === myName);
   const byOpts = useMemo(() => [...new Set((logs||[]).map(l=>l.by).filter(Boolean))].sort(), [logs]);
   const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]); // เรียงเดือนใหม่ → เก่า
   const view = useMemo(() => {
@@ -415,12 +444,12 @@ function App() {
     if (isVendor) a = a.filter(l=>needsFix(l.status)); // ผู้รับเหมาเห็นเฉพาะรายการที่ต้องซ่อม
     if (fFilter!=="all") a = a.filter(l=>{
       if (!needsFix(l.status)) return false;
-      const o = fixFlow(l.status);
-      if (fFilter==="done") return l.fix===o[2];
-      if (fFilter==="open") return l.fix!==o[2];
-      if (fFilter==="wait_repair") return l.status!=="ถอดกล้อง" && (l.fix===o[0] || !o.includes(l.fix));
-      if (fFilter==="wait_install") return l.status==="ถอดกล้อง" && (l.fix===o[0] || !o.includes(l.fix));
-      if (fFilter==="doing") return l.fix===o[1];
+      const f = normFix(l.fix);
+      if (fFilter==="done") return f===DONE;
+      if (fFilter==="open") return f!==DONE;
+      if (fFilter==="wait_repair") return f===WAIT_REPAIR;
+      if (fFilter==="wait_install") return f===WAIT_INSTALL;
+      if (fFilter==="doing") return f===DOING;
       return true;
     });
     const dir = dateDesc ? 1 : -1;
@@ -440,6 +469,16 @@ function App() {
     if (isImgRef(l.img)) loadImage(imgIdOf(l.img));
     if (isImgRef(l.imgFix)) loadImage(imgIdOf(l.imgFix));
   }); }, [pageRows, imgCache]);
+
+  // แปลงคำสถานะแบบเก่า (รอแก้/กำลังแก้/แก้แล้ว/กำลังติดตั้ง/ติดตั้งแล้ว) ให้เป็นชุดใหม่ ครั้งเดียวจบ
+  const fixMigrated = React.useRef(false);
+  useEffect(() => {
+    if (!logs || fixMigrated.current) return;
+    const need = logs.some(l => l.fix && FIX_ALIAS[l.fix]);
+    if (!need) { fixMigrated.current = true; return; }
+    fixMigrated.current = true;
+    setLogs(ls => ls.map(l => l.fix && FIX_ALIAS[l.fix] ? {...l, fix: FIX_ALIAS[l.fix]} : l));
+  }, [logs]);
 
   // ย้ายรูปเก่าที่ฝังอยู่ในบันทึกออกไปเก็บแยก ทีละ 2 รูป จนหมด
   const migrating = React.useRef(false);
@@ -463,8 +502,8 @@ function App() {
   }, [logs, dashMode, dayFilter, mFilter]);
   const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
-  const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && l.status!=="ถอดกล้อง" && !fixDone(l)).length, [dashView]);
-  const dashInstall = useMemo(()=> dashView.filter(l=>l.status==="ถอดกล้อง" && !fixDone(l)).length, [dashView]);
+  const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [dashView]);
+  const dashInstall = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [dashView]);
   // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
   const dashOpen = useMemo(() => {
     const c = {};
@@ -473,8 +512,8 @@ function App() {
   }, [dashView]);
   const pendingFix = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && !fixDone(l)).length, [logs]);
   // แยกยอดค้าง: งานซ่อม (ต้องตามช่าง) กับ งานติดตั้งกลับ (รอหน้างานพร้อม)
-  const pendingRepair = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && l.status!=="ถอดกล้อง" && !fixDone(l)).length, [logs]);
-  const pendingInstall = useMemo(()=> (logs||[]).filter(l=>l.status==="ถอดกล้อง" && !fixDone(l)).length, [logs]);
+  const pendingRepair = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [logs]);
+  const pendingInstall = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
@@ -525,7 +564,7 @@ function App() {
     names.forEach(n=>{ if(camZoneMap[n]) found.push(n); else notFound.push(n); });
     if (!found.length) { setToast("ไม่พบกล้องที่ตรงกับรายชื่อในระบบ"); setTimeout(()=>setToast(""),2800); return; }
     const base = Date.now();
-    const newLogs = found.map((n,i)=>({ id:base+i, date:bulkDate, shift, status:"กล้องดับ", zone:camZoneMap[n], cam:n, area:"", detail:"", by, fix:"รอแก้", img:"" }));
+    const newLogs = found.map((n,i)=>({ id:base+i, date:bulkDate, shift, status:"กล้องดับ", zone:camZoneMap[n], cam:n, area:"", detail:"", by, fix:WAIT_REPAIR, img:"" }));
     setLogs([...newLogs, ...logs]);
     setBulkText(""); setShowBulk(false);
     let msg = `✅ บันทึกกล้องดับ ${found.length} ตัวแล้ว`;
@@ -535,32 +574,33 @@ function App() {
   const submit = () => {
     const id = Date.now();
     const imgVal = (status==="ปกติ" || !img) ? "" : saveImage(id, img); // เก็บรูปแยก บันทึกเก็บแค่ตัวอ้างอิง
-    const e = { id, date:dateVal, time:timeVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?fixFlow(status)[0]:"-", img:imgVal };
+    const e = { id, date:dateVal, time:timeVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?defaultFix(status):"-", img:imgVal };
     setLogs([e, ...logs]);
-    setToast(status==="ปกติ" ? "✅ บันทึกเหตุการณ์ปกติ" : `${STATUS[status].emoji} บันทึก ${cam||"เหตุการณ์"} แล้ว`);
+    setToast(status==="ปกติ" ? "✅ บันทึกเหตุการณ์ปกติ" : `${stOf(status).emoji} บันทึก ${cam||"เหตุการณ์"} แล้ว`);
     setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg(""); setTimeVal(nowHM());
     setTimeout(()=>setToast(""), 2600);
   };
   const openFix = (id) => {
     const cur = logs.find(l=>l.id===id);
     if(!cur || !needsFix(cur.status)) return;
-    const o = fixFlow(cur.status);
+    const cf = normFix(cur.fix);
     setFixBox({
       id, status: cur.status,
-      locked: cur.fix === o[2], // เสร็จแล้ว = ล็อก ห้ามย้อนสถานะจากปุ่มนี้
-      fix: o.includes(cur.fix) ? cur.fix : o[0],
+      locked: cf === DONE, // ปิดงานแล้ว = ล็อก ห้ามย้อนสถานะจากหน้าต่างนี้
+      fix: FIX_STEPS.some(x=>x.key===cf) ? cf : defaultFix(cur.status),
       fixDate: cur.fixDate || todayISO(),
       fixBy: cur.fixBy || ((auth && accounts[auth.user] && accounts[auth.user].reporter) || "ช่างผู้รับเหมา (DD)"),
       fixNote: cur.fixNote || "",
       imgBefore: imgOf(cur), imgFix: imgFixOf(cur),
+      cam: cur.cam||"", zone: cur.zone||"", area: cur.area||"", detail: cur.detail||"",
+      repDate: cur.date||"", repTime: cur.time||"", repBy: cur.by||"",
     });
   };
   const saveFix = () => {
     if(!fixBox) return;
-    const o = fixFlow(fixBox.status);
-    // ล็อกไว้: รายการที่เสร็จแล้วจะย้อนสถานะผ่านหน้าต่างนี้ไม่ได้
-    const val = fixBox.locked ? o[2] : (o.includes(fixBox.fix) ? fixBox.fix : o[0]);
-    const done = val===o[2];
+    // ล็อกไว้: รายการที่ปิดงานแล้วจะย้อนสถานะผ่านหน้าต่างนี้ไม่ได้
+    const val = fixBox.locked ? DONE : (FIX_STEPS.some(x=>x.key===fixBox.fix) ? fixBox.fix : defaultFix(fixBox.status));
+    const done = val===DONE;
     const imgFixVal = (done && fixBox.imgFix)
       ? (isImgData(fixBox.imgFix) ? saveImage(fixImgId(fixBox.id), fixBox.imgFix) : fixBox.imgFix)
       : "";
@@ -568,7 +608,7 @@ function App() {
       fix: val,
       fixDate: done ? (fixBox.fixDate||todayISO()) : "",
       fixBy: done ? fixBox.fixBy.trim() : "",
-      fixNote: done ? fixBox.fixNote.trim() : "",
+      fixNote: fixBox.fixNote.trim(), // เก็บไว้ทุกสถานะ ใช้เป็นหมายเหตุรับงาน
       imgFix: imgFixVal,
     } : l));
     const isRemove = fixBox.status==="ถอดกล้อง";
@@ -578,6 +618,10 @@ function App() {
   };
   const del = (id) => {
     const l = logs.find(x=>x.id===id);
+    if (l && !canDelete(l)) {
+      setToast(`ลบได้เฉพาะบันทึกของตัวเอง — รายการนี้เป็นของ ${l.by||"คนอื่น"} ให้ผู้ดูแลลบให้`);
+      setTimeout(()=>setToast(""),3600); return;
+    }
     const label = l ? `${l.cam||l.status} (${fmtTH(l.date)})` : "รายการนี้";
     askConfirm(`ลบบันทึก "${label}" ?\nการลบนี้ย้อนกลับไม่ได้`, ()=>{
       if (logs.length<=1) allowClear.current.logs = true; // ลบรายการสุดท้าย = ตั้งใจให้ว่าง
@@ -590,7 +634,7 @@ function App() {
     setEditBox({
       id: l.id, date: l.date||todayISO(), time: l.time||"", shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
       zone: l.zone||ZONES[0], cam: l.cam||"", area: l.area||"", detail: l.detail||"",
-      by: l.by||"", img: imgOf(l), imgFix: l.imgFix||"", fix: l.fix||"-",
+      by: l.by||"", img: imgOf(l), imgFix: l.imgFix||"", fix: normFix(l.fix)||"-",
       fixDate: l.fixDate||"", fixBy: l.fixBy||"", fixNote: l.fixNote||"",
     });
   };
@@ -610,17 +654,20 @@ function App() {
     const normal = e.status==="ปกติ";
     if (!normal && needsFix(e.status) && !e.cam.trim()) { setToast("กรุณาระบุชื่อกล้อง"); setTimeout(()=>setToast(""),2400); return; }
     if (e.status==="เหตุการณ์อื่น" && !e.detail.trim()) { setToast("กรุณากรอกรายละเอียดเหตุการณ์"); setTimeout(()=>setToast(""),2400); return; }
-    const flow = fixFlow(e.status);
-    const fixVal = needsFix(e.status) ? (flow.includes(e.fix) ? e.fix : flow[0]) : "-";
-    const done = fixVal===flow[2];
+    const ef = normFix(e.fix);
+    const fixVal = needsFix(e.status) ? (FIX_STEPS.some(x=>x.key===ef) ? ef : defaultFix(e.status)) : "-";
+    const done = fixVal===DONE;
     const upd = {
       id: e.id, date: e.date, time: e.time||"", shift: e.shift, status: e.status,
       zone: normal ? "" : e.zone, cam: normal ? "" : e.cam.trim(),
       area: normal ? "" : e.area.trim(), detail: normal ? "" : e.detail.trim(),
       by: (e.by||"").trim() || "—", img: (normal || !e.img) ? "" : (isImgData(e.img) ? saveImage(e.id, e.img) : e.img), fix: fixVal,
       imgFix: done ? (e.imgFix || "") : "",
-      fixDate: done ? (e.fixDate||todayISO()) : "", fixBy: done ? (e.fixBy||"").trim() : "", fixNote: done ? (e.fixNote||"").trim() : "",
+      fixNote: needsFix(e.status) ? (e.fixNote||"").trim() : "",
+      fixDate: done ? (e.fixDate||todayISO()) : "", fixBy: done ? (e.fixBy||"").trim() : "",
     };
+    upd.editBy = myName || "—";                 // ไว้ตรวจย้อนหลังว่าใครแก้
+    upd.editAt = todayISO() + " " + nowHM();
     setLogs(logs.map(l => l.id===e.id ? upd : l));
     setEditBox(null);
     setToast("✏️ แก้ไขบันทึกแล้ว"); setTimeout(()=>setToast(""),2400);
@@ -650,19 +697,19 @@ function App() {
     const normal = rows.filter(l=>l.status==="ปกติ");
     if (down.length) {
       s += `🔴 กล้องดับ ${down.length} จุด\n`;
-      down.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      down.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
     } else { s += `🟢 ไม่มีกล้องดับ\n`; }
     if (adjust.length) {
       s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
-      adjust.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      adjust.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
     }
     if (badimg.length) {
       s += `📺 ภาพผิดปกติ ${badimg.length} จุด\n`;
-      badimg.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      badimg.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
     }
     if (removed.length) {
       s += `🔌 ถอดกล้อง ${removed.length} จุด\n`;
-      removed.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+l.fix+"]":""}\n`; });
+      removed.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
     }
     if (other.length) {
       s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
@@ -688,7 +735,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.fix, "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุการซ่อม":l.fixNote||"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":normFix(l.fix), "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุ / สาเหตุ":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -698,7 +745,7 @@ function App() {
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("รายงานกล้อง");
-      const headers = ["ลำดับ","วันที่","เวลา","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","การแก้ไข","วันที่ซ่อมเสร็จ","ผู้แก้ไข","หมายเหตุการซ่อม","รูปหลังแก้"];
+      const headers = ["ลำดับ","วันที่","เวลา","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","สถานะงาน","วันที่งานเสร็จ","ผู้ดำเนินการ","หมายเหตุ / สาเหตุ","รูปหลังแก้"];
       ws.columns = [
         {width:6},{width:12},{width:8},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:16}
       ];
@@ -711,7 +758,7 @@ function App() {
       // ข้อมูล
       for (let i=0; i<view.length; i++) {
         const l = view[i];
-        const r = ws.addRow([ i+1, fmtTH(l.date), l.time||"", l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, l.fix, (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.time||"", l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, normFix(l.fix), (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
         const lImg = imgOf(l);
@@ -918,6 +965,7 @@ function App() {
 
   const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
+  const canSeeIp = isAdmin || isVendor; // ช่างต้องใช้ IP เข้าไปตรวจกล้อง
   const NAV = isVendor
     ? [["history","🔧","งานซ่อม"]]
     : ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
@@ -973,8 +1021,8 @@ function App() {
                 <div style={t.label}>สถานะ</div>
                 <div style={t.segRow}>
                   {Object.keys(STATUS).map(s=>{ const on=status===s;
-                    return <button key={s} onClick={()=>setStatus(s)} className="tap" style={{...t.seg, borderColor:on?STATUS[s].dot:t.border, background:on?hex(STATUS[s].dot,dark?.14:.1):"transparent", color:on?STATUS[s].dot:t.dim}}>
-                      <span style={{fontSize:20}}>{STATUS[s].emoji}</span>{s}</button>;
+                    return <button key={s} onClick={()=>setStatus(s)} className="tap" style={{...t.seg, borderColor:on?stOf(s).dot:t.border, background:on?hex(stOf(s).dot,dark?.14:.1):"transparent", color:on?stOf(s).dot:t.dim}}>
+                      <span style={{fontSize:20}}>{stOf(s).emoji}</span>{s}</button>;
                   })}
                 </div>
                 <div style={{display:"flex", gap:12, marginTop:2}}>
@@ -1040,13 +1088,13 @@ function App() {
                   {logs.length===0 && <div style={t.miniEmpty}><div style={{fontSize:30, marginBottom:8}}>📋</div>ยังไม่มีบันทึก<br/><span style={{fontSize:12}}>เริ่มบันทึกเหตุการณ์แรกได้เลย</span></div>}
                   {logs.slice(0,8).map(l=>(
                     <div key={l.id} style={t.miniLog}>
-                      <div style={{...t.miniBar, background:STATUS[l.status].dot}}/>
+                      <div style={{...t.miniBar, background:stOf(l.status).dot}}/>
                       <div style={{flex:1, minWidth:0}}>
                         <div style={{display:"flex", justifyContent:"space-between", gap:8}}>
                           <span style={t.miniCam}>{l.cam||"เหตุการณ์ปกติ"}</span>
                           <span style={t.miniDate}>{fmtTH(l.date)}</span>
                         </div>
-                        <div style={t.miniMeta}>{STATUS[l.status].emoji} {l.status}{l.zone?` · ${l.zone}`:""}{l.area?` · ${l.area}`:""}</div>
+                        <div style={t.miniMeta}>{stOf(l.status).emoji} {l.status}{l.zone?` · ${l.zone}`:""}{l.area?` · ${l.area}`:""}</div>
                       </div>
                     </div>
                   ))}
@@ -1083,7 +1131,7 @@ function App() {
               <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={fFilter!=="all"?t.selectOn:t.select}>
                 <option value="all">ทุกงานซ่อม</option>
                 <option value="open">⏳ ยังไม่เสร็จ</option>
-                <option value="wait_repair">🟠 รอซ่อม</option>
+                <option value="wait_repair">🔧 รอซ่อม</option>
                 <option value="wait_install">🔌 รอติดตั้งกลับ</option>
                 <option value="doing">🔵 กำลังดำเนินการ</option>
                 <option value="done">✅ เสร็จแล้ว</option>
@@ -1096,6 +1144,55 @@ function App() {
                 <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setCamQ("");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
               )}
             </div>
+            {asCards ? (
+              <div style={t.cardList}>
+                {pageRows.map(l=>{
+                  const before = imgOf(l), after = imgFixOf(l), f = normFix(l.fix);
+                  return (
+                    <div key={l.id} style={t.jobCard} onClick={()=>setDetailBox(l)}>
+                      <div style={t.jobTop}>
+                        <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
+                        <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""} · {l.shift}</span>
+                      </div>
+
+                      {l.cam ? <div style={t.jobCam}>{l.cam}</div> : <div style={{...t.jobCam, fontFamily:"inherit", fontSize:14}}>{l.detail||"เหตุการณ์"}</div>}
+                      <div style={t.jobPlace}>
+                        {l.zone && <span>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>}
+                        {l.area && <span> · {l.area}</span>}
+                        {l.cam && ips[l.cam] && canSeeIp && <span style={t.jobIp}> · {ips[l.cam]}</span>}
+                      </div>
+                      {l.cam && l.detail && <div style={t.jobDetail}>{l.detail}</div>}
+
+                      {(before || after) && (
+                        <div style={{display:"flex", gap:8, marginTop:9}}>
+                          {before && <img src={before} style={t.cardImg} onClick={e=>{e.stopPropagation(); setPreview(before);}}/>}
+                          {after && <img src={after} style={{...t.cardImg, borderColor:"#22C55E"}} onClick={e=>{e.stopPropagation(); setPreview(after);}}/>}
+                        </div>
+                      )}
+
+                      <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
+                        {needsFix(l.status)
+                          ? <button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+" ▾"}</button>
+                          : <span style={{fontSize:12, color:t.dim}}>ไม่มีงานติดตาม</span>}
+                        <div style={{display:"flex", gap:7, marginLeft:"auto"}}>
+                          {!isVendor && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}>✏️</button>}
+                          {!isVendor && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button>}
+                        </div>
+                      </div>
+                      {(l.fixDate||l.fixBy||l.fixNote) && (
+                        <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>
+                          {l.fixDate && <span>🗓 {fmtTH(l.fixDate)} </span>}
+                          {l.fixBy && <span>👷 {l.fixBy} </span>}
+                          {l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}
+                        </div>
+                      )}
+                      <div style={t.jobBy}>ผู้รายงาน: {l.by||"—"}</div>
+                    </div>
+                  );
+                })}
+                {view.length===0 && <div style={{...t.jobCard, textAlign:"center", color:t.dim, padding:40}}>📭 ไม่มีรายการ</div>}
+              </div>
+            ) : (
             <div style={t.tableWrap} className="rb-tableWrap">
               <table style={t.table}>
                 <thead><tr>
@@ -1110,19 +1207,20 @@ function App() {
                     <tr key={l.id} style={{...t.tr, cursor:"pointer"}} onClick={()=>setDetailBox(l)} title="กดเพื่อดูรายละเอียด">
                       <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}>🕐 {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
-                      <td style={t.td}><span style={{...t.badge, background:hex(STATUS[l.status].dot,dark?.15:.12), color:STATUS[l.status].dot}}>{STATUS[l.status].emoji} {l.status}</span></td>
+                      <td style={t.td}><span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.15:.12), color:stOf(l.status).dot}}>{stOf(l.status).emoji} {l.status}</span></td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
-                      <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{isAdmin && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
+                      <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[l.fix], borderColor:FIX[l.fix]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+l.fix : l.fix+" ▾"}</button>{fixDone(l) && (l.fixDate||l.fixBy||l.fixNote) && <div style={t.fixInfo}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className="tap" style={t.delBtn} title="ลบบันทึก">🗑</button></div>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
                 </tbody>
               </table>
             </div>
+            )}
             {view.length>0 && (
               <div style={t.pager}>
                 <div style={t.pageInfo}>
@@ -1136,6 +1234,10 @@ function App() {
                     <span style={t.pageInfo}>หน้า {page} / {totalPages}</span>
                     <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="tap" style={{...t.pageBtn, opacity:page>=totalPages?.4:1}}>›</button>
                   </>)}
+                  <div style={t.dashToggle}>
+                    <button onClick={()=>setListMode("card")} className="tap" style={asCards?t.dashTgOn:t.dashTg}>การ์ด</button>
+                    <button onClick={()=>setListMode("table")} className="tap" style={!asCards?t.dashTgOn:t.dashTg}>ตาราง</button>
+                  </div>
                   <select value={pageSize} onChange={e=>setPageSize(+e.target.value)} style={{...t.select, padding:"9px 12px"}}>
                     <option value={20}>20 ต่อหน้า</option>
                     <option value={50}>50 ต่อหน้า</option>
@@ -1171,8 +1273,8 @@ function App() {
                   <button key={k} onClick={()=>drillTo({status:k, fix:track&&open?"open":"all"})} className="tap"
                           style={{...t.bigStat, ...t.bigStatBtn, opacity:v?1:.55}}
                           title={track ? `${k} ค้างอยู่ ${open} จากทั้งหมด ${v}` : `ดูรายการ ${k} ทั้งหมด`}>
-                    <div style={{fontSize:26}}>{STATUS[k].emoji}</div>
-                    <div style={{...t.bigNum, color:track ? (open?"#F59E0B":"#22C55E") : STATUS[k].dot}}>{track ? open : v}</div>
+                    <div style={{fontSize:26}}>{stOf(k).emoji}</div>
+                    <div style={{...t.bigNum, color:track ? (open?"#F59E0B":"#22C55E") : stOf(k).dot}}>{track ? open : v}</div>
                     <div style={t.bigLabel}>{k}{track && <span style={{fontWeight:500}}> ค้าง</span>}</div>
                     {track && <div style={t.bigSub}>จากทั้งหมด {v} ครั้ง</div>}
                     <div style={t.bigHint}>ดูรายการ →</div>
@@ -1436,25 +1538,51 @@ function App() {
           </div>
         </div></Modal>
       )}
-      {fixBox && (
+      {fixBox && (() => { const nextStep = fixBox.fix===DOING ? DONE : (fixBox.fix===DONE ? DONE : DOING); return (
         <Modal><div style={t.modalBg} onClick={()=>setFixBox(null)}>
-          <div style={{...t.modalCard, maxWidth:420}} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>{fixBox.status==="ถอดกล้อง" ? "🔌 สถานะการติดตั้งกลับ" : "🔧 สถานะการซ่อม"}</div>
-            <div style={t.pwHint}>{fixBox.locked ? "รายการนี้จบงานแล้ว — ย้อนสถานะจากหน้านี้ไม่ได้ แก้ไขได้เฉพาะวันที่ / ผู้ดำเนินการ / หมายเหตุ" : "เลือกสถานะ แล้วระบุวันที่เสร็จถ้างานจบแล้ว"}</div>
-            <div style={t.chipRow}>
-              {fixFlow(fixBox.status).map(f=>{
-                const isDone = f===fixFlow(fixBox.status)[2];
-                const blocked = fixBox.locked && !isDone;
-                return <button key={f} disabled={blocked}
-                  onClick={()=>{ if(blocked){ setToast("ต้องย้อนสถานะผ่านปุ่ม ✏️ แก้ไข"); setTimeout(()=>setToast(""),2800); return; } setFixBox({...fixBox, fix:f}); }}
+          <div style={{...t.modalCard, maxWidth:430, maxHeight:"90vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            {(() => null)()}
+            <div style={t.panelTitle}>🛠 อัปเดตสถานะงาน</div>
+
+            <div style={t.jobHead}>
+              <div style={t.jobTop}>
+                <span style={{...t.badge, background:hex(stOf(fixBox.status).dot,dark?.18:.12), color:stOf(fixBox.status).dot, borderColor:hexA(stOf(fixBox.status).dot,.3,dark)}}>{stOf(fixBox.status).emoji} {fixBox.status}</span>
+                <span style={t.jobWhen}>แจ้ง {fmtTH(fixBox.repDate)}{fixBox.repTime ? ` · ${fixBox.repTime} น.` : ""}</span>
+              </div>
+              {fixBox.cam && <div style={t.jobCam}>{fixBox.cam}</div>}
+              <div style={t.jobPlace}>
+                {fixBox.zone && <span>{ZONE_EMOJI[fixBox.zone]||""} {fixBox.zone}</span>}
+                {fixBox.area && <span> · {fixBox.area}</span>}
+                {fixBox.cam && ips[fixBox.cam] && <span style={t.jobIp}> · {ips[fixBox.cam]}</span>}
+              </div>
+              {fixBox.detail && <div style={t.jobDetail}>อาการที่แจ้ง: {fixBox.detail}</div>}
+              {fixBox.repBy && <div style={t.jobPlace}>ผู้แจ้ง: {fixBox.repBy}</div>}
+            </div>
+
+            <div style={t.pwHint}>{fixBox.locked ? "งานนี้ปิดแล้ว — ย้อนสถานะจากหน้านี้ไม่ได้ แก้ได้เฉพาะวันที่ ผู้ดำเนินการ และหมายเหตุ" : "ขั้นที่ 1 เลือกสถานะปัจจุบันของงาน"}</div>
+            <div style={t.stepGrid}>
+              {FIX_STEPS.map(st=>{
+                // ขั้นถัดไปตามธรรมชาติของงาน: รอ → กำลังทำ → ปิดงาน
+                const on = fixBox.fix===st.key;
+                const blocked = fixBox.locked && st.key!==DONE;
+                return <button key={st.key} disabled={blocked}
+                  onClick={()=>{ if(blocked){ setToast("ต้องย้อนสถานะผ่านปุ่ม ✏️ แก้ไข"); setTimeout(()=>setToast(""),2800); return; } setFixBox({...fixBox, fix:st.key}); }}
                   className={blocked?"":"tap"}
-                  style={fixBox.fix===f ? {...t.chipOn, borderColor:FIX[f], background:hex(FIX[f],dark?.16:.11), color:FIX[f]} : {...t.chip, opacity:blocked?.4:1, cursor:blocked?"not-allowed":"pointer"}}>{blocked?"🔒 ":""}{f}</button>;
+                  style={on ? {...t.stepCard, borderColor:FIX[st.key], background:hex(FIX[st.key],dark?.16:.1)} : {...t.stepCard, opacity:blocked?.4:1, cursor:blocked?"not-allowed":"pointer"}}>
+                  <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+                    <span style={{fontSize:17}}>{blocked?"🔒":st.emoji}</span>
+                    {!fixBox.locked && !on && st.key===nextStep && <span style={t.nextTag}>ขั้นถัดไป</span>}
+                  </div>
+                  <div style={{...t.stepName, color:on?FIX[st.key]:t.text}}>{st.key}</div>
+                  <div style={t.stepDesc}>{st.desc}</div>
+                </button>;
               })}
             </div>
             {fixBox.locked && <div style={{...t.pwHint, marginTop:10, marginBottom:0}}>ถ้าลงสถานะผิด ให้ปิดหน้านี้แล้วกดปุ่ม ✏️ ในตารางเพื่อย้อนสถานะ</div>}
-            {fixBox.fix===fixFlow(fixBox.status)[2] ? (<>
+            {fixBox.fix===DONE ? (<>
+            <div style={{...t.pwHint, marginTop:14, marginBottom:6}}>ขั้นที่ 2 บันทึกผลงาน</div>
             <div style={{marginTop:4}}>
-              <div style={t.label}>📅 {fixBox.status==="ถอดกล้อง" ? "วันที่ติดตั้งกลับ" : "วันที่ซ่อมเสร็จ"}</div>
+              <div style={t.label}>📅 วันที่งานเสร็จ</div>
               <input type="date" value={fixBox.fixDate} onChange={e=>setFixBox({...fixBox, fixDate:e.target.value})} style={t.input}/>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 <button onClick={()=>setFixBox({...fixBox, fixDate:todayISO()})} className="tap" style={t.chip}>วันนี้</button>
@@ -1462,18 +1590,13 @@ function App() {
               </div>
             </div>
             <div style={{marginTop:12}}>
-              <div style={t.label}>👷 {fixBox.status==="ถอดกล้อง" ? "ผู้ติดตั้ง" : "ผู้แก้ไข"}</div>
+              <div style={t.label}>👷 ผู้ดำเนินการ</div>
               <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
               <datalist id="fixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
               </div>
             </div>
-            <div style={{marginTop:12}}>
-              <div style={t.label}>📝 หมายเหตุ</div>
-              <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder={fixBox.status==="ถอดกล้อง" ? "เช่น ติดตั้งกลับจุดเดิม, ย้ายไปจุดใหม่" : "เช่น เปลี่ยนสาย LAN, รีสตาร์ท, เปลี่ยนกล้อง"} style={t.input}/>
-            </div>
-
             <div style={t.label}>📷 รูปก่อน / หลัง</div>
             <div style={t.baGrid}>
               <div style={t.baCell}>
@@ -1491,15 +1614,25 @@ function App() {
               </div>
             </div>
             </>) : (
-              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่ (รายการนี้จะค้างอยู่ในยอด "รอซ่อม" หรือ "รอติดตั้งกลับ")</div>
+              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่งานเสร็จ (รายการนี้จะค้างอยู่ในยอด "รอซ่อม" หรือ "รอติดตั้งกลับ")</div>
             )}
+
+            <div style={{marginTop:14}}>
+              <div style={t.label}>📝 หมายเหตุ / สาเหตุ <span style={{color:t.dim, fontWeight:500}}>(ใส่ได้ตั้งแต่ตอนรับงาน)</span></div>
+              <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder="เช่น กล้องดับเนื่องจากถอดกล้องทำฝ้า" style={t.input}/>
+              <div style={{display:"flex", gap:7, marginTop:8, flexWrap:"wrap"}}>
+                {NOTE_PRESETS.map(v=>(
+                  <button key={v} onClick={()=>setFixBox({...fixBox, fixNote: fixBox.fixNote ? fixBox.fixNote + " " + v : v})} className="tap" style={t.chip}>+ {v}</button>
+                ))}
+              </div>
+            </div>
             <div style={{display:"flex", gap:10, marginTop:18}}>
               <button onClick={()=>setFixBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
               <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึก</button>
             </div>
           </div>
         </div></Modal>
-      )}
+      ); })()}
       {preview && (
         <Modal><div style={t.modal} onClick={()=>setPreview("")}>
           <img src={preview} style={t.modalImg} onClick={e=>e.stopPropagation()}/>
@@ -1511,23 +1644,24 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setDetailBox(null)}>
           <div style={{...t.modalCard, maxWidth:540, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={t.dHead}>
-              <span style={{...t.badge, background:hexA(STATUS[l.status].dot,dark?.18:.12,dark), color:STATUS[l.status].dot, borderColor:hexA(STATUS[l.status].dot,.35,dark)}}>{STATUS[l.status].emoji} {l.status}</span>
+              <span style={{...t.badge, background:hexA(stOf(l.status).dot,dark?.18:.12,dark), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.35,dark)}}>{stOf(l.status).emoji} {l.status}</span>
               <span style={t.dDate}>{fmtTH(l.date)}{l.time ? ` · ${l.time} น.` : ""} · กะ{l.shift}</span>
             </div>
 
             {l.cam && <div style={t.dCam}>{l.cam}</div>}
-            {l.cam && ips[l.cam] && isAdmin && <div style={t.dIp}>{ips[l.cam]}</div>}
+            {l.cam && ips[l.cam] && canSeeIp && <div style={t.dIp}>{ips[l.cam]}</div>}
 
             <div style={t.dRows}>
-              {l.zone && <div style={t.dRow}><span style={t.dK}>พื้นที่</span><span style={t.dV}>{ZONE_EMOJI[l.zone]} {l.zone}</span></div>}
+              {l.zone && <div style={t.dRow}><span style={t.dK}>พื้นที่</span><span style={t.dV}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span></div>}
               {l.area && <div style={t.dRow}><span style={t.dK}>บริเวณ</span><span style={t.dV}>{l.area}</span></div>}
               {l.detail && <div style={t.dRow}><span style={t.dK}>รายละเอียด</span><span style={t.dV}>{l.detail}</span></div>}
               <div style={t.dRow}><span style={t.dK}>ผู้รายงาน</span><span style={t.dV}>{l.by||"—"}</span></div>
+              {l.editBy && <div style={t.dRow}><span style={t.dK}>แก้ไขล่าสุด</span><span style={{...t.dV, color:t.dim, fontSize:13}}>{l.editBy} · {l.editAt}</span></div>}
             </div>
 
             {needsFix(l.status) && (
-              <div style={{...t.dRows, borderLeft:`3px solid ${FIX[l.fix]||"#94A3B8"}`, paddingLeft:12}}>
-                <div style={t.dRow}><span style={t.dK}>สถานะงาน</span><span style={{...t.dV, color:FIX[l.fix], fontWeight:700}}>{done?"✓ ":""}{l.fix}</span></div>
+              <div style={{...t.dRows, borderLeft:`3px solid ${FIX[normFix(l.fix)]||"#94A3B8"}`, paddingLeft:12}}>
+                <div style={t.dRow}><span style={t.dK}>สถานะงาน</span><span style={{...t.dV, color:FIX[normFix(l.fix)], fontWeight:700}}>{done?"✓ ":""}{normFix(l.fix)}</span></div>
                 {l.fixDate && <div style={t.dRow}><span style={t.dK}>วันที่เสร็จ</span><span style={t.dV}>{fmtTH(l.fixDate)}</span></div>}
                 {l.fixBy && <div style={t.dRow}><span style={t.dK}>ผู้ดำเนินการ</span><span style={t.dV}>{l.fixBy}</span></div>}
                 {l.fixNote && <div style={t.dRow}><span style={t.dK}>หมายเหตุ</span><span style={t.dV}>{l.fixNote}</span></div>}
@@ -1583,7 +1717,7 @@ function App() {
             <div style={t.label}>📌 สถานะ</div>
             <div style={t.chipRow}>
               {Object.keys(STATUS).map(s=>(
-                <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (fixFlow(s).includes(editBox.fix) ? editBox.fix : fixFlow(s)[0]) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}>{STATUS[s].emoji} {s}</button>
+                <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (FIX_STEPS.some(x=>x.key===normFix(editBox.fix)) ? normFix(editBox.fix) : defaultFix(s)) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}>{stOf(s).emoji} {s}</button>
               ))}
             </div>
 
@@ -1619,22 +1753,22 @@ function App() {
             <datalist id="editbylist">{reporters.map(r=><option key={r} value={r}/>)}</datalist>
 
             {needsFix(editBox.status) && (<>
-              <div style={t.label}>🔧 {editBox.status==="ถอดกล้อง" ? "สถานะการติดตั้งกลับ" : "สถานะการแก้ไข"}</div>
+              <div style={t.label}>🛠 สถานะงาน</div>
               <div style={t.chipRow}>
-                {fixFlow(editBox.status).map(f=>{
-                  const doneVal = fixFlow(editBox.status)[2];
-                  const isRevert = editBox.fix===doneVal && f!==doneVal;
-                  const apply = () => setEditBox(b => b ? {...b, fix:f, fixDate: f===doneVal ? (b.fixDate||todayISO()) : b.fixDate} : b);
+                {FIX_STEPS.map(st=>{
+                  const f = st.key;
+                  const isRevert = normFix(editBox.fix)===DONE && f!==DONE;
+                  const apply = () => setEditBox(b => b ? {...b, fix:f, fixDate: f===DONE ? (b.fixDate||todayISO()) : b.fixDate} : b);
                   return <button key={f} onClick={()=>{
-                    if (isRevert) askConfirm(`ย้อนสถานะจาก "${doneVal}" กลับเป็น "${f}" ?\nวันที่ ผู้ดำเนินการ และหมายเหตุที่บันทึกไว้จะถูกล้าง`, apply, "ยืนยันย้อนสถานะ");
+                    if (isRevert) askConfirm(`ย้อนสถานะจาก "${DONE}" กลับเป็น "${f}" ?\nวันที่และผู้ดำเนินการที่บันทึกไว้จะถูกล้าง`, apply, "ยืนยันย้อนสถานะ");
                     else apply();
-                  }} className="tap" style={editBox.fix===f?t.chipOn:t.chip}>{f}</button>;
+                  }} className="tap" style={normFix(editBox.fix)===f?{...t.chipOn, borderColor:FIX[f], color:FIX[f]}:t.chip}>{st.emoji} {f}</button>;
                 })}
               </div>
-              {editBox.fix===fixFlow(editBox.status)[2] && (
+              {normFix(editBox.fix)===DONE && (
                 <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                   <div style={{flex:1, minWidth:140}}>
-                    <div style={t.label}>📅 {editBox.status==="ถอดกล้อง" ? "วันที่ติดตั้งกลับ" : "วันที่ซ่อมเสร็จ"}</div>
+                    <div style={t.label}>📅 วันที่งานเสร็จ</div>
                     <input type="date" value={editBox.fixDate} onChange={e=>setEditBox({...editBox, fixDate:e.target.value})} style={t.input}/>
                   </div>
                   <div style={{flex:1, minWidth:140}}>
@@ -1645,12 +1779,10 @@ function App() {
                       {FIX_BY.map(v=><button key={v} onClick={()=>setEditBox({...editBox, fixBy:v})} className="tap" style={editBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
                     </div>
                   </div>
-                  <div style={{flex:"1 1 100%"}}>
-                    <div style={t.label}>📝 หมายเหตุการซ่อม</div>
-                    <input value={editBox.fixNote} onChange={e=>setEditBox({...editBox, fixNote:e.target.value})} placeholder="เช่น เปลี่ยนสาย LAN, รีสตาร์ท" style={t.input}/>
-                  </div>
                 </div>
               )}
+              <div style={t.label}>📝 หมายเหตุ / สาเหตุ</div>
+              <input value={editBox.fixNote} onChange={e=>setEditBox({...editBox, fixNote:e.target.value})} placeholder="เช่น กล้องดับเนื่องจากถอดกล้องทำฝ้า" style={t.input}/>
             </>)}
 
             {editBox.status!=="ปกติ" && (<>
@@ -1817,6 +1949,23 @@ function mk(dark){
     dRow:{display:"flex", gap:12, fontSize:14, alignItems:"flex-start"},
     dK:{width:92, flexShrink:0, color:dim, fontSize:12.5, paddingTop:1},
     dV:{color:text, flex:1, wordBreak:"break-word"},
+    cardList:{display:"flex", flexDirection:"column", gap:11},
+    jobCard:{background:surf, border:`1px solid ${border}`, borderRadius:15, padding:"13px 15px", boxShadow:shadow, cursor:"pointer"},
+    cardImg:{width:78, height:58, objectFit:"cover", borderRadius:8, border:`1.5px solid ${border}`, cursor:"pointer"},
+    jobFoot:{display:"flex", alignItems:"center", gap:8, marginTop:11, flexWrap:"wrap"},
+    jobBy:{fontSize:11.5, color:dim, marginTop:8},
+    jobHead:{background:inputBg, border:`1px solid ${border}`, borderRadius:13, padding:"12px 14px", margin:"12px 0 14px"},
+    jobTop:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, flexWrap:"wrap"},
+    jobWhen:{fontSize:11.5, color:dim},
+    jobCam:{fontFamily:mono, fontSize:16, fontWeight:700, color:text, marginTop:7, wordBreak:"break-all"},
+    jobPlace:{fontSize:12.5, color:dim, marginTop:3},
+    jobIp:{fontFamily:mono},
+    jobDetail:{fontSize:13, color:text, marginTop:6},
+    nextTag:{fontSize:9.5, fontWeight:700, color:accent, background:hexA(accent,dark?.18:.12,dark), border:`1px solid ${hexA(accent,.3,dark)}`, borderRadius:20, padding:"1px 7px"},
+    stepGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:9, marginTop:4},
+    stepCard:{border:`1.5px solid ${border}`, background:inputBg, borderRadius:12, padding:"11px 10px", textAlign:"left", fontFamily:"inherit"},
+    stepName:{fontSize:13.5, fontWeight:700, marginTop:3},
+    stepDesc:{fontSize:11, color:dim, marginTop:1, lineHeight:1.4},
     baGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4},
     baCell:{background:inputBg, border:`1px solid ${border}`, borderRadius:12, padding:10, textAlign:"center"},
     baTag:{fontSize:11, fontWeight:700, color:dim, border:`1px solid ${border}`, borderRadius:20, padding:"2px 9px", display:"inline-block", marginBottom:8},
