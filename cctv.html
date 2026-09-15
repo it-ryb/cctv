@@ -38,6 +38,8 @@
     .rb-camManGrid{grid-template-columns:1fr !important;}
     .rb-wrap [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
     .rb-statGrid{grid-template-columns:1fr 1fr !important;}
+    .rb-heroGrid{grid-template-columns:1fr !important;}
+    .rb-miniGrid{grid-template-columns:1fr 1fr !important;}
     .rb-wrap{padding:18px 16px 50px !important;}
     .rb-tableWrap{overflow-x:auto !important;}
   }
@@ -244,6 +246,12 @@ function App() {
   const [syncErr, setSyncErr] = useState(""); // ข้อความเตือนเมื่อซิงก์ขึ้นคลาวด์ไม่สำเร็จ
   const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
   const [detailBox, setDetailBox] = useState(null); // การ์ดรายละเอียดของบันทึกที่กดดู
+  const [jobSel, setJobSel] = useState([]);          // งานที่ติ๊กไว้เพื่อปิดทีเดียวหลายรายการ
+  const [jobZone, setJobZone] = useState("all");
+  const [jobKind, setJobKind] = useState("open");    // open / wait_repair / wait_install / doing
+  const [jobDate, setJobDate] = useState(todayISO());
+  const [jobBy, setJobBy] = useState("");
+  const [jobNote, setJobNote] = useState("");
   const [narrow, setNarrow] = useState(typeof window!=="undefined" && window.innerWidth < 900);
   const [listMode, setListMode] = useState(null); // null = ตามขนาดจอ, "card" หรือ "table" = ผู้ใช้เลือกเอง
   const [fFilter, setFFilter] = useState("all"); // ตัวกรองสถานะงานซ่อม: all/open/pending/doing/done
@@ -391,7 +399,7 @@ function App() {
   useEffect(()=>{ pushCloud("reporters", reporters); }, [reporters]);
   useEffect(()=>{ pushCloud("passwords", passwords); }, [passwords]);
   // กันพนักงานเข้าหน้า admin (วางกับ hooks อื่นก่อน early return)
-  useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
+  useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff"||nav==="jobs")) setNav("record"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
   useEffect(() => {
@@ -502,6 +510,61 @@ function App() {
   }, [logs, dashMode, dayFilter, mFilter]);
   const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
+  // จำนวนการแจ้งต่อวัน ใช้วาดกราฟแท่งเล็กในแดชบอร์ด
+  const trend = useMemo(() => {
+    const byDay = {};
+    dashView.forEach(l => { if (l.status!=="ปกติ") byDay[l.date] = (byDay[l.date]||0)+1; });
+    const days = Object.keys(byDay).sort();
+    if (!days.length) return [];
+    const out = [];
+    const cur = new Date(days[0] + "T00:00:00");
+    const last = new Date(days[days.length-1] + "T00:00:00");
+    while (cur <= last && out.length < 60) {
+      const iso = cur.toISOString().slice(0,10);
+      out.push([iso, byDay[iso] || 0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out.slice(-14); // เอา 14 วันล่าสุดพอ ไม่งั้นแท่งเล็กจนอ่านไม่ออก
+  }, [dashView]);
+  // คิวงานที่ยังไม่ปิด สำหรับหน้าไอที
+  const openJobs = useMemo(() => {
+    let a = (logs||[]).filter(l => needsFix(l.status) && !fixDone(l));
+    if (jobZone!=="all") a = a.filter(l => l.zone===jobZone);
+    const f = jobKind;
+    if (f==="wait_repair")  a = a.filter(l => normFix(l.fix)===WAIT_REPAIR);
+    if (f==="wait_install") a = a.filter(l => normFix(l.fix)===WAIT_INSTALL);
+    if (f==="doing")        a = a.filter(l => normFix(l.fix)===DOING);
+    return a.sort((x,y)=> x.date===y.date ? x.id-y.id : (x.date<y.date?-1:1)); // เก่าสุดขึ้นก่อน ค้างนานต้องรีบ
+  }, [logs, jobZone, jobKind]);
+  const daysOpen = (iso) => Math.max(0, Math.round((Date.now() - new Date(iso+"T00:00:00").getTime())/86400000));
+  const toggleJob = (id) => setJobSel(v => v.includes(id) ? v.filter(x=>x!==id) : [...v, id]);
+  const applyJobs = (target) => {
+    if (!jobSel.length) return;
+    const done = target===DONE;
+    const by = (jobBy || myName || "IT").trim();
+    setLogs(logs.map(l => jobSel.includes(l.id) ? {...l,
+      fix: target,
+      fixDate: done ? jobDate : "",
+      fixBy: done ? by : "",
+      fixNote: jobNote.trim() ? ((l.fixNote ? l.fixNote + " · " : "") + jobNote.trim()) : l.fixNote,
+    } : l));
+    setToast(`${done?"ปิดงาน":"อัปเดต"} ${jobSel.length} รายการแล้ว`);
+    setTimeout(()=>setToast(""),2800);
+    setJobSel([]); setJobNote("");
+  };
+  const copyJobList = () => {
+    let out = `🛠 งานซ่อมกล้องค้างอยู่ ${openJobs.length} รายการ\n━━━━━━━━━━━━━\n`;
+    openJobs.forEach(l=>{
+      out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ค้าง ${daysOpen(l.date)} วัน\n`;
+      if (l.area || l.detail) out += `   ${[l.area,l.detail].filter(Boolean).join(" — ")}\n`;
+    });
+    setSummaryText(out);
+  };
+  const openCamSet = useMemo(() => {
+    const set = new Set();
+    (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l) && l.cam) set.add(l.cam); });
+    return set;
+  }, [logs]);
   const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [dashView]);
   const dashInstall = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [dashView]);
   // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
@@ -963,7 +1026,7 @@ function App() {
 
   if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}>📹</div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดสมุดเวร…</div></div></div>;
 
-  const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
+  const ALL_NAV = [["record","📝","บันทึก","all"],["jobs","🛠","งานซ่อม","admin"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
   const canSeeIp = isAdmin || isVendor; // ช่างต้องใช้ IP เข้าไปตรวจกล้อง
   const NAV = isVendor
@@ -990,6 +1053,7 @@ function App() {
         <div style={t.sideCard} className="rb-hideM">
           <div style={t.sideCardTitle}>สถานะระบบ</div>
           <div style={t.sideStat}><span>📹 กล้องทั้งหมด</span><b>{totalCams}</b></div>
+          <div style={t.sideStat}><span>✅ ใช้งานได้</span><b style={{color:"#22C55E"}}>{Math.max(0, totalCams - openCamSet.size)}</b></div>
           <div style={t.sideStat}><span>🔧 รอซ่อม</span><b style={{color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</b></div>
           <div style={t.sideStat}><span>🔌 รอติดตั้งกลับ</span><b style={{color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</b></div>
           <div style={t.sideStat}><span>📄 บันทึกรวม</span><b>{logs.length}</b></div>
@@ -1013,7 +1077,7 @@ function App() {
         {nav==="record" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())} · เพิ่มรายงานสถานะกล้องประจำกะ</div></div>
+              <div><div style={t.h1}>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
             </div>
             <div style={t.recGrid} className="rb-recGrid">
               {/* ฟอร์มซ้าย */}
@@ -1028,7 +1092,7 @@ function App() {
                 <div style={{display:"flex", gap:12, marginTop:2}}>
                   <div style={{flex:1, minWidth:150}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
                   <div style={{flex:1, minWidth:150}}>
-                    <div style={t.label}>🕐 เวลาที่เกิดเหตุ <span style={{color:t.dim, fontWeight:500}}>(ไม่รู้เวลาแน่นอน เว้นว่างได้)</span></div>
+                    <div style={t.label}>🕐 เวลา <span style={{color:t.dim, fontWeight:500}}>(เว้นว่างได้)</span></div>
                     <div style={{display:"flex", gap:8}}>
                       <input type="time" value={timeVal} onChange={e=>setTimeVal(e.target.value)} style={{...t.input, flex:1}}/>
                       <button onClick={()=>setTimeVal(timeVal ? "" : nowHM())} className="tap" style={t.timeBtn} title={timeVal ? "ลบเวลาออก" : "ใส่เวลาปัจจุบัน"}>{timeVal ? "✕" : "⏱"}</button>
@@ -1107,7 +1171,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : " · ยังไม่ได้เลือกช่วง") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
+              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
               <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
@@ -1253,7 +1317,7 @@ function App() {
         {nav==="dash" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? `สรุปวันที่ ${fmtTH(dayFilter)}` : "ภาพรวมสถานะกล้อง"} · เลขใหญ่คือจำนวนที่ยังไม่เสร็จ</div></div>
+              <div><div style={t.h1}>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? fmtTH(dayFilter) : "ภาพรวมสถานะกล้อง"}</div></div>
               <div style={{display:"flex", gap:10, alignItems:"center", marginRight:52, flexWrap:"wrap"}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setDashMode("month")} className="tap" style={dashMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
@@ -1265,38 +1329,86 @@ function App() {
                 }
               </div>
             </div>
-            <div style={t.statGrid} className="rb-statGrid">
+            {/* แถวหลัก: สุขภาพกล้องรวม + งานที่ต้องตามวันนี้ */}
+            <div style={t.heroGrid} className="rb-heroGrid">
+              {(() => {
+                const ok = Math.max(0, totalCams - openCamSet.size);
+                // ห้ามปัดขึ้นเป็น 100% ถ้ายังมีกล้องเสียอยู่ เพราะจะอ่านว่าไม่มีปัญหา
+                const pct = !totalCams ? 100 : (ok===totalCams ? 100 : Math.max(1, Math.floor((ok/totalCams)*100)));
+                return (
+                  <button onClick={()=>drillTo({fix:"open"})} className="tap" style={t.heroCard} title="ดูกล้องที่มีปัญหาทั้งหมด">
+                    <div style={t.heroLabel}>กล้องใช้งานได้ ณ ปัจจุบัน</div>
+                    <div style={t.heroRow}>
+                      <span style={t.heroNum}>{ok}</span>
+                      <span style={t.heroOf}>/ {totalCams} ตัว</span>
+                      <span style={t.heroPct}>{pct}%</span>
+                    </div>
+                    <div style={t.healthTrack}><div style={{...t.healthFill, width:`${pct}%`}}/></div>
+                    <div style={t.heroFoot}>
+                      {openCamSet.size ? `มีปัญหา ${openCamSet.size} ตัว` : "ไม่มีกล้องค้างงาน"}
+                    </div>
+                  </button>
+                );
+              })()}
+
+              <button onClick={()=>drillTo({fix:"wait_repair"})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#F59E0B", opacity:dashRepair?1:.6}} title="งานที่ต้องตามช่างมาซ่อม">
+                <div style={t.actTop}><span style={{fontSize:16}}>🔧</span><span style={t.actLabel}>รอซ่อม</span></div>
+                <div style={{...t.actNum, color:dashRepair?"#F59E0B":t.dim}}>{dashRepair}</div>
+                <div style={t.actDesc}>ต้องตามช่าง</div>
+              </button>
+
+              <button onClick={()=>drillTo({fix:"wait_install"})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#0EA5E9", opacity:dashInstall?1:.6}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
+                <div style={t.actTop}><span style={{fontSize:16}}>🔌</span><span style={t.actLabel}>รอติดตั้งกลับ</span></div>
+                <div style={{...t.actNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
+                <div style={t.actDesc}>รอหน้างานพร้อม</div>
+              </button>
+            </div>
+
+            {/* แถวรอง: สถิติตามประเภทเหตุการณ์ในช่วงที่เลือก */}
+            <div style={t.miniHead}>เหตุการณ์ · {dashMode==="day" ? fmtTH(dayFilter) : (mFilter==="all" ? "ทุกเดือน" : TH_M[+mFilter.slice(5)-1])}</div>
+            <div style={t.miniGrid} className="rb-miniGrid">
               {Object.entries(dashCounts).map(([k,v])=>{
-                const track = needsFix(k);                    // สถานะที่มีงานซ่อมถึงจะมียอดค้าง
+                const track = needsFix(k);
                 const open = dashOpen[k] || 0;
                 return (
                   <button key={k} onClick={()=>drillTo({status:k, fix:track&&open?"open":"all"})} className="tap"
-                          style={{...t.bigStat, ...t.bigStatBtn, opacity:v?1:.55}}
-                          title={track ? `${k} ค้างอยู่ ${open} จากทั้งหมด ${v}` : `ดูรายการ ${k} ทั้งหมด`}>
-                    <div style={{fontSize:26}}>{stOf(k).emoji}</div>
-                    <div style={{...t.bigNum, color:track ? (open?"#F59E0B":"#22C55E") : stOf(k).dot}}>{track ? open : v}</div>
-                    <div style={t.bigLabel}>{k}{track && <span style={{fontWeight:500}}> ค้าง</span>}</div>
-                    {track && <div style={t.bigSub}>จากทั้งหมด {v} ครั้ง</div>}
-                    <div style={t.bigHint}>ดูรายการ →</div>
+                          style={{...t.miniTile, opacity:v?1:.5}}
+                          title={track ? `${k} ค้าง ${open} จากทั้งหมด ${v} ครั้ง` : `${k} ${v} ครั้ง`}>
+                    <div style={t.miniTop}>
+                      <span style={{fontSize:18}}>{stOf(k).emoji}</span>
+                      <span style={{...t.miniNum, color: v ? stOf(k).dot : t.dim}}>{v}</span>
+                      <span style={t.miniUnit}>ครั้ง</span>
+                    </div>
+                    <div style={t.miniLabel}>{k}</div>
+                    <div style={{...t.miniSub, color:"#F59E0B"}}>{track && open ? `ค้าง ${open}` : "\u00A0"}</div>
                   </button>
                 );
               })}
-              <button onClick={()=>drillTo({fix:"wait_repair"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashRepair?1:.55}} title="งานที่ต้องตามช่างมาซ่อม">
-                <div style={{fontSize:26}}>🔧</div><div style={{...t.bigNum, color:dashRepair?"#F59E0B":t.dim}}>{dashRepair}</div>
-                <div style={t.bigLabel}>รอซ่อม</div><div style={t.bigSub}>ต้องตามช่าง</div><div style={t.bigHint}>ดูรายการ →</div>
-              </button>
-              <button onClick={()=>drillTo({fix:"wait_install"})} className="tap" style={{...t.bigStat, ...t.bigStatBtn, opacity:dashInstall?1:.55}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
-                <div style={{fontSize:26}}>🔌</div><div style={{...t.bigNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
-                <div style={t.bigLabel}>รอติดตั้งกลับ</div><div style={t.bigSub}>รอหน้างานพร้อม</div><div style={t.bigHint}>ดูรายการ →</div>
-              </button>
             </div>
+
+            {trend.length > 1 && (
+              <div style={{...t.panel, marginBottom:18}}>
+                <div style={t.panelTitle}>📈 จำนวนการแจ้งรายวัน</div>
+                <div style={t.trendWrap}>
+                  {(() => { const mx = Math.max(1, ...trend.map(d=>d[1])); return trend.map(([d,n])=>(
+                    <div key={d} style={t.trendCol} title={`${fmtTH(d)} · ${n} รายการ`}>
+                      <div style={{...t.trendNum, opacity:n?1:.35}}>{n}</div>
+                      <div style={n ? {...t.trendBar, height:`${Math.max(10,(n/mx)*88)}%`} : t.trendBarZero}/>
+                      <div style={t.trendDay}>{+d.slice(8)}</div>
+                    </div>
+                  )); })()}
+                </div>
+              </div>
+            )}
             <div style={t.dashGrid} className="rb-dashGrid">
               <div style={t.panel}>
                 <div style={t.panelTitle}>🔴 กล้องที่ดับบ่อยที่สุด</div>
                 {topCams.length===0 && <div style={t.empty}>ยังไม่มีข้อมูล</div>}
                 {topCams.map(([c,n],i)=>(
                   <div key={c} style={{...t.rankRow, cursor:"pointer"}} onClick={()=>drillTo({cam:c})} title={`ดูประวัติของ ${c}`}>
-                    <span style={t.rankNo}>{["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣"][i]}</span>
+                    <span style={{...t.rankBadge, background: i<3 ? hexA("#F59E0B",dark?.2:.13,dark) : hexA("#94A3B8",dark?.16:.1,dark), color: i<3 ? "#F59E0B" : t.dim}}>{i+1}</span>
                     <span style={t.rankCam}>{c}</span>
                     <div style={t.barTrack}><div style={{...t.barFill, width:`${(n/topCams[0][1])*100}%`}}/></div>
                     <span style={t.rankN}>{n}</span>
@@ -1320,10 +1432,90 @@ function App() {
         )}
       </main>
 
+        {nav==="jobs" && (
+          <div style={t.wrap} className="rb-wrap">
+            <div style={t.pageHead}>
+              <div><div style={t.h1}>งานซ่อม</div><div style={t.h1sub}>{openJobs.length} งานค้าง</div></div>
+              <button onClick={copyJobList} className="tap" style={{...t.exportBtn, marginRight:52}}>📋 คัดลอกรายการ</button>
+            </div>
+
+            <div style={t.filterBar}>
+              <div style={t.dashToggle}>
+                {[["open","ทั้งหมด"],["wait_repair","รอซ่อม"],["wait_install","รอติดตั้งกลับ"],["doing","กำลังทำ"]].map(([k,lb])=>(
+                  <button key={k} onClick={()=>{setJobKind(k); setJobSel([]);}} className="tap" style={jobKind===k?t.dashTgOn:t.dashTg}>{lb}</button>
+                ))}
+              </div>
+              <select value={jobZone} onChange={e=>{setJobZone(e.target.value); setJobSel([]);}} style={jobZone!=="all"?t.selectOn:t.select}>
+                <option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}
+              </select>
+              <button onClick={()=>setJobSel(jobSel.length===openJobs.length ? [] : openJobs.map(l=>l.id))} className="tap" style={t.chip}>
+                {jobSel.length===openJobs.length && openJobs.length ? "ล้างที่เลือก" : "เลือกทั้งหมด"}
+              </button>
+            </div>
+
+            {jobSel.length>0 && (
+              <div style={t.bulkBar}>
+                <div style={t.bulkTitle}>เลือกไว้ {jobSel.length} งาน</div>
+                <div style={t.bulkRow}>
+                  <div style={{flex:"1 1 150px"}}>
+                    <div style={t.label}>📅 วันที่ทำเสร็จ</div>
+                    <input type="date" value={jobDate} onChange={e=>setJobDate(e.target.value)} style={t.input}/>
+                  </div>
+                  <div style={{flex:"1 1 150px"}}>
+                    <div style={t.label}>👷 ผู้ดำเนินการ</div>
+                    <input list="fixbylist2" value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input}/>
+                    <datalist id="fixbylist2">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+                  </div>
+                  <div style={{flex:"2 1 220px"}}>
+                    <div style={t.label}>📝 หมายเหตุ (ต่อท้ายของเดิม)</div>
+                    <input value={jobNote} onChange={e=>setJobNote(e.target.value)} placeholder="เช่น เปลี่ยน Sw ใหม่" style={t.input}/>
+                  </div>
+                </div>
+                <div style={{display:"flex", gap:10, marginTop:12, flexWrap:"wrap"}}>
+                  <button onClick={()=>applyJobs(DOING)} className="tap" style={{...t.dashExport, flex:"1 1 160px"}}>🔵 ทำเครื่องหมายกำลังทำ</button>
+                  <button onClick={()=>applyJobs(DONE)} className="tap" style={{...t.submit, marginTop:0, flex:"1 1 160px"}}>✅ ปิดงาน {jobSel.length} รายการ</button>
+                </div>
+              </div>
+            )}
+
+            <div style={t.cardList}>
+              {openJobs.map(l=>{
+                const on = jobSel.includes(l.id), f = normFix(l.fix), d = daysOpen(l.date);
+                return (
+                  <div key={l.id} style={{...t.jobCard, ...(on ? t.jobCardOn : {})}}
+                       onClick={()=>toggleJob(l.id)}>
+                    <div style={t.jobTop}>
+                      <span style={{display:"flex", alignItems:"center", gap:9}}>
+                        <span style={on?t.ckOn:t.ck}>{on?"✓":""}</span>
+                        <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status}</span>
+                        <span style={{...t.badge, background:hex(FIX[f]||"#94A3B8",dark?.18:.12), color:FIX[f], borderColor:hexA(FIX[f]||"#94A3B8",.3,dark)}}>{f}</span>
+                      </span>
+                      <span style={{...t.jobWhen, color: d>7 ? "#EF4444" : t.dim, fontWeight: d>7?700:400}}>ค้าง {d} วัน</span>
+                    </div>
+                    <div style={t.jobCam}>{l.cam||"—"}</div>
+                    <div style={t.jobPlace}>
+                      {l.zone && <span>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>}
+                      {l.area && <span> · {l.area}</span>}
+                      {l.cam && ips[l.cam] && <span style={t.jobIp}> · {ips[l.cam]}</span>}
+                    </div>
+                    {l.detail && <div style={t.jobDetail}>{l.detail}</div>}
+                    {l.fixNote && <div style={{...t.jobPlace, color:"#F59E0B"}}>📝 {l.fixNote}</div>}
+                    <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
+                      <span style={t.jobBy}>แจ้ง {fmtTH(l.date)}{l.time?` ${l.time} น.`:""} · {l.by||"—"}</span>
+                      <button onClick={()=>openFix(l.id)} className="tap" style={{...t.editBtn, marginLeft:"auto"}}>🛠 อัปเดตทีละงาน</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {openJobs.length===0 && <div style={{...t.jobCard, textAlign:"center", color:t.dim, padding:40}}>✅ ไม่มีงานค้าง</div>}
+            </div>
+          </div>
+        )}
+
         {nav==="cams" && (
           <div style={t.wrap}>
             <div style={t.pageHead}>
-              <div><div style={t.h1}>จัดการกล้อง & โซน</div><div style={t.h1sub}>ทั้งหมด {totalCams} กล้อง · {ZONES.length} โซน · แก้ไขรายชื่อกล้องที่ใช้ในระบบ</div></div>
+              <div><div style={t.h1}>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
               <button onClick={resetTree} className="tap" style={{...t.resetBtn, marginRight:52}}>↺ รีเซ็ตข้อมูลกล้อง</button>
             </div>
             <div style={t.camManGrid} className="rb-camManGrid">
@@ -1452,7 +1644,7 @@ function App() {
 
               <div style={{...t.panel, marginTop:16}}>
                 <div style={t.panelTitle}>👤 จัดการบัญชีผู้ใช้</div>
-                <div style={t.pwHint}>เพิ่ม/ลบบัญชีล็อกอิน และกำหนดสิทธิ์ · บัญชีใหม่จะเป็นตัวเลือกผู้รายงานด้วย</div>
+                <div style={t.pwHint}>บัญชีล็อกอินและสิทธิ์</div>
 
                 <div style={t.accList}>
                   {Object.entries(accounts).map(([u,a])=>(
@@ -1493,7 +1685,7 @@ function App() {
 
               <div style={t.panel}>
                 <div style={t.panelTitle}>💾 สำรอง & กู้คืนข้อมูล</div>
-                <div style={t.dangerText}>ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นประจำ ถ้าข้อมูลหายให้เลือกไฟล์สำรองเพื่อกู้กลับ ระบบจะรวมกับของเดิมโดยไม่ลบทับ</div>
+                <div style={t.dangerText}>ดาวน์โหลดเก็บไว้เป็นประจำ · กู้คืนแล้วรวมกับของเดิม ไม่ลบทับ</div>
                 <div style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
                   <button onClick={exportBackup} className="tap" style={{...t.exportBtn, padding:"13px 20px", fontSize:14}}>💾 ดาวน์โหลดไฟล์สำรอง ({(logs||[]).length} รายการ)</button>
                   <label className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14, display:"inline-block", cursor:"pointer"}}>
@@ -1559,7 +1751,7 @@ function App() {
               {fixBox.repBy && <div style={t.jobPlace}>ผู้แจ้ง: {fixBox.repBy}</div>}
             </div>
 
-            <div style={t.pwHint}>{fixBox.locked ? "งานนี้ปิดแล้ว — ย้อนสถานะจากหน้านี้ไม่ได้ แก้ได้เฉพาะวันที่ ผู้ดำเนินการ และหมายเหตุ" : "ขั้นที่ 1 เลือกสถานะปัจจุบันของงาน"}</div>
+            <div style={t.pwHint}>{fixBox.locked ? "งานปิดแล้ว · ย้อนสถานะที่นี่ไม่ได้" : "เลือกสถานะงาน"}</div>
             <div style={t.stepGrid}>
               {FIX_STEPS.map(st=>{
                 // ขั้นถัดไปตามธรรมชาติของงาน: รอ → กำลังทำ → ปิดงาน
@@ -1578,9 +1770,9 @@ function App() {
                 </button>;
               })}
             </div>
-            {fixBox.locked && <div style={{...t.pwHint, marginTop:10, marginBottom:0}}>ถ้าลงสถานะผิด ให้ปิดหน้านี้แล้วกดปุ่ม ✏️ ในตารางเพื่อย้อนสถานะ</div>}
+            {fixBox.locked && <div style={{...t.pwHint, marginTop:10, marginBottom:0}}>ย้อนสถานะได้ที่ปุ่ม ✏️</div>}
             {fixBox.fix===DONE ? (<>
-            <div style={{...t.pwHint, marginTop:14, marginBottom:6}}>ขั้นที่ 2 บันทึกผลงาน</div>
+
             <div style={{marginTop:4}}>
               <div style={t.label}>📅 วันที่งานเสร็จ</div>
               <input type="date" value={fixBox.fixDate} onChange={e=>setFixBox({...fixBox, fixDate:e.target.value})} style={t.input}/>
@@ -1614,11 +1806,11 @@ function App() {
               </div>
             </div>
             </>) : (
-              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ — ระบบจะไม่บันทึกวันที่งานเสร็จ (รายการนี้จะค้างอยู่ในยอด "รอซ่อม" หรือ "รอติดตั้งกลับ")</div>
+              <div style={{...t.note, marginTop:14}}>ยังไม่เสร็จ · ไม่บันทึกวันที่</div>
             )}
 
             <div style={{marginTop:14}}>
-              <div style={t.label}>📝 หมายเหตุ / สาเหตุ <span style={{color:t.dim, fontWeight:500}}>(ใส่ได้ตั้งแต่ตอนรับงาน)</span></div>
+              <div style={t.label}>📝 หมายเหตุ / สาเหตุ</div>
               <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder="เช่น กล้องดับเนื่องจากถอดกล้องทำฝ้า" style={t.input}/>
               <div style={{display:"flex", gap:7, marginTop:8, flexWrap:"wrap"}}>
                 {NOTE_PRESETS.map(v=>(
@@ -1695,7 +1887,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setEditBox(null)}>
           <div style={{...t.modalCard, maxWidth:560, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}>✏️ แก้ไขบันทึก</div>
-            <div style={t.pwHint}>แก้ไขข้อมูลรายการนี้ แล้วกด "บันทึกการแก้ไข"</div>
+
 
             <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
               <div style={{flex:1, minWidth:150}}>
@@ -1792,7 +1984,7 @@ function App() {
                 : <div style={t.uploadBox}>
                     <div style={{fontSize:22, marginBottom:6}}>📸</div>
                     <input type="file" accept="image/*" onChange={pickEditImg} style={t.fileInput}/>
-                    <div style={{fontSize:12, color:t.dim, marginTop:8}}>เลือกไฟล์รูป (JPG หรือ PNG) รูปจะขึ้นให้ดูตรงนี้ก่อนกดบันทึก</div>
+                    <div style={{fontSize:12, color:t.dim, marginTop:8}}>ไฟล์ JPG หรือ PNG</div>
                   </div>}
             </>)}
 
@@ -1807,7 +1999,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setShowBulk(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}>📥 นำเข้ากล้องดับหลายตัว</div>
-            <div style={t.pwHint}>วางชื่อกล้องทีละบรรทัด (หรือคั่นด้วยจุลภาค) ระบบจะหาพื้นที่ให้อัตโนมัติ</div>
+            <div style={t.pwHint}>วางชื่อกล้องทีละบรรทัด</div>
             <div style={{display:"flex", gap:10, marginBottom:12, flexWrap:"wrap"}}>
               <div style={{flex:1, minWidth:140}}>
                 <div style={t.label}>📅 วันที่</div>
@@ -1833,7 +2025,7 @@ function App() {
             <div style={t.panelTitle}>📋 สรุปประจำวัน (แก้ไขได้)</div>
             {summaryCopied
               ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย · แก้ข้อความแล้วกดคัดลอกอีกครั้งได้</div>
-              : <div style={t.pwHint}>✏️ แก้ไขข้อความได้ตามต้องการ แล้วกดปุ่ม "คัดลอก" ด้านล่าง</div>
+              : <div style={t.pwHint}>แก้ข้อความได้ก่อนคัดลอก</div>
             }
             <textarea id="sumArea" value={summaryText} onChange={e=>setSummaryText(e.target.value)} style={t.summaryArea} placeholder="ข้อความสรุป..."/>
             <div style={{display:"flex", gap:10, marginTop:14}}>
@@ -1949,6 +2141,12 @@ function mk(dark){
     dRow:{display:"flex", gap:12, fontSize:14, alignItems:"flex-start"},
     dK:{width:92, flexShrink:0, color:dim, fontSize:12.5, paddingTop:1},
     dV:{color:text, flex:1, wordBreak:"break-word"},
+    jobCardOn:{borderColor:hexA(accent,.55,dark), background:hexA(accent,dark?.12:.07,dark), boxShadow:`0 0 0 1px ${hexA(accent,.25,dark)}`},
+    bulkBar:{background:surf, border:`1px solid ${hexA(accent,.4,dark)}`, borderRadius:15, padding:"14px 16px", marginBottom:14, boxShadow:shadow},
+    bulkTitle:{fontSize:13.5, fontWeight:700, color:accent, marginBottom:8},
+    bulkRow:{display:"flex", gap:12, flexWrap:"wrap"},
+    ck:{width:20, height:20, borderRadius:6, border:`1.5px solid ${border}`, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0},
+    ckOn:{width:20, height:20, borderRadius:6, border:`1.5px solid ${accent}`, background:accent, color:"#fff", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, flexShrink:0},
     cardList:{display:"flex", flexDirection:"column", gap:11},
     jobCard:{background:surf, border:`1px solid ${border}`, borderRadius:15, padding:"13px 15px", boxShadow:shadow, cursor:"pointer"},
     cardImg:{width:78, height:58, objectFit:"cover", borderRadius:8, border:`1.5px solid ${border}`, cursor:"pointer"},
@@ -1981,6 +2179,37 @@ function mk(dark){
     delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#EF4444", fontWeight:600},
     editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#3B82F6", fontWeight:600},
 
+    trendWrap:{display:"flex", alignItems:"flex-end", justifyContent:"flex-start", gap:8, height:124, marginTop:8},
+    trendCol:{flex:1, minWidth:20, maxWidth:54, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%", cursor:"default"},
+    trendNum:{fontSize:10.5, color:dim, fontWeight:700, marginBottom:4},
+    trendBar:{width:"100%", maxWidth:26, borderRadius:"6px 6px 2px 2px", background:`linear-gradient(180deg,${accent},${hexA(accent,.55,dark)})`},
+    trendBarZero:{width:"100%", maxWidth:26, height:3, borderRadius:3, background:hexA("#94A3B8",dark?.3:.22,dark)},
+    trendDay:{fontSize:10.5, color:dim, marginTop:6},
+    trendFoot:{fontSize:11, color:dim, marginTop:10},
+    rankBadge:{width:22, height:22, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11.5, fontWeight:800, flexShrink:0},
+    heroGrid:{display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:14, marginBottom:18},
+    heroCard:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"18px 22px", textAlign:"left", boxShadow:shadow, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", justifyContent:"space-between"},
+    heroLabel:{fontSize:12.5, color:dim, fontWeight:600, letterSpacing:".2px"},
+    heroRow:{display:"flex", alignItems:"baseline", gap:9, marginTop:6, flexWrap:"wrap"},
+    heroNum:{fontSize:44, fontWeight:800, color:"#22C55E", lineHeight:1, letterSpacing:"-1.5px"},
+    heroOf:{fontSize:14, color:dim, fontWeight:600},
+    heroPct:{marginLeft:"auto", fontSize:13, fontWeight:700, color:"#22C55E", background:hexA("#22C55E",dark?.16:.1,dark), borderRadius:20, padding:"3px 11px"},
+    healthTrack:{height:7, borderRadius:7, background:hexA("#94A3B8",dark?.18:.14,dark), marginTop:14, overflow:"hidden"},
+    healthFill:{height:"100%", borderRadius:7, background:"linear-gradient(90deg,#22C55E,#4ADE80)"},
+    heroFoot:{fontSize:12, color:dim, marginTop:10},
+    actTile:{background:surf, border:`1px solid ${border}`, borderLeft:"4px solid", borderRadius:16, padding:"18px 18px", textAlign:"left", boxShadow:shadow, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", justifyContent:"space-between"},
+    actTop:{display:"flex", alignItems:"center", gap:7},
+    actNum:{fontSize:34, fontWeight:800, lineHeight:1, margin:"10px 0 4px", letterSpacing:"-1px"},
+    actLabel:{fontSize:13.5, fontWeight:700, color:text},
+    actDesc:{fontSize:11.5, color:dim, marginTop:2},
+    miniHead:{fontSize:13, color:dim, fontWeight:600, marginBottom:11},
+    miniGrid:{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:13, marginBottom:20},
+    miniTile:{background:surf, border:`1px solid ${border}`, borderRadius:15, padding:"16px 18px", textAlign:"left", cursor:"pointer", fontFamily:"inherit", minHeight:108, boxShadow:shadow, display:"flex", flexDirection:"column", justifyContent:"space-between"},
+    miniTop:{display:"flex", alignItems:"baseline", gap:8},
+    miniNum:{fontSize:30, fontWeight:800, lineHeight:1, letterSpacing:"-.5px"},
+    miniUnit:{fontSize:11.5, color:dim, fontWeight:600},
+    miniLabel:{fontSize:14, color:text, fontWeight:700, marginTop:9, lineHeight:1.3},
+    miniSub:{fontSize:12, marginTop:3, fontWeight:600},
     statGrid:{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20},
     bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
     bigNum:{fontSize:44, fontWeight:600, fontFamily:mono, lineHeight:1, margin:"12px 0 7px"},
