@@ -247,8 +247,6 @@ function App() {
   const [imgCache, setImgCache] = useState({}); // id → dataURL ของรูปที่โหลดมาแล้ว
   const [detailBox, setDetailBox] = useState(null); // การ์ดรายละเอียดของบันทึกที่กดดู
   const [jobSel, setJobSel] = useState([]);          // งานที่ติ๊กไว้เพื่อปิดทีเดียวหลายรายการ
-  const [jobZone, setJobZone] = useState("all");
-  const [jobKind, setJobKind] = useState("open");    // open / wait_repair / wait_install / doing
   const [jobDate, setJobDate] = useState(todayISO());
   const [jobBy, setJobBy] = useState("");
   const [jobNote, setJobNote] = useState("");
@@ -399,7 +397,7 @@ function App() {
   useEffect(()=>{ pushCloud("reporters", reporters); }, [reporters]);
   useEffect(()=>{ pushCloud("passwords", passwords); }, [passwords]);
   // กันพนักงานเข้าหน้า admin (วางกับ hooks อื่นก่อน early return)
-  useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff"||nav==="jobs")) setNav("record"); }, [auth, nav]);
+  useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
   useEffect(() => {
@@ -470,7 +468,7 @@ function App() {
   }, [logs, mFilter, sFilter, zFilter, histMode, histDay, histFrom, histTo, isVendor, fFilter, byFilter, camQ, dateDesc]);
   const totalPages = Math.max(1, pageSize ? Math.ceil(view.length/pageSize) : 1);
   const pageRows = useMemo(() => pageSize ? view.slice((page-1)*pageSize, page*pageSize) : view, [view, page, pageSize]);
-  useEffect(() => { setPage(1); }, [mFilter, sFilter, zFilter, byFilter, fFilter, camQ, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
+  useEffect(() => { setPage(1); setJobSel([]); }, [mFilter, sFilter, zFilter, byFilter, fFilter, camQ, histMode, histDay, histFrom, histTo, pageSize, dateDesc]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   // ดึงรูปเฉพาะแถวที่แสดงอยู่ ไม่ต้องโหลดทั้งหมด
   useEffect(() => { pageRows.forEach(l => {
@@ -526,16 +524,6 @@ function App() {
     }
     return out.slice(-14); // เอา 14 วันล่าสุดพอ ไม่งั้นแท่งเล็กจนอ่านไม่ออก
   }, [dashView]);
-  // คิวงานที่ยังไม่ปิด สำหรับหน้าไอที
-  const openJobs = useMemo(() => {
-    let a = (logs||[]).filter(l => needsFix(l.status) && !fixDone(l));
-    if (jobZone!=="all") a = a.filter(l => l.zone===jobZone);
-    const f = jobKind;
-    if (f==="wait_repair")  a = a.filter(l => normFix(l.fix)===WAIT_REPAIR);
-    if (f==="wait_install") a = a.filter(l => normFix(l.fix)===WAIT_INSTALL);
-    if (f==="doing")        a = a.filter(l => normFix(l.fix)===DOING);
-    return a.sort((x,y)=> x.date===y.date ? x.id-y.id : (x.date<y.date?-1:1)); // เก่าสุดขึ้นก่อน ค้างนานต้องรีบ
-  }, [logs, jobZone, jobKind]);
   const daysOpen = (iso) => Math.max(0, Math.round((Date.now() - new Date(iso+"T00:00:00").getTime())/86400000));
   const toggleJob = (id) => setJobSel(v => v.includes(id) ? v.filter(x=>x!==id) : [...v, id]);
   const applyJobs = (target) => {
@@ -553,13 +541,15 @@ function App() {
     setJobSel([]); setJobNote("");
   };
   const copyJobList = () => {
-    let out = `🛠 งานซ่อมกล้องค้างอยู่ ${openJobs.length} รายการ\n━━━━━━━━━━━━━\n`;
-    openJobs.forEach(l=>{
+    const rows = view.filter(l=>needsFix(l.status) && !fixDone(l));
+    let out = `🛠 งานซ่อมกล้องค้างอยู่ ${rows.length} รายการ\n━━━━━━━━━━━━━\n`;
+    rows.forEach(l=>{
       out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ค้าง ${daysOpen(l.date)} วัน\n`;
       if (l.area || l.detail) out += `   ${[l.area,l.detail].filter(Boolean).join(" — ")}\n`;
     });
     setSummaryText(out);
   };
+  const selectableIds = useMemo(() => view.filter(l=>needsFix(l.status) && !fixDone(l)).map(l=>l.id), [view]);
   const openCamSet = useMemo(() => {
     const set = new Set();
     (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l) && l.cam) set.add(l.cam); });
@@ -1026,8 +1016,10 @@ function App() {
 
   if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}>📹</div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดสมุดเวร…</div></div></div>;
 
-  const ALL_NAV = [["record","📝","บันทึก","all"],["jobs","🛠","งานซ่อม","admin"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
+  const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
+  // โหมดจัดการงาน: โผล่เฉพาะผู้ดูแล และเฉพาะตอนกรองเป็นงานที่ยังไม่เสร็จ
+  const jobMode = isAdmin && ["open","wait_repair","wait_install","doing"].includes(fFilter);
   const canSeeIp = isAdmin || isVendor; // ช่างต้องใช้ IP เข้าไปตรวจกล้อง
   const NAV = isVendor
     ? [["history","🔧","งานซ่อม"]]
@@ -1204,19 +1196,54 @@ function App() {
               <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={byFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
               <input value={camQ} onChange={e=>setCamQ(e.target.value)} placeholder="🔍 ค้นหาชื่อกล้อง" style={{...(camQ?t.selectOn:t.select), width:170, fontFamily:camQ?mono:"inherit"}}/>
 
+              {jobMode && selectableIds.length>0 && (<>
+                <div style={t.filterDiv} className="rb-hideM"/>
+                <button onClick={()=>setJobSel(jobSel.length===selectableIds.length ? [] : selectableIds)} className="tap" style={jobSel.length?t.selectOn:t.select}>
+                  {jobSel.length===selectableIds.length ? "ล้างที่เลือก" : `เลือกทั้งหมด (${selectableIds.length})`}
+                </button>
+                <button onClick={copyJobList} className="tap" style={t.select}>📋 คัดลอกรายการ</button>
+              </>)}
               {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||camQ||histMode!=="month") && (
                 <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setCamQ("");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
               )}
             </div>
+            {jobMode && jobSel.length>0 && (
+              <div style={t.bulkBar}>
+                <div style={t.bulkTitle}>เลือกไว้ {jobSel.length} งาน</div>
+                <div style={t.bulkRow}>
+                  <div style={{flex:"1 1 150px"}}>
+                    <div style={t.label}>📅 วันที่ทำเสร็จ</div>
+                    <input type="date" value={jobDate} onChange={e=>setJobDate(e.target.value)} style={t.input}/>
+                  </div>
+                  <div style={{flex:"1 1 150px"}}>
+                    <div style={t.label}>👷 ผู้ดำเนินการ</div>
+                    <input list="fixbylist2" value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input}/>
+                    <datalist id="fixbylist2">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+                  </div>
+                  <div style={{flex:"2 1 220px"}}>
+                    <div style={t.label}>📝 หมายเหตุ (ต่อท้ายของเดิม)</div>
+                    <input value={jobNote} onChange={e=>setJobNote(e.target.value)} placeholder="เช่น เปลี่ยน Sw ใหม่" style={t.input}/>
+                  </div>
+                </div>
+                <div style={{display:"flex", gap:10, marginTop:12, flexWrap:"wrap"}}>
+                  <button onClick={()=>applyJobs(DOING)} className="tap" style={{...t.dashExport, flex:"1 1 160px"}}>🔵 กำลังทำ</button>
+                  <button onClick={()=>applyJobs(DONE)} className="tap" style={{...t.submit, marginTop:0, flex:"1 1 160px"}}>✅ ปิดงาน {jobSel.length} รายการ</button>
+                </div>
+              </div>
+            )}
             {asCards ? (
               <div style={t.cardList}>
                 {pageRows.map(l=>{
                   const before = imgOf(l), after = imgFixOf(l), f = normFix(l.fix);
                   return (
-                    <div key={l.id} style={t.jobCard} onClick={()=>setDetailBox(l)}>
+                    <div key={l.id} style={{...t.jobCard, ...(jobMode && jobSel.includes(l.id) ? t.jobCardOn : {})}}
+                         onClick={()=>{ const pick = jobMode && needsFix(l.status) && !fixDone(l); pick ? toggleJob(l.id) : setDetailBox(l); }}>
                       <div style={t.jobTop}>
-                        <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
-                        <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""} · {l.shift}</span>
+                        <span style={{display:"flex", alignItems:"center", gap:9}}>
+                          {jobMode && needsFix(l.status) && !fixDone(l) && <span style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</span>}
+                          <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
+                        </span>
+                        <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""}{needsFix(l.status)&&!fixDone(l) ? <b style={{color:daysOpen(l.date)>7?"#EF4444":t.dim}}> · ค้าง {daysOpen(l.date)} วัน</b> : ` · ${l.shift}`}</span>
                       </div>
 
                       {l.cam ? <div style={t.jobCam}>{l.cam}</div> : <div style={{...t.jobCam, fontFamily:"inherit", fontSize:14}}>{l.detail||"เหตุการณ์"}</div>}
@@ -1260,6 +1287,7 @@ function App() {
             <div style={t.tableWrap} className="rb-tableWrap">
               <table style={t.table}>
                 <thead><tr>
+                  {jobMode && <th style={{...t.th, width:40}}></th>}
                   <th style={{...t.th, cursor:"pointer", userSelect:"none"}} onClick={()=>setDateDesc(v=>!v)}
                       title="กดเพื่อสลับลำดับวันที่">
                     วันที่ <span style={t.sortTag}>{dateDesc ? "▼ ใหม่→เก่า" : "▲ เก่า→ใหม่"}</span>
@@ -1268,7 +1296,13 @@ function App() {
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
-                    <tr key={l.id} style={{...t.tr, cursor:"pointer"}} onClick={()=>setDetailBox(l)} title="กดเพื่อดูรายละเอียด">
+                    <tr key={l.id} style={{...t.tr, cursor:"pointer", ...(jobMode && jobSel.includes(l.id) ? t.rowSel : {})}}
+                        onClick={()=>setDetailBox(l)} title="กดเพื่อดูรายละเอียด">
+                      {jobMode && <td style={t.td} onClick={e=>e.stopPropagation()}>
+                        {needsFix(l.status) && !fixDone(l)
+                          ? <button onClick={()=>toggleJob(l.id)} className="tap" style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</button>
+                          : null}
+                      </td>}
                       <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}>🕐 {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
                       <td style={t.td}><span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.15:.12), color:stOf(l.status).dot}}>{stOf(l.status).emoji} {l.status}</span></td>
@@ -1276,11 +1310,11 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:daysOpen(l.date)>7?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>ค้าง {daysOpen(l.date)} วัน</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
-                  {view.length===0 && <tr><td colSpan={9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
+                  {view.length===0 && <tr><td colSpan={jobMode?10:9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1431,86 +1465,6 @@ function App() {
           </div>
         )}
       </main>
-
-        {nav==="jobs" && (
-          <div style={t.wrap} className="rb-wrap">
-            <div style={t.pageHead}>
-              <div><div style={t.h1}>งานซ่อม</div><div style={t.h1sub}>{openJobs.length} งานค้าง</div></div>
-              <button onClick={copyJobList} className="tap" style={{...t.exportBtn, marginRight:52}}>📋 คัดลอกรายการ</button>
-            </div>
-
-            <div style={t.filterBar}>
-              <div style={t.dashToggle}>
-                {[["open","ทั้งหมด"],["wait_repair","รอซ่อม"],["wait_install","รอติดตั้งกลับ"],["doing","กำลังทำ"]].map(([k,lb])=>(
-                  <button key={k} onClick={()=>{setJobKind(k); setJobSel([]);}} className="tap" style={jobKind===k?t.dashTgOn:t.dashTg}>{lb}</button>
-                ))}
-              </div>
-              <select value={jobZone} onChange={e=>{setJobZone(e.target.value); setJobSel([]);}} style={jobZone!=="all"?t.selectOn:t.select}>
-                <option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}
-              </select>
-              <button onClick={()=>setJobSel(jobSel.length===openJobs.length ? [] : openJobs.map(l=>l.id))} className="tap" style={t.chip}>
-                {jobSel.length===openJobs.length && openJobs.length ? "ล้างที่เลือก" : "เลือกทั้งหมด"}
-              </button>
-            </div>
-
-            {jobSel.length>0 && (
-              <div style={t.bulkBar}>
-                <div style={t.bulkTitle}>เลือกไว้ {jobSel.length} งาน</div>
-                <div style={t.bulkRow}>
-                  <div style={{flex:"1 1 150px"}}>
-                    <div style={t.label}>📅 วันที่ทำเสร็จ</div>
-                    <input type="date" value={jobDate} onChange={e=>setJobDate(e.target.value)} style={t.input}/>
-                  </div>
-                  <div style={{flex:"1 1 150px"}}>
-                    <div style={t.label}>👷 ผู้ดำเนินการ</div>
-                    <input list="fixbylist2" value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input}/>
-                    <datalist id="fixbylist2">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
-                  </div>
-                  <div style={{flex:"2 1 220px"}}>
-                    <div style={t.label}>📝 หมายเหตุ (ต่อท้ายของเดิม)</div>
-                    <input value={jobNote} onChange={e=>setJobNote(e.target.value)} placeholder="เช่น เปลี่ยน Sw ใหม่" style={t.input}/>
-                  </div>
-                </div>
-                <div style={{display:"flex", gap:10, marginTop:12, flexWrap:"wrap"}}>
-                  <button onClick={()=>applyJobs(DOING)} className="tap" style={{...t.dashExport, flex:"1 1 160px"}}>🔵 ทำเครื่องหมายกำลังทำ</button>
-                  <button onClick={()=>applyJobs(DONE)} className="tap" style={{...t.submit, marginTop:0, flex:"1 1 160px"}}>✅ ปิดงาน {jobSel.length} รายการ</button>
-                </div>
-              </div>
-            )}
-
-            <div style={t.cardList}>
-              {openJobs.map(l=>{
-                const on = jobSel.includes(l.id), f = normFix(l.fix), d = daysOpen(l.date);
-                return (
-                  <div key={l.id} style={{...t.jobCard, ...(on ? t.jobCardOn : {})}}
-                       onClick={()=>toggleJob(l.id)}>
-                    <div style={t.jobTop}>
-                      <span style={{display:"flex", alignItems:"center", gap:9}}>
-                        <span style={on?t.ckOn:t.ck}>{on?"✓":""}</span>
-                        <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status}</span>
-                        <span style={{...t.badge, background:hex(FIX[f]||"#94A3B8",dark?.18:.12), color:FIX[f], borderColor:hexA(FIX[f]||"#94A3B8",.3,dark)}}>{f}</span>
-                      </span>
-                      <span style={{...t.jobWhen, color: d>7 ? "#EF4444" : t.dim, fontWeight: d>7?700:400}}>ค้าง {d} วัน</span>
-                    </div>
-                    <div style={t.jobCam}>{l.cam||"—"}</div>
-                    <div style={t.jobPlace}>
-                      {l.zone && <span>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>}
-                      {l.area && <span> · {l.area}</span>}
-                      {l.cam && ips[l.cam] && <span style={t.jobIp}> · {ips[l.cam]}</span>}
-                    </div>
-                    {l.detail && <div style={t.jobDetail}>{l.detail}</div>}
-                    {l.fixNote && <div style={{...t.jobPlace, color:"#F59E0B"}}>📝 {l.fixNote}</div>}
-                    <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
-                      <span style={t.jobBy}>แจ้ง {fmtTH(l.date)}{l.time?` ${l.time} น.`:""} · {l.by||"—"}</span>
-                      <button onClick={()=>openFix(l.id)} className="tap" style={{...t.editBtn, marginLeft:"auto"}}>🛠 อัปเดตทีละงาน</button>
-                    </div>
-                  </div>
-                );
-              })}
-              {openJobs.length===0 && <div style={{...t.jobCard, textAlign:"center", color:t.dim, padding:40}}>✅ ไม่มีงานค้าง</div>}
-            </div>
-          </div>
-        )}
 
         {nav==="cams" && (
           <div style={t.wrap}>
@@ -2141,6 +2095,7 @@ function mk(dark){
     dRow:{display:"flex", gap:12, fontSize:14, alignItems:"flex-start"},
     dK:{width:92, flexShrink:0, color:dim, fontSize:12.5, paddingTop:1},
     dV:{color:text, flex:1, wordBreak:"break-word"},
+    rowSel:{background:hexA(accent,dark?.12:.07,dark)},
     jobCardOn:{borderColor:hexA(accent,.55,dark), background:hexA(accent,dark?.12:.07,dark), boxShadow:`0 0 0 1px ${hexA(accent,.25,dark)}`},
     bulkBar:{background:surf, border:`1px solid ${hexA(accent,.4,dark)}`, borderRadius:15, padding:"14px 16px", marginBottom:14, boxShadow:shadow},
     bulkTitle:{fontSize:13.5, fontWeight:700, color:accent, marginBottom:8},
