@@ -23,6 +23,8 @@
   input:focus,select:focus{border-color:#2E8B3D !important;}
   @keyframes fade{from{opacity:0;}to{opacity:1;}}
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
+  /* Edge/IE ใส่ไอคอนตากับกากบาทในช่องรหัสผ่านเอง ต้องซ่อน ไม่งั้นซ้อนกับปุ่มของเรา */
+  input::-ms-reveal, input::-ms-clear{display:none !important;}
   .tap{transition:transform .1s ease, background .15s, border-color .15s, color .15s, opacity .15s;}
   .tap:hover{filter:brightness(1.08);}
   .tap:active{transform:scale(.97);}
