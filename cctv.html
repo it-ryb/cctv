@@ -614,18 +614,29 @@ function App() {
     const names = bulkText.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
     if (!names.length) { setToast("กรุณาวางรายชื่อกล้อง"); setTimeout(()=>setToast(""),2400); return; }
     if (!by) { setToast("กรุณาเลือกผู้รายงานก่อน"); setTimeout(()=>setToast(""),2400); return; }
-    const found=[], notFound=[];
-    names.forEach(n=>{ if(camZoneMap[n]) found.push(n); else notFound.push(n); });
+    const found=[], notFound=[], dup=[];
+    names.forEach(n=>{
+      if(!camZoneMap[n]) notFound.push(n);
+      else if(openJobFor(n)) dup.push(n);      // มีงานค้างอยู่แล้ว ไม่ต้องแจ้งซ้ำ
+      else found.push(n);
+    });
+    if (!found.length && dup.length) { setToast(`ทุกตัวมีงานค้างอยู่แล้ว ${dup.length} ตัว ไม่ได้บันทึกซ้ำ`); setTimeout(()=>setToast(""),3400); return; }
     if (!found.length) { setToast("ไม่พบกล้องที่ตรงกับรายชื่อในระบบ"); setTimeout(()=>setToast(""),2800); return; }
     const base = Date.now();
     const newLogs = found.map((n,i)=>({ id:base+i, date:bulkDate, shift, status:"กล้องดับ", zone:camZoneMap[n], cam:n, area:"", detail:"", by, fix:WAIT_REPAIR, img:"" }));
     setLogs([...newLogs, ...logs]);
     setBulkText(""); setShowBulk(false);
     let msg = `✅ บันทึกกล้องดับ ${found.length} ตัวแล้ว`;
-    if (notFound.length) msg += ` (ไม่พบ ${notFound.length}: ${notFound.slice(0,3).join(", ")}${notFound.length>3?"...":""})`;
+    if (notFound.length) msg += ` · ไม่พบ ${notFound.length}`;
+    if (dup.length) msg += ` · ข้ามที่มีงานค้าง ${dup.length}`;
     setToast(msg); setTimeout(()=>setToast(""),4000);
   };
   const submit = () => {
+    const dup = (status!=="ปกติ" && cam) ? openJobFor(cam) : null;
+    if (dup) {
+      setToast(`${cam} มีงานค้างอยู่แล้ว (แจ้ง ${fmtTH(dup.date)}) บันทึกซ้ำไม่ได้`);
+      setTimeout(()=>setToast(""),3600); return;
+    }
     const id = Date.now();
     const imgVal = (status==="ปกติ" || !img) ? "" : saveImage(id, img); // เก็บรูปแยก บันทึกเก็บแค่ตัวอ้างอิง
     const e = { id, date:dateVal, time:timeVal, shift, status, zone:status==="ปกติ"?"":zone, cam:status==="ปกติ"?"":cam, area:status==="ปกติ"?"":area, detail:status==="ปกติ"?"":detail, by:by||"—", fix:needsFix(status)?defaultFix(status):"-", img:imgVal };
@@ -1009,7 +1020,10 @@ function App() {
   const addRep = () => { const v=newRep.trim(); if(!v||reporters.includes(v))return; setReporters([...reporters,v]); setNewRep(""); setToast("เพิ่มพนักงานแล้ว"); setTimeout(()=>setToast(""),2000); };
   const delRep = (i) => { const name=reporters[i]; askConfirm(`ลบชื่อ "${name}" ออกจากรายชื่อพนักงาน?`, ()=>{ setReporters(reporters.filter((_,x)=>x!==i)); if(by===name)setBy(""); }); };
   const saveEdit = () => { const v=editVal.trim(); if(!v){setEditIdx(-1);return;} setReporters(reporters.map((r,i)=>i===editIdx?v:r)); setEditIdx(-1); setEditVal(""); };
-  const canSubmit = by && (status==="ปกติ" || (needsFix(status) && cam) || (status==="เหตุการณ์อื่น" && detail.trim()));
+  // กล้องที่ยังมีงานค้างอยู่ ห้ามแจ้งซ้ำ จะได้ไม่มีงานซ้ำในคิวและตัวเลขไม่เพี้ยน
+  const openJobFor = (c) => !c ? null : (logs||[]).find(l => l.cam===c && needsFix(l.status) && !fixDone(l));
+  const dupJob = (status!=="ปกติ" && cam) ? openJobFor(cam) : null;
+  const canSubmit = by && !dupJob && (status==="ปกติ" || (needsFix(status) && cam) || (status==="เหตุการณ์อื่น" && detail.trim()));
   // ── หน้า Login ──
   if (auth === undefined) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}></div>;
   if (!auth) return (
@@ -1155,6 +1169,17 @@ function App() {
                   {reporters.length===0 && <div style={t.empty}>ยังไม่มีพนักงาน — เพิ่มที่หน้า "จัดการพนักงาน"</div>}
                 </div>
                 {!by && <div style={t.reqNote}>⚠️ กรุณาเลือกชื่อผู้รายงานก่อนบันทึก</div>}
+                {dupJob && (
+                  <div style={t.dupWarn}>
+                    <div style={{fontWeight:700, marginBottom:4}}>⚠️ กล้องนี้มีงานค้างอยู่แล้ว</div>
+                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} โดย {dupJob.by||"—"}</div>
+                    {dupJob.fixNote && <div style={t.dupLine}>📝 {dupJob.fixNote}</div>}
+                    <div style={{display:"flex", gap:9, marginTop:10, flexWrap:"wrap"}}>
+                      <button onClick={()=>openFix(dupJob.id)} className="tap" style={t.dupBtn}>🛠 อัปเดตงานเดิม</button>
+                      <button onClick={()=>{setNav("history"); setCamQ(cam); setFFilter("all");}} className="tap" style={t.dupBtn}>📋 ดูประวัติกล้องนี้</button>
+                    </div>
+                  </div>
+                )}
                 <button onClick={submit} disabled={!canSubmit} className="tap" style={{...t.submit, opacity:canSubmit?1:.4}}>💾 บันทึกรายงาน</button>
               </div>
 
@@ -2112,6 +2137,9 @@ function mk(dark){
     imgWrap:{position:"relative", borderRadius:13, overflow:"hidden"},
     imgPrev:{width:"100%", maxHeight:260, objectFit:"cover", borderRadius:13, display:"block", cursor:"pointer"},
     imgDel:{position:"absolute", top:10, right:10, padding:"7px 13px", borderRadius:9, border:"none", background:"rgba(0,0,0,.65)", color:"#fff", fontSize:12, fontWeight:600},
+    dupWarn:{background:hexA("#F59E0B",dark?.14:.09,dark), border:`1px solid ${hexA("#F59E0B",.4,dark)}`, borderRadius:13, padding:"13px 15px", marginTop:14, fontSize:13.5, color:text},
+    dupLine:{fontSize:12.5, color:dim, marginTop:2},
+    dupBtn:{padding:"9px 14px", borderRadius:10, border:`1px solid ${hexA("#F59E0B",.45,dark)}`, background:"transparent", color:"#F59E0B", fontSize:13, fontWeight:600},
     submit:{width:"100%", marginTop:26, padding:"17px", borderRadius:15, border:"none", background:G, color:"#fff", fontSize:16.5, fontWeight:600, letterSpacing:.2, display:"block", boxShadow:`0 6px 20px ${hexA("#22C55E",.25,dark)}`},
 
     miniLog:{display:"flex", gap:11, padding:"12px 13px 12px 0", background:surf2, border:`1px solid ${border}`, borderRadius:13, overflow:"hidden"},
