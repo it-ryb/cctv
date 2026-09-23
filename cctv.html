@@ -32,9 +32,8 @@
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
     .rb-side .rb-hideM{display:none !important;}
-    .rb-loginSplit{grid-template-columns:1fr !important; max-width:430px !important;}
-    .rb-brandSide{display:none !important;}
-    .rb-mobileLogo{display:block !important;}
+    .rb-loginBox{grid-template-columns:1fr !important; max-width:420px !important;}
+    .rb-loginSide{display:none !important;}
     .rb-nav{flex-direction:row !important; flex:1 !important;}
     .rb-recGrid{grid-template-columns:1fr !important;}
     .rb-dashGrid{grid-template-columns:1fr !important;}
@@ -1058,46 +1057,46 @@ function App() {
   if (auth === undefined) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}></div>;
   if (!auth) return (
     <div style={t.loginWrap}>
-      <div style={t.loginSplit} className="rb-loginSplit">
+      <div style={t.loginBox} className="rb-loginBox">
 
-        {/* ฝั่งซ้าย: แบรนด์ + บอกว่าระบบทำอะไร */}
-        <div style={t.loginBrand} className="rb-brandSide">
-          <div style={t.loginGrid}/>
+        {/* ฝั่งซ้าย: แผงสีฟ้ากับวงกลมนุ่ม ๆ */}
+        <div style={t.loginSide} className="rb-loginSide">
+          <div style={t.circA}/>
+          <div style={t.circB}/>
           <div style={{position:"relative"}}>
-            <img src={LOGO} alt="RAYONGBOARD" style={t.brandLogo}/>
-            <div style={t.brandTitle}>CCTV<br/>RAYONGBOARD</div>
-            <div style={t.brandSub}>ระบบบันทึกสถานะกล้องและติดตามงานซ่อม</div>
-            <div style={t.brandList}>
-              <div style={t.brandItem}><span>📝</span> บันทึกเหตุการณ์ประจำกะ</div>
-              <div style={t.brandItem}><span>🛠</span> ติดตามงานซ่อมจนปิดงาน</div>
-              <div style={t.brandItem}><span>📊</span> สรุปรายงานส่งรายเดือน</div>
+            <img src={LOGO} alt="RAYONGBOARD" style={t.sideLogo}/>
+            <div style={t.sideName}>CCTV<br/>RAYONGBOARD</div>
+            <div style={t.sideTxt}>ระบบบันทึกสถานะกล้องและติดตามงานซ่อม</div>
+            <div style={t.sideList}>
+              <div style={t.sideItem}><span>📝</span> บันทึกเหตุการณ์ประจำกะ</div>
+              <div style={t.sideItem}><span>🛠</span> ติดตามงานซ่อมจนปิดงาน</div>
+              <div style={t.sideItem}><span>📊</span> สรุปรายงานส่งรายเดือน</div>
             </div>
           </div>
-          <div style={t.brandFoot}>Rayong · ใช้งานภายในองค์กร</div>
+          <div style={t.sideFoot}>Rayong · ใช้งานภายในองค์กร</div>
         </div>
 
-        {/* ฝั่งขวา: ฟอร์มเข้าสู่ระบบ */}
+        {/* ฝั่งขวา: ฟอร์ม */}
         <div style={t.loginCard}>
-        <img src={LOGO} alt="RAYONGBOARD" style={t.loginLogo} className="rb-mobileLogo"/>
-        <div style={t.loginKicker}>CCTV RAYONGBOARD</div>
-        <div style={t.loginTitle}>เข้าสู่ระบบ</div>
+          <img src={LOGO} alt="RAYONGBOARD" style={t.loginLogo}/>
+          <div style={t.loginKicker}>CCTV RAYONGBOARD</div>
+          <div style={t.loginTitle}>เข้าสู่ระบบ</div>
 
-        <div style={t.label}>👤 ชื่อผู้ใช้</div>
-        <input value={loginUser} onChange={e=>{setLoginUser(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="ชื่อผู้ใช้" style={t.input} autoFocus/>
+          <div style={t.label}>👤 ชื่อผู้ใช้</div>
+          <input value={loginUser} onChange={e=>{setLoginUser(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="ชื่อผู้ใช้" style={t.input} autoFocus/>
 
-        <div style={t.label}>🔒 รหัสผ่าน</div>
-        <div style={{position:"relative"}}>
-          <input type={showPass?"text":"password"} value={loginPass} onChange={e=>{setLoginPass(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="••••••••" style={{...t.input, paddingRight:44}}/>
-          <button onClick={()=>setShowPass(!showPass)} style={t.eyeBtn}>{showPass?"🙈":"👁"}</button>
-        </div>
+          <div style={{...t.label, marginTop:14}}>🔒 รหัสผ่าน</div>
+          <div style={{position:"relative"}}>
+            <input type={showPass?"text":"password"} value={loginPass} onChange={e=>{setLoginPass(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="รหัสผ่าน" style={t.input}/>
+            <button onClick={()=>setShowPass(!showPass)} style={t.eyeBtn}>{showPass?"🙈":"👁"}</button>
+          </div>
 
-        {loginErr && <div style={t.loginErr}>⚠️ {loginErr}</div>}
+          {loginErr && <div style={t.loginErr}>{loginErr}</div>}
 
-        <button onClick={doLogin} className="tap" style={{...t.submit, marginTop:22}}>เข้าสู่ระบบ</button>
+          <button onClick={doLogin} className="tap" style={t.loginBtn}>เข้าสู่ระบบ</button>
+          <div style={t.loginHelp}>ลืมรหัสผ่าน ติดต่อทีมไอที</div>
         </div>
       </div>
-      <div style={t.loginFoot}>CCTV RAYONGBOARD · Rayong</div>
-      <div style={t.loginHelp}>ลืมรหัสผ่าน ติดต่อทีมไอที</div>
     </div>
   );
 
@@ -2162,22 +2161,23 @@ const mono = "'IBM Plex Mono',ui-monospace,Menlo,monospace";
 const sans = "'Prompt',-apple-system,'Segoe UI',sans-serif";
 
 function mk(dark){
-  const bg = dark?"#080B10":"#EEF1F6";
-  const sideB = dark?"#0D1218":"#FFFFFF";
+  // โทนพาสเทล: พื้นอมเขียวมิ้นต์ ขอบและเงานุ่ม ตัวอักษรยังเข้มพอให้อ่านง่าย
+  const bg = dark?"#080B10":"#EDF3FA";
+  const sideB = dark?"#0D1218":"#FAFCFF";
   const surf = dark?"#0F151C":"#FFFFFF";
-  const surf2 = dark?"rgba(255,255,255,.025)":"#F8FAFC";
-  const border = dark?"rgba(255,255,255,.07)":"rgba(15,23,42,.08)";
-  const text = dark?"#E6EAF0":"#1E293B";
-  const dim = dark?"#7B8696":"#94A3B8";
-  const inputBg = dark?"rgba(0,0,0,.3)":"#F1F5F9";
+  const surf2 = dark?"rgba(255,255,255,.025)":"#F3F7FC";
+  const border = dark?"rgba(255,255,255,.07)":"rgba(37,99,235,.11)";
+  const text = dark?"#E6EAF0":"#1F2A37";
+  const dim = dark?"#7B8696":"#78879A";
+  const inputBg = dark?"rgba(0,0,0,.3)":"#F1F6FC";
   const accent = "#2E8B3D";
-  const shadow = dark?"none":"0 1px 3px rgba(15,23,42,.05)";
+  const shadow = dark?"none":"0 1px 3px rgba(30,64,120,.07)";
   const G = "linear-gradient(135deg,#3DA847,#1B6B2B)";
   return {
     dim, border,
-    app:{display:"flex", minHeight:"100vh", background:bg, color:text, fontFamily:sans},
+    app:{display:"flex", minHeight:"100vh", color:text, fontFamily:sans,
+      background: dark ? bg : "linear-gradient(160deg,#E8F1FB 0%,#F2F6FC 50%,#EDF2FA 100%)", backgroundAttachment:"fixed"},
     side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${border}`, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
-    sideLogo:{marginBottom:16, padding:"4px 2px"},
     logoImg:{width:"100%", maxWidth:180, height:"auto", display:"block"},
     sideTitle:{fontSize:17, fontWeight:700},
     sideSub:{fontSize:12.5, color:dim, marginTop:3, marginBottom:22},
@@ -2191,7 +2191,7 @@ function mk(dark){
     sideStat:{display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12.5, padding:"5px 0", color:text},
     themeToggle:{position:"fixed", top:20, right:24, zIndex:40, width:42, height:42, borderRadius:12, border:`1px solid ${border}`, background:surf, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:dark?"0 4px 16px rgba(0,0,0,.3)":"0 2px 10px rgba(15,23,42,.1)"},
     themeBtn:{padding:"11px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13, fontWeight:600, marginBottom:12},
-    sideFoot:{fontSize:10.5, color:dim, textAlign:"center", fontFamily:mono},
+    sideFoot:{position:"relative", fontSize:11, opacity:.62, fontFamily:mono},
 
     main:{flex:1, minWidth:0, overflowX:"hidden", position:"relative"},
     wrap:{maxWidth:1240, margin:"0 auto", padding:"34px 40px 70px"},
@@ -2415,27 +2415,38 @@ function mk(dark){
     staffSave:{padding:"7px 12px", borderRadius:9, border:"none", background:accent, color:"#fff", fontSize:12.5, fontWeight:700},
     staffCancel:{padding:"7px 12px", borderRadius:9, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:12.5, fontWeight:600},
     staffNote:{marginTop:16, padding:"14px 16px", borderRadius:12, background:hexA(accent,dark?.08:.06,dark), border:`1px solid ${hexA(accent,.2,dark)}`, fontSize:13, color:dark?"#86EFAC":accent, lineHeight:1.5},
-    loginWrap:{minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:bg, color:text, fontFamily:sans, padding:20},
-    loginSplit:{width:"100%", maxWidth:880, display:"grid", gridTemplateColumns:"1fr 1fr", borderRadius:24, overflow:"hidden", boxShadow:dark?"0 24px 70px rgba(0,0,0,.5)":"0 24px 70px rgba(15,23,42,.14)", border:`1px solid ${border}`},
-    loginBrand:{position:"relative", background:"linear-gradient(160deg,#1F5F2B 0%,#2E8B3D 55%,#257033 100%)", color:"#fff", padding:"40px 34px", display:"flex", flexDirection:"column", justifyContent:"space-between", overflow:"hidden"},
-    loginGrid:{position:"absolute", inset:0, opacity:.13, backgroundImage:"radial-gradient(circle at 1px 1px, #fff 1.4px, transparent 0)", backgroundSize:"22px 22px"},
-    brandLogo:{width:150, height:"auto", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
-    brandTitle:{fontSize:30, fontWeight:800, lineHeight:1.18, letterSpacing:"-.5px"},
-    brandSub:{fontSize:13.5, opacity:.85, marginTop:10, lineHeight:1.6},
-    brandList:{marginTop:26, display:"flex", flexDirection:"column", gap:11},
-    brandItem:{fontSize:13, opacity:.92, display:"flex", alignItems:"center", gap:10},
-    brandFoot:{position:"relative", fontSize:11.5, opacity:.7, fontFamily:mono, marginTop:30},
-    loginHelp:{marginTop:6, fontSize:11.5, color:dim, textAlign:"center", opacity:.8},
-    loginKicker:{fontSize:11, fontWeight:800, letterSpacing:"1.2px", color:accent, marginBottom:7},
-    loginCard:{width:"100%", background:surf, padding:"44px 38px 40px", display:"flex", flexDirection:"column", justifyContent:"center", borderTop:`3px solid ${accent}`, boxShadow:dark?"0 20px 60px rgba(0,0,0,.4)":"0 20px 60px rgba(15,23,42,.12)"},
-    loginLogo:{width:148, maxWidth:"58%", height:"auto", display:"none", margin:"0 0 26px"},
-    loginTitle:{fontSize:27, fontWeight:800, letterSpacing:"-.5px", lineHeight:1.25, marginBottom:22},
-    loginSub:{fontSize:13, color:dim, marginTop:6, marginBottom:22},
+    // พื้นหลังไล่เฉดอมเขียวให้เข้ากับแบรนด์ พร้อมแสงจาง ๆ หลังการ์ดให้ตัวการ์ดเด่นขึ้น
+    loginWrap:{minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      color:text, fontFamily:sans, padding:20, position:"relative", overflow:"hidden",
+      background: dark
+        ? "radial-gradient(900px 520px at 50% 34%, rgba(56,132,255,.18), transparent 62%), linear-gradient(160deg,#080D14 0%,#0C1219 45%,#0A1018 100%)"
+        : "radial-gradient(900px 520px at 50% 34%, rgba(56,132,255,.16), transparent 62%), linear-gradient(160deg,#DFEBFA 0%,#EEF4FC 48%,#E7EEF9 100%)"},
+    loginHelp:{marginTop:16, fontSize:11.5, color:dim, textAlign:"center"},
+    loginKicker:{position:"relative", fontFamily:mono, fontSize:11, fontWeight:700, letterSpacing:"1.4px", color:dim},
+    loginBox:{width:"100%", maxWidth:860, display:"grid", gridTemplateColumns:"1fr 1fr", borderRadius:22, overflow:"hidden",
+      boxShadow:dark?"0 30px 80px rgba(0,0,0,.5)":"0 26px 70px rgba(30,64,120,.16)", border:`1px solid ${border}`},
+    loginSide:{position:"relative", overflow:"hidden", padding:"44px 36px", color:"#fff", display:"flex", flexDirection:"column", justifyContent:"space-between",
+      background:"linear-gradient(155deg,#1F5F2B 0%,#2E8B3D 58%,#24702F 100%)"},
+    circA:{position:"absolute", right:-80, top:-60, width:250, height:250, borderRadius:"50%", background:"rgba(255,255,255,.07)"},
+    circB:{position:"absolute", left:-70, bottom:-80, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,.055)"},
+    sideLogo:{width:150, height:"auto", display:"block", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:24},
+    loginBtn:{width:"100%", marginTop:24, padding:"15px", borderRadius:13, border:"none",
+      background:"linear-gradient(135deg,#3DA847,#1B6B2B)", color:"#fff", fontSize:15.5, fontWeight:700,
+      boxShadow:"0 8px 22px rgba(46,139,61,.26)", fontFamily:"inherit"},
+    sideLogo:{width:152, height:"auto", display:"block", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
+    sideList:{marginTop:24, display:"flex", flexDirection:"column", gap:11},
+    sideItem:{fontSize:13, opacity:.92, display:"flex", alignItems:"center", gap:10},
+    sideName:{fontSize:30, fontWeight:800, lineHeight:1.2, letterSpacing:"-.6px"},
+    sideTxt:{fontSize:13, opacity:.88, marginTop:14, lineHeight:1.7},
+    sideFoot:{position:"relative", fontSize:11, opacity:.65, fontFamily:mono},
+    loginCard:{position:"relative", background:surf, padding:"44px 40px 38px", display:"flex", flexDirection:"column", justifyContent:"center"},
+    loginLogo:{width:150, maxWidth:"55%", height:"auto", display:"block", margin:"0 0 22px"},
+    loginTitle:{fontSize:27, fontWeight:800, letterSpacing:"-.5px", margin:"3px 0 24px"},
     eyeBtn:{position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", fontSize:17, padding:6},
     loginErr:{marginTop:14, padding:"11px 14px", borderRadius:11, background:hexA("#EF4444",dark?.1:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:13, fontWeight:600},
     loginHint:{marginTop:20, padding:"14px 16px", borderRadius:12, background:surf2, border:`1px solid ${border}`, fontSize:12.5, color:dim, lineHeight:1.7},
     loginHintRow:{},
-    loginFoot:{marginTop:24, fontSize:11.5, color:dim, fontFamily:mono, letterSpacing:".3px"},
+    loginFoot:{position:"relative", marginTop:22, fontSize:11.5, color:dim, fontFamily:mono, letterSpacing:".3px"},
     userCard:{display:"flex", alignItems:"center", gap:11, padding:"11px 13px", background:surf2, border:`1px solid ${border}`, borderRadius:13, marginBottom:10},
     userAvatar:{fontSize:19, width:36, height:36, borderRadius:10, background:hexA(accent,dark?.15:.1,dark), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
     userName:{fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
