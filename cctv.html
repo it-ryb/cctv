@@ -1021,7 +1021,13 @@ function App() {
   const delRep = (i) => { const name=reporters[i]; askConfirm(`ลบชื่อ "${name}" ออกจากรายชื่อพนักงาน?`, ()=>{ setReporters(reporters.filter((_,x)=>x!==i)); if(by===name)setBy(""); }); };
   const saveEdit = () => { const v=editVal.trim(); if(!v){setEditIdx(-1);return;} setReporters(reporters.map((r,i)=>i===editIdx?v:r)); setEditIdx(-1); setEditVal(""); };
   // กล้องที่ยังมีงานค้างอยู่ ห้ามแจ้งซ้ำ จะได้ไม่มีงานซ้ำในคิวและตัวเลขไม่เพี้ยน
-  const openJobFor = (c) => !c ? null : (logs||[]).find(l => l.cam===c && needsFix(l.status) && !fixDone(l));
+  // ค้นจากประวัติทั้งหมด ไม่ใช่แค่ที่กรองอยู่ และเทียบชื่อแบบไม่สนตัวพิมพ์/ช่องว่าง เผื่อข้อมูลเก่าพิมพ์ไม่ตรงเป๊ะ
+  const camKey = (v) => (v||"").trim().toLowerCase();
+  const openJobFor = (c) => {
+    const k = camKey(c);
+    if (!k) return null;
+    return (logs||[]).find(l => camKey(l.cam)===k && needsFix(l.status) && !fixDone(l)) || null;
+  };
   const dupJob = (status!=="ปกติ" && cam) ? openJobFor(cam) : null;
   const canSubmit = by && !dupJob && (status==="ปกติ" || (needsFix(status) && cam) || (status==="เหตุการณ์อื่น" && detail.trim()));
   // ── หน้า Login ──
@@ -1181,8 +1187,18 @@ function App() {
                 {dupJob && (
                   <div style={t.dupWarn}>
                     <div style={{fontWeight:700, marginBottom:4}}>⚠️ กล้องนี้มีงานค้างอยู่แล้ว</div>
-                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} โดย {dupJob.by||"—"}</div>
+                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · ค้าง {daysOpen(dupJob.date)} วัน</div>
+                    <div style={t.dupLine}>🕐 แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} · กะ{dupJob.shift||"—"} · โดย {dupJob.by||"—"}</div>
+                    {(dupJob.zone || dupJob.area) && <div style={t.dupLine}>📍 {[dupJob.zone && `${ZONE_EMOJI[dupJob.zone]||""} ${dupJob.zone}`, dupJob.area].filter(Boolean).join(" · ")}</div>}
+                    {dupJob.detail && <div style={t.dupLine}>📄 อาการที่แจ้ง: {dupJob.detail}</div>}
                     {dupJob.fixNote && <div style={t.dupLine}>📝 {dupJob.fixNote}</div>}
+                    {dupJob.fixBy && <div style={t.dupLine}>👷 ผู้ดำเนินการ: {dupJob.fixBy}</div>}
+                    {(() => {
+                      const hist = (logs||[]).filter(l => camKey(l.cam)===camKey(cam));
+                      const closed = hist.filter(l => fixDone(l));
+                      return hist.length>1 ? <div style={{...t.dupLine, marginTop:5}}>📊 กล้องนี้ถูกแจ้งมาแล้ว {hist.length} ครั้ง · ปิดงานไปแล้ว {closed.length} ครั้ง</div> : null;
+                    })()}
+                    {imgOf(dupJob) && <img src={imgOf(dupJob)} style={t.dupImg} onClick={()=>setPreview(imgOf(dupJob))}/>}
                     <div style={{display:"flex", gap:9, marginTop:10, flexWrap:"wrap"}}>
                       <button onClick={()=>openFix(dupJob.id)} className="tap" style={t.dupBtn}>🛠 อัปเดตงานเดิม</button>
                       <button onClick={()=>{setNav("history"); setCamQ(cam); setFFilter("all");}} className="tap" style={t.dupBtn}>📋 ดูประวัติกล้องนี้</button>
@@ -2151,6 +2167,7 @@ function mk(dark){
     imgDel:{position:"absolute", top:10, right:10, padding:"7px 13px", borderRadius:9, border:"none", background:"rgba(0,0,0,.65)", color:"#fff", fontSize:12, fontWeight:600},
     dupWarn:{background:hexA("#F59E0B",dark?.14:.09,dark), border:`1px solid ${hexA("#F59E0B",.4,dark)}`, borderRadius:13, padding:"13px 15px", marginTop:14, fontSize:13.5, color:text},
     dupLine:{fontSize:12.5, color:dim, marginTop:2},
+    dupImg:{width:104, height:74, objectFit:"cover", borderRadius:9, border:`1px solid ${hexA("#F59E0B",.4,dark)}`, marginTop:9, cursor:"pointer", display:"block"},
     dupBtn:{padding:"9px 14px", borderRadius:10, border:`1px solid ${hexA("#F59E0B",.45,dark)}`, background:"transparent", color:"#F59E0B", fontSize:13, fontWeight:600},
     submit:{width:"100%", marginTop:26, padding:"17px", borderRadius:15, border:"none", background:G, color:"#fff", fontSize:16.5, fontWeight:600, letterSpacing:.2, display:"block", boxShadow:`0 6px 20px ${hexA("#22C55E",.25,dark)}`},
 
