@@ -1146,10 +1146,19 @@ function App() {
                     <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setZone(z);setCam("");setCamQuery("");setSubGrp("");}} className="tap" style={zone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}>{ZONE_EMOJI[z]} {z}</button>)}</div>
                     <div style={t.label}>โซน <span style={t.dimLabel}>({subGroups.length})</span></div>
                     <div style={t.chipRow}>{subGroups.map(sg=><button key={sg} onClick={()=>{setSubGrp(sg===subGrp?"":sg);setCam("");setCamQuery("");}} className="tap" style={subGrp===sg?t.chipOn:t.chip}>{sg} <span style={t.miniCount}>{(tree[zone][sg]||[]).length}</span></button>)}</div>
-                    <div style={t.label}>🔍 เลือกกล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":""} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว · เลื่อนดูหรือพิมพ์ค้นหา)</span></div>
+                    <div style={t.label}>🔍 เลือกกล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":""} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว)</span>
+                      {(() => { const n=(CAMERAS[zone]||[]).filter(c=>openJobFor(c)).length;
+                        return n ? <span style={t.busyTag}>🔧 มีงานค้าง {n} ตัว เลือกไม่ได้</span> : null; })()}
+                    </div>
                     <input value={camQuery} onChange={e=>{setCamQuery(e.target.value); if(e.target.value)setSubGrp("");}} placeholder="พิมพ์ชื่อกล้อง เช่น SR1, Wall, FirePump…" style={t.input}/>
                     {(subGrp||camQuery) ? (
-                      <div style={t.camGrid}>{camOpts.map(c=><button key={c} onClick={()=>setCam(c)} className="tap" style={cam===c?t.camOn:t.camChip}>{c}</button>)}
+                      <div style={t.camGrid}>{camOpts.map(c=>{
+                        const busy = !!openJobFor(c);
+                        return <button key={c} onClick={()=>setCam(c)} className="tap"
+                          title={busy?"กล้องนี้มีงานค้างอยู่ แจ้งซ้ำไม่ได้":c}
+                          style={cam===c ? (busy?{...t.camOn, ...t.camBusyOn}:t.camOn) : (busy?{...t.camChip, ...t.camBusy}:t.camChip)}>
+                          {busy?"🔧 ":""}{c}</button>;
+                      })}
                         {camOpts.length===0 && <div style={t.empty}>ไม่พบกล้อง</div>}
                       </div>
                     ) : <div style={t.hint}>👆 เลือกโซน หรือพิมพ์ค้นหา</div>}
@@ -2125,6 +2134,9 @@ function mk(dark){
     miniCount:{fontSize:10.5, padding:"1px 7px", borderRadius:20, background:dark?"rgba(255,255,255,.08)":"rgba(15,23,42,.06)", color:dim, fontFamily:mono},
     input:{width:"100%", padding:"14px 16px", borderRadius:13, border:`1px solid ${border}`, background:inputBg, color:text, fontSize:15, outline:"none", fontFamily:sans, transition:"border-color .15s"},
     camGrid:{display:"flex", flexWrap:"wrap", gap:6, marginTop:10, maxHeight:280, overflowY:"auto", padding:"2px 4px 2px 0"},
+    busyTag:{fontSize:11, fontWeight:700, color:"#F59E0B", background:hexA("#F59E0B",dark?.16:.1,dark), border:`1px solid ${hexA("#F59E0B",.35,dark)}`, borderRadius:20, padding:"2px 9px", marginLeft:8},
+    camBusy:{borderColor:hexA("#F59E0B",.55,dark), background:hexA("#F59E0B",dark?.12:.08,dark), color:"#F59E0B"},
+    camBusyOn:{borderColor:"#F59E0B", background:hexA("#F59E0B",dark?.2:.14,dark), color:"#F59E0B"},
     camChip:{padding:"8px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf2, color:dark?"#AEB7C4":"#475569", fontSize:12, fontFamily:mono},
     camOn:{padding:"8px 12px", borderRadius:10, border:`1px solid ${accent}`, background:hexA(accent,dark?.2:.12,dark), color:dark?"#5FD16E":accent, fontSize:12, fontFamily:mono, fontWeight:700},
     empty:{fontSize:12, color:dim, padding:"8px 2px", width:"100%"},
