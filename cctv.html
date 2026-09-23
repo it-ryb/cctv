@@ -423,6 +423,27 @@ function App() {
 
   const CAMERAS = useMemo(() => Object.fromEntries(Object.entries(tree).map(([z,g])=>[z,Object.values(g).flat()])), [tree]);
   const subGroups = useMemo(() => Object.keys(tree[zone] || {}), [zone, tree]);
+  // ค้นทั่วระบบ พิมพ์ชื่อกล้องได้เลยโดยไม่ต้องเลือกพื้นที่ก่อน
+  const pickByEnter = () => {
+    const q = camQuery.trim().toLowerCase();
+    if (!q) return;
+    const all = [...camOpts.map(c=>[zone,c]), ...otherZoneHits];
+    if (!all.length) { setToast("ไม่พบกล้องชื่อนี้"); setTimeout(()=>setToast(""),2200); return; }
+    const exact = all.find(([,c]) => c.toLowerCase()===q);   // ตรงเป๊ะมาก่อน
+    const [z,c] = exact || all[0];
+    setZone(z); setSubGrp(""); setCam(c); setCamQuery("");
+    if (!exact && all.length>1) { setToast(`เลือก ${c} · มีที่ตรงอีก ${all.length-1} ตัว`); setTimeout(()=>setToast(""),2600); }
+  };
+  // ถ้าในพื้นที่ที่เลือกไม่มี ให้ค้นต่อในพื้นที่อื่นให้เลย จะได้ไม่ต้องไล่กดเอง
+  const otherZoneHits = useMemo(() => {
+    const q = camQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    ZONES.forEach(z => { if (z===zone) return;
+      (CAMERAS[z]||[]).forEach(c => { if (c.toLowerCase().includes(q)) out.push([z, c]); });
+    });
+    return out.slice(0, 30);
+  }, [camQuery, zone, CAMERAS]);
   const camOpts = useMemo(() => {
     if (camQuery) return (CAMERAS[zone]||[]).filter(c => c.toLowerCase().includes(camQuery.toLowerCase()));
     if (subGrp) return (tree[zone] && tree[zone][subGrp]) || [];
@@ -1156,7 +1177,9 @@ function App() {
                       {(() => { const n=(CAMERAS[zone]||[]).filter(c=>openJobFor(c)).length;
                         return n ? <span style={t.busyTag}>🔧 มีงานค้าง {n} ตัว เลือกไม่ได้</span> : null; })()}
                     </div>
-                    <input value={camQuery} onChange={e=>{setCamQuery(e.target.value); if(e.target.value)setSubGrp("");}} placeholder="พิมพ์ชื่อกล้อง เช่น SR1, Wall, FirePump…" style={t.input}/>
+                    <input value={camQuery} onChange={e=>{setCamQuery(e.target.value); if(e.target.value)setSubGrp("");}}
+                      onKeyDown={e=>{ if(e.key==="Enter"){ e.preventDefault(); pickByEnter(); } }}
+                      placeholder="พิมพ์ชื่อกล้องแล้วกด Enter · ค้นได้ทุกพื้นที่" style={t.input}/>
                     {(subGrp||camQuery) ? (
                       <div style={t.camGrid}>{camOpts.map(c=>{
                         const busy = !!openJobFor(c);
@@ -1165,9 +1188,27 @@ function App() {
                           style={cam===c ? (busy?{...t.camOn, ...t.camBusyOn}:t.camOn) : (busy?{...t.camChip, ...t.camBusy}:t.camChip)}>
                           {busy?"🔧 ":""}{c}</button>;
                       })}
-                        {camOpts.length===0 && <div style={t.empty}>ไม่พบกล้อง</div>}
+                        {camOpts.length===0 && otherZoneHits.length===0 && <div style={t.empty}>ไม่พบกล้องชื่อนี้ในระบบ</div>}
                       </div>
-                    ) : <div style={t.hint}>👆 เลือกโซน หรือพิมพ์ค้นหา</div>}
+                    ) : <div style={t.hint}>👆 เลือกโซน หรือพิมพ์ชื่อกล้องค้นหาได้เลย</div>}
+
+                    {otherZoneHits.length>0 && (
+                      <div style={t.searchBox}>
+                        <div style={{fontSize:11.5, color:t.dim, fontWeight:600, marginBottom:3}}>
+                          {camOpts.length===0 ? "ไม่มีในพื้นที่นี้ แต่พบในพื้นที่อื่น" : "พบในพื้นที่อื่นด้วย"}
+                        </div>
+                        {otherZoneHits.map(([z,c])=>{
+                          const busy = !!openJobFor(c);
+                          return (
+                            <button key={z+"/"+c} className="tap" onClick={()=>{ setZone(z); setSubGrp(""); setCamQuery(""); setCam(c); }}
+                                    style={{...t.searchHit, ...(busy?t.camBusy:{})}}>
+                              <span style={{fontFamily:mono, fontSize:13}}>{busy?"🔧 ":""}{c}</span>
+                              <span style={t.searchZone}>{ZONE_EMOJI[z]||""} {z}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     {cam && <div style={t.picked}>✓ เลือกกล้อง: <b>{cam}</b></div>}
                     <div style={{display:"flex", gap:12}}>
                       <div style={{flex:1}}><div style={t.label}>📍 บริเวณ / สถานที่</div><input value={area} onChange={e=>setArea(e.target.value)} placeholder={status==="เหตุการณ์อื่น"?"เช่น หน้าบริษัท, บริเวณ RP SR8":"เช่น กำแพงหลังบ่อน้ำ RP"} style={t.input}/></div>
@@ -2151,6 +2192,9 @@ function mk(dark){
     input:{width:"100%", padding:"14px 16px", borderRadius:13, border:`1px solid ${border}`, background:inputBg, color:text, fontSize:15, outline:"none", fontFamily:sans, transition:"border-color .15s"},
     camGrid:{display:"flex", flexWrap:"wrap", gap:6, marginTop:10, maxHeight:280, overflowY:"auto", padding:"2px 4px 2px 0"},
     busyTag:{fontSize:11, fontWeight:700, color:"#F59E0B", background:hexA("#F59E0B",dark?.16:.1,dark), border:`1px solid ${hexA("#F59E0B",.35,dark)}`, borderRadius:20, padding:"2px 9px", marginLeft:8},
+    searchBox:{marginTop:9, border:`1px solid ${border}`, borderRadius:13, padding:9, background:inputBg, maxHeight:230, overflowY:"auto", display:"flex", flexDirection:"column", gap:6},
+    searchHit:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"9px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf, color:text, textAlign:"left", width:"100%"},
+    searchZone:{fontSize:11.5, color:dim, whiteSpace:"nowrap"},
     camBusy:{borderColor:hexA("#F59E0B",.55,dark), background:hexA("#F59E0B",dark?.12:.08,dark), color:"#F59E0B"},
     camBusyOn:{borderColor:"#F59E0B", background:hexA("#F59E0B",dark?.2:.14,dark), color:"#F59E0B"},
     camChip:{padding:"8px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf2, color:dark?"#AEB7C4":"#475569", fontSize:12, fontFamily:mono},
