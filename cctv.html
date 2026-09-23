@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#EEF1F6">
-<title>สมุดเวร CCTV · RAYONGBOARD</title>
+<title>CCTV RAYONGBOARD</title>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -32,6 +32,9 @@
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
     .rb-side .rb-hideM{display:none !important;}
+    .rb-loginSplit{grid-template-columns:1fr !important; max-width:430px !important;}
+    .rb-brandSide{display:none !important;}
+    .rb-mobileLogo{display:block !important;}
     .rb-nav{flex-direction:row !important; flex:1 !important;}
     .rb-recGrid{grid-template-columns:1fr !important;}
     .rb-dashGrid{grid-template-columns:1fr !important;}
@@ -1055,10 +1058,29 @@ function App() {
   if (auth === undefined) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}></div>;
   if (!auth) return (
     <div style={t.loginWrap}>
-      <div style={t.loginCard}>
-        <img src={LOGO} alt="RAYONGBOARD" style={t.loginLogo}/>
-        <div style={t.loginTitle}>สมุดเวร CCTV</div>
-        <div style={t.loginSub}>เข้าสู่ระบบเพื่อใช้งาน</div>
+      <div style={t.loginSplit} className="rb-loginSplit">
+
+        {/* ฝั่งซ้าย: แบรนด์ + บอกว่าระบบทำอะไร */}
+        <div style={t.loginBrand} className="rb-brandSide">
+          <div style={t.loginGrid}/>
+          <div style={{position:"relative"}}>
+            <img src={LOGO} alt="RAYONGBOARD" style={t.brandLogo}/>
+            <div style={t.brandTitle}>CCTV<br/>RAYONGBOARD</div>
+            <div style={t.brandSub}>ระบบบันทึกสถานะกล้องและติดตามงานซ่อม</div>
+            <div style={t.brandList}>
+              <div style={t.brandItem}><span>📝</span> บันทึกเหตุการณ์ประจำกะ</div>
+              <div style={t.brandItem}><span>🛠</span> ติดตามงานซ่อมจนปิดงาน</div>
+              <div style={t.brandItem}><span>📊</span> สรุปรายงานส่งรายเดือน</div>
+            </div>
+          </div>
+          <div style={t.brandFoot}>Rayong · ใช้งานภายในองค์กร</div>
+        </div>
+
+        {/* ฝั่งขวา: ฟอร์มเข้าสู่ระบบ */}
+        <div style={t.loginCard}>
+        <img src={LOGO} alt="RAYONGBOARD" style={t.loginLogo} className="rb-mobileLogo"/>
+        <div style={t.loginKicker}>CCTV RAYONGBOARD</div>
+        <div style={t.loginTitle}>เข้าสู่ระบบ</div>
 
         <div style={t.label}>👤 ชื่อผู้ใช้</div>
         <input value={loginUser} onChange={e=>{setLoginUser(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="ชื่อผู้ใช้" style={t.input} autoFocus/>
@@ -1071,14 +1093,15 @@ function App() {
 
         {loginErr && <div style={t.loginErr}>⚠️ {loginErr}</div>}
 
-        <button onClick={doLogin} className="tap" style={{...t.submit, marginTop:20}}>เข้าสู่ระบบ</button>
-
+        <button onClick={doLogin} className="tap" style={{...t.submit, marginTop:22}}>เข้าสู่ระบบ</button>
+        </div>
       </div>
-      <div style={t.loginFoot}>RAYONGBOARD · Rayong · ระบบบันทึกสถานะกล้อง</div>
+      <div style={t.loginFoot}>CCTV RAYONGBOARD · Rayong</div>
+      <div style={t.loginHelp}>ลืมรหัสผ่าน ติดต่อทีมไอที</div>
     </div>
   );
 
-  if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}>📹</div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดสมุดเวร…</div></div></div>;
+  if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}>📹</div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดระบบ…</div></div></div>;
 
   const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
@@ -1094,7 +1117,7 @@ function App() {
       {/* ===== SIDEBAR ===== */}
       <aside style={t.side} className="rb-side">
         <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
-        <div style={t.sideTitle} className="rb-hideM">สมุดเวร CCTV</div>
+        <div style={t.sideTitle} className="rb-hideM">CCTV RAYONGBOARD</div>
         <div style={t.sideSub} className="rb-hideM">ระบบบันทึกสถานะกล้อง</div>
 
         <nav style={t.nav} className="rb-nav">
@@ -2393,15 +2416,26 @@ function mk(dark){
     staffCancel:{padding:"7px 12px", borderRadius:9, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:12.5, fontWeight:600},
     staffNote:{marginTop:16, padding:"14px 16px", borderRadius:12, background:hexA(accent,dark?.08:.06,dark), border:`1px solid ${hexA(accent,.2,dark)}`, fontSize:13, color:dark?"#86EFAC":accent, lineHeight:1.5},
     loginWrap:{minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:bg, color:text, fontFamily:sans, padding:20},
-    loginCard:{width:"100%", maxWidth:400, background:surf, border:`1px solid ${border}`, borderRadius:22, padding:"36px 32px", boxShadow:dark?"0 20px 60px rgba(0,0,0,.4)":"0 20px 60px rgba(15,23,42,.12)"},
-    loginLogo:{width:"100%", maxWidth:210, height:"auto", display:"block", margin:"0 auto 20px"},
-    loginTitle:{fontSize:22, fontWeight:700, textAlign:"center"},
-    loginSub:{fontSize:13.5, color:dim, textAlign:"center", marginTop:4, marginBottom:8},
+    loginSplit:{width:"100%", maxWidth:880, display:"grid", gridTemplateColumns:"1fr 1fr", borderRadius:24, overflow:"hidden", boxShadow:dark?"0 24px 70px rgba(0,0,0,.5)":"0 24px 70px rgba(15,23,42,.14)", border:`1px solid ${border}`},
+    loginBrand:{position:"relative", background:"linear-gradient(160deg,#1F5F2B 0%,#2E8B3D 55%,#257033 100%)", color:"#fff", padding:"40px 34px", display:"flex", flexDirection:"column", justifyContent:"space-between", overflow:"hidden"},
+    loginGrid:{position:"absolute", inset:0, opacity:.13, backgroundImage:"radial-gradient(circle at 1px 1px, #fff 1.4px, transparent 0)", backgroundSize:"22px 22px"},
+    brandLogo:{width:150, height:"auto", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
+    brandTitle:{fontSize:30, fontWeight:800, lineHeight:1.18, letterSpacing:"-.5px"},
+    brandSub:{fontSize:13.5, opacity:.85, marginTop:10, lineHeight:1.6},
+    brandList:{marginTop:26, display:"flex", flexDirection:"column", gap:11},
+    brandItem:{fontSize:13, opacity:.92, display:"flex", alignItems:"center", gap:10},
+    brandFoot:{position:"relative", fontSize:11.5, opacity:.7, fontFamily:mono, marginTop:30},
+    loginHelp:{marginTop:6, fontSize:11.5, color:dim, textAlign:"center", opacity:.8},
+    loginKicker:{fontSize:11, fontWeight:800, letterSpacing:"1.2px", color:accent, marginBottom:7},
+    loginCard:{width:"100%", background:surf, padding:"44px 38px 40px", display:"flex", flexDirection:"column", justifyContent:"center", borderTop:`3px solid ${accent}`, boxShadow:dark?"0 20px 60px rgba(0,0,0,.4)":"0 20px 60px rgba(15,23,42,.12)"},
+    loginLogo:{width:148, maxWidth:"58%", height:"auto", display:"none", margin:"0 0 26px"},
+    loginTitle:{fontSize:27, fontWeight:800, letterSpacing:"-.5px", lineHeight:1.25, marginBottom:22},
+    loginSub:{fontSize:13, color:dim, marginTop:6, marginBottom:22},
     eyeBtn:{position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", fontSize:17, padding:6},
     loginErr:{marginTop:14, padding:"11px 14px", borderRadius:11, background:hexA("#EF4444",dark?.1:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:13, fontWeight:600},
     loginHint:{marginTop:20, padding:"14px 16px", borderRadius:12, background:surf2, border:`1px solid ${border}`, fontSize:12.5, color:dim, lineHeight:1.7},
     loginHintRow:{},
-    loginFoot:{marginTop:22, fontSize:11.5, color:dim, fontFamily:mono},
+    loginFoot:{marginTop:24, fontSize:11.5, color:dim, fontFamily:mono, letterSpacing:".3px"},
     userCard:{display:"flex", alignItems:"center", gap:11, padding:"11px 13px", background:surf2, border:`1px solid ${border}`, borderRadius:13, marginBottom:10},
     userAvatar:{fontSize:19, width:36, height:36, borderRadius:10, background:hexA(accent,dark?.15:.1,dark), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
     userName:{fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
