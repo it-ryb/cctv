@@ -173,6 +173,66 @@ const FIX_BY = ["ช่างผู้รับเหมา (DD)", "IT"];
 // สาเหตุที่เจอบ่อย กดเติมลงช่องหมายเหตุได้เลย
 const NOTE_PRESETS = ["ถอดกล้องทำฝ้า", "ตัดไฟปรับปรุงพื้นที่", "รออะไหล่", "สาย LAN ขาด", "รอผู้รับเหมาเข้าพื้นที่", "งานโครงสร้างยังไม่เสร็จ"];
 const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
+// ─────────── จัดการพื้นที่เก็บในเครื่อง (localStorage ~5 MB) ───────────
+// รูปทุกใบที่เปิดดูจะถูกสำเนาไว้ในเครื่องเพื่อให้เปิดเร็ว ถ้าปล่อยสะสมจะเต็ม
+// ตัวรูปจริงอยู่บนคลาวด์ (เอกสาร img_<id>) ลบสำเนาในเครื่องได้ ไม่ทำข้อมูลหาย
+const IMG_PREFIX = "cctv_img_";
+const BK_PREFIX = "cctv_backup_";
+const LRU_KEY = "cctv_imgidx";    // {id: เวลาที่ใช้ล่าสุด} ใช้เลือกว่าจะทิ้งรูปใบไหนก่อน (ชื่อต้องไม่ขึ้นต้นด้วย IMG_PREFIX)
+const IMG_KEEP = 40;              // เก็บสำเนารูปในเครื่องไม่เกินกี่ใบ
+const BACKUP_KEEP = 3;            // เก็บชุดสำรองอัตโนมัติกี่วัน
+const lsKeys = (prefix) => {
+  const out = [];
+  try { for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf(prefix)===0) out.push(k); } } catch(e){}
+  return out;
+};
+const lsBytes = () => {           // ประมาณพื้นที่ที่ใช้ (1 ตัวอักษร = 2 ไบต์)
+  let n = 0;
+  try { for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; n += k.length + (localStorage.getItem(k)||"").length; } } catch(e){}
+  return n*2;
+};
+const lruRead = () => { try { const o=JSON.parse(localStorage.getItem(LRU_KEY)||"{}"); return (o && typeof o==="object" && !Array.isArray(o)) ? o : {}; } catch(e){ return {}; } };
+const lruWrite = (o) => { try { localStorage.setItem(LRU_KEY, JSON.stringify(o)); } catch(e){} };
+const lruTouch = (id) => { if(!id) return; const o = lruRead(); o[id] = Date.now(); lruWrite(o); };
+// ทิ้งสำเนารูปในเครื่องที่ไม่ได้เปิดดูนานสุด คืนจำนวนที่ทิ้งได้จริง
+const dropOldImages = (n) => {
+  const keys = lsKeys(IMG_PREFIX).filter(k => k !== LRU_KEY);
+  if (!keys.length) return 0;
+  const lru = lruRead();
+  const ranked = keys.map(k => { const id = k.slice(IMG_PREFIX.length); return { k, id, ts: lru[id] || 0 }; })
+                     .sort((a,b) => a.ts - b.ts);
+  let done = 0;
+  for (const r of ranked.slice(0, Math.max(1, n))) {
+    try { localStorage.removeItem(r.k); delete lru[r.id]; done++; } catch(e){}
+  }
+  lruWrite(lru);
+  return done;
+};
+const imgKeys = () => lsKeys(IMG_PREFIX).filter(k => k !== LRU_KEY);
+const trimImageCache = () => {    // คุมจำนวนสำเนารูปไม่ให้เกินเพดาน
+  const over = imgKeys().length - IMG_KEEP;
+  if (over > 0) dropOldImages(over);
+};
+const clearImageCache = () => {
+  const keys = imgKeys();
+  keys.forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+  try { localStorage.removeItem(LRU_KEY); } catch(e){}
+  return keys.length;
+};
+// เขียนลง localStorage แบบทนพื้นที่เต็ม: เต็มแล้วทิ้งสำเนารูปเก่าก่อน ค่อยลองเขียนใหม่
+const lsSet = (key, val) => {
+  for (let round=0; round<6; round++) {
+    try { localStorage.setItem(key, val); return true; } catch(e) {}
+    if (round === 5) return false;
+    if (!dropOldImages(Math.pow(2, round + 1))) {    // ทิ้งทีละน้อยก่อน 2→4→8→16→32 ใบ
+      const bk = lsKeys(BK_PREFIX).filter(k => k !== BK_PREFIX + todayISO()).sort();
+      if (!bk.length) return false;
+      try { localStorage.removeItem(bk[0]); } catch(err){ return false; }
+    }
+  }
+  return false;
+};
+
 const DEFAULT_USERS = {
   admin:   { pass: "@Rayong123", role: "admin", name: "ผู้ดูแลระบบ", dept: "IT" },
   atchara: { pass: "atchara123", role: "admin", name: "อัจฉรา สุรภาพ (IT)", reporter: "อัจฉรา สุรภาพ", dept: "IT" },
@@ -268,6 +328,7 @@ function App() {
   const t = dark ? T.dark : T.light;
 
   useEffect(() => {
+    trimImageCache(); // เครื่องที่มีสำเนารูปค้างเกินเพดาน ให้คืนพื้นที่ทันทีตอนเปิด
     try { const a = sessionStorage.getItem(AUTH_KEY); if (a) { setAuth(JSON.parse(a)); } else { setAuth(null); } } catch(e){ setAuth(null); }
     try { const p = localStorage.getItem(PKEY); if (p) { const o=JSON.parse(p); if(o&&o.admin&&o.mon) setPasswords(prev=>({...prev, ...o})); } } catch(e){}
     try { const us = localStorage.getItem(UKEY); if (us) { const o=JSON.parse(us); if(o&&typeof o==="object"&&o.admin) setAccounts(o); } } catch(e){}
@@ -289,23 +350,23 @@ function App() {
   })(); }, []);
   useEffect(() => {
     if (logs===null) return;
-    try { localStorage.setItem(KEY, JSON.stringify(logs)); }
-    catch(e){ setToast("⚠️ พื้นที่เก็บในเครื่องเต็ม รูปที่แนบอาจไม่ถูกบันทึก แจ้งไอที"); setTimeout(()=>setToast(""),5000); }
+    if (!lsSet(KEY, JSON.stringify(logs))) {
+      setToast("⚠️ พื้นที่เก็บในเครื่องเต็ม ข้อมูลขึ้นคลาวด์แล้วแต่เครื่องนี้เก็บไม่ครบ แจ้งไอที");
+      setTimeout(()=>setToast(""),6000);
+    }
   }, [logs]);
-  // สำรองอัตโนมัติวันละชุด เก็บ 7 ชุดล่าสุด (กันข้อมูลหายซ้ำรอยเดิม)
+  // สำรองอัตโนมัติวันละชุด เก็บ 3 ชุดล่าสุด (กันข้อมูลหายซ้ำรอยเดิม)
   useEffect(() => {
     if (!logs || !logs.length) return;
-    try {
-      localStorage.setItem("cctv_backup_" + todayISO(), JSON.stringify(logs.map(({img, ...r}) => r))); // ไม่เก็บรูป กันพื้นที่เต็ม
-      const keys = [];
-      for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf("cctv_backup_")===0) keys.push(k); }
-      keys.sort().slice(0, Math.max(0, keys.length-7)).forEach(k=>localStorage.removeItem(k));
-    } catch(e){}
+    // ไม่เก็บรูปลงชุดสำรอง กันพื้นที่เต็ม
+    lsSet(BK_PREFIX + todayISO(), JSON.stringify(logs.map(({img, imgFix, ...r}) => r)));
+    const keys = lsKeys(BK_PREFIX).sort();
+    keys.slice(0, Math.max(0, keys.length - BACKUP_KEEP)).forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
   }, [logs]);
-  useEffect(() => { try { localStorage.setItem(RKEY, JSON.stringify(reporters)); } catch(e){} }, [reporters]);
-  useEffect(() => { try { localStorage.setItem(UKEY, JSON.stringify(accounts)); } catch(e){} }, [accounts]);
-  useEffect(() => { try { localStorage.setItem(IPKEY, JSON.stringify(ips)); } catch(e){} }, [ips]);
-  useEffect(() => { try { localStorage.setItem(CKEY, JSON.stringify(tree)); } catch(e){} }, [tree]);
+  useEffect(() => { lsSet(RKEY, JSON.stringify(reporters)); }, [reporters]);
+  useEffect(() => { lsSet(UKEY, JSON.stringify(accounts)); }, [accounts]);
+  useEffect(() => { lsSet(IPKEY, JSON.stringify(ips)); }, [ips]);
+  useEffect(() => { lsSet(CKEY, JSON.stringify(tree)); }, [tree]);
 
   // ─────────── รูปแนบ: เก็บแยกเอกสารละรูป ───────────
   // บันทึกจะเก็บแค่ตัวอ้างอิง "img:<id>" ส่วนรูปจริงอยู่ในเอกสาร cctv/img_<id>
@@ -314,10 +375,13 @@ function App() {
   const isImgRef = (v) => typeof v==="string" && v.startsWith(IMGREF);
   const isImgData = (v) => typeof v==="string" && v.startsWith("data:");
   const imgIdOf = (v) => isImgRef(v) ? v.slice(IMGREF.length) : "";
-  const imgLocalKey = (id) => "cctv_img_" + id;
+  const imgLocalKey = (id) => IMG_PREFIX + id;
   const saveImage = (id, data) => {
     setImgCache(c => ({...c, [id]: data}));
-    try { localStorage.setItem(imgLocalKey(id), data); } catch(e){ /* เครื่องเต็ม ยังใช้จาก cloud ได้ */ }
+    // สำเนาในเครื่องไว้เปิดเร็ว ถ้าเต็มก็ไม่เป็นไร ตัวจริงอยู่บนคลาวด์
+    lsSet(imgLocalKey(id), data);
+    lruTouch(id);
+    trimImageCache();
     if (window.__fb && window.__fb.ready) window.__fb.save("img_" + id, data);
     return IMGREF + id;
   };
@@ -329,13 +393,15 @@ function App() {
     imgLoading.current[id] = true;
     try {
       const local = localStorage.getItem(imgLocalKey(id));
-      if (local) { setImgCache(c => ({...c, [id]: local})); return; }
+      if (local) { setImgCache(c => ({...c, [id]: local})); lruTouch(id); return; }
     } catch(e){}
     if (window.__fb && window.__fb.ready) {
       const data = await window.__fb.get("img_" + id);
       if (data) {
         setImgCache(c => ({...c, [id]: data}));
-        try { localStorage.setItem(imgLocalKey(id), data); } catch(e){}
+        lsSet(imgLocalKey(id), data);
+        lruTouch(id);
+        trimImageCache();
       }
     }
   };
@@ -975,9 +1041,23 @@ function App() {
     if (np.length < 4) { setToast("รหัสผ่านต้องยาวอย่างน้อย 4 ตัวอักษร"); setTimeout(()=>setToast(""),2400); return; }
     const updated = {...passwords, [user]: np};
     setPasswords(updated);
-    try { localStorage.setItem(PKEY, JSON.stringify(updated)); } catch(e){}
+    lsSet(PKEY, JSON.stringify(updated));
     setPwEdit({...pwEdit, [user]:""});
     setToast(`เปลี่ยนรหัสผ่าน ${user} แล้ว`); setTimeout(()=>setToast(""),2400);
+  };
+  // ── พื้นที่เก็บในเครื่อง ──
+  const [stTick, setStTick] = useState(0); // กดล้างแคชแล้วให้ตัวเลขอัปเดต
+  // คิดเฉพาะตอนอยู่หน้าจัดการพนักงาน เพราะต้องไล่อ่านทุกคีย์ (หนัก ห้ามทำทุกครั้งที่ re-render)
+  const stat = React.useMemo(
+    () => nav==="staff" ? { mb:(lsBytes()/1048576).toFixed(2), imgs:imgKeys().length } : null,
+    [nav, stTick]
+  );
+  const purgeImgCache = () => {
+    const n = clearImageCache();
+    setImgCache({});
+    setStTick(stTick+1);
+    setToast(`🧹 ล้างสำเนารูปในเครื่อง ${n} ใบแล้ว รูปยังอยู่บนคลาวด์`);
+    setTimeout(()=>setToast(""),3200);
   };
   // ── สำรอง / กู้คืนข้อมูล ──
   const exportBackup = async () => {
@@ -1812,6 +1892,14 @@ function App() {
                 </div>
               </div>
 
+              <div style={t.panel}>
+                <div style={t.panelTitle}>🧹 พื้นที่เก็บในเครื่องนี้</div>
+                <div style={t.dangerText}>ใช้ไป {stat ? stat.mb : "0.00"} MB (เบราว์เซอร์ให้ประมาณ 5 MB) · สำเนารูป {stat ? stat.imgs : 0} ใบ</div>
+                <div style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
+                  <button onClick={purgeImgCache} className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14}}>🧹 ล้างสำเนารูปในเครื่อง</button>
+                </div>
+              </div>
+
               <div style={t.dangerCard}>
                 <div style={t.dangerTitle}>⚠️ ล้างข้อมูลระบบ</div>
                 <div style={t.dangerText}>ลบประวัติการบันทึกทั้งหมด แดชบอร์ดและประวัติจะว่างเปล่า เพื่อเริ่มบันทึกใหม่ตั้งแต่ต้น</div>
@@ -2176,7 +2264,7 @@ function mk(dark){
   const shadow = dark?"none":"0 1px 3px rgba(30,64,120,.07)";
   const G = "linear-gradient(135deg,#3DA847,#1B6B2B)";
   return {
-    dim, border,
+    dim, border, text,
     app:{display:"flex", minHeight:"100vh", color:text, fontFamily:sans,
       background: dark ? bg : "linear-gradient(160deg,#E8F1FB 0%,#F2F6FC 50%,#EDF2FA 100%)", backgroundAttachment:"fixed"},
     side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${border}`, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
