@@ -524,6 +524,15 @@ function App() {
   const myName = (auth && accounts[auth.user] && (accounts[auth.user].reporter || accounts[auth.user].name)) || (auth && auth.name) || "";
   // พนักงานลบได้เฉพาะบันทึกของตัวเอง กันเผลอลบงานกะอื่น ผู้ดูแลลบได้ทุกอัน
   const canDelete = (l) => isAdmin || (!isVendor && !!l.by && l.by === myName);
+  // ป้าย "อาการที่แจ้ง" คือสิ่งที่พบตอนแจ้ง ไม่ใช่สถานะปัจจุบันของกล้อง
+  // งานที่ซ่อมจบแล้วจึงแสดงเป็นสีจาง กันช่างเข้าใจผิดว่ากล้องยังดับอยู่
+  const stBadge = (l) => {
+    const c = stOf(l.status).dot;
+    return fixDone(l)
+      ? { ...t.badge, background:hexA(t.dim,dark?.16:.1,dark), color:t.dim, borderColor:hexA(t.dim,.26,dark) }
+      : { ...t.badge, background:hexA(c,dark?.18:.12,dark), color:c, borderColor:hexA(c,.32,dark) };
+  };
+  const stTitle = (l) => fixDone(l) ? `อาการตอนที่แจ้ง · ซ่อมเสร็จแล้ว` : `อาการที่แจ้ง · ยังไม่ปิดงาน`;
   const byOpts = useMemo(() => [...new Set((logs||[]).map(l=>l.by).filter(Boolean))].sort(), [logs]);
   const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]); // เรียงเดือนใหม่ → เก่า
   const view = useMemo(() => {
@@ -837,47 +846,54 @@ function App() {
     setPage(1);
     setNav("history");
   };
+  // สรุปส่งไลน์ จัดกลุ่มตามคนบันทึก เรียงตามลำดับกะ
   const buildSummary = (dArg) => {
     const d = dArg || (dashMode==="day" ? dayFilter : todayISO());
     const rows = logs.filter(l=>l.date===d);
-    const down = rows.filter(l=>l.status==="กล้องดับ");
-    const adjust = rows.filter(l=>l.status==="ปรับมุมกล้อง");
-    const removed = rows.filter(l=>l.status==="ถอดกล้อง");
-    const badimg = rows.filter(l=>l.status==="ภาพผิดปกติ");
-    const other = rows.filter(l=>l.status==="เหตุการณ์อื่น");
-    const reporters = [...new Set(rows.map(l=>l.by).filter(Boolean))];
     let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
     s += `RAYONGBOARD\n`;
     s += `━━━━━━━━━━━━━\n`;
     if (rows.length===0) { s += `✅ ยังไม่มีการบันทึกของวันที่ ${fmtTH(d)}`; return s; }
-    const normal = rows.filter(l=>l.status==="ปกติ");
-    if (down.length) {
-      s += `🔴 กล้องดับ ${down.length} จุด\n`;
-      down.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
-    } else { s += `🟢 ไม่มีกล้องดับ\n`; }
-    if (adjust.length) {
-      s += `🎥 ปรับมุมกล้อง ${adjust.length} จุด\n`;
-      adjust.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
-    }
-    if (badimg.length) {
-      s += `📺 ภาพผิดปกติ ${badimg.length} จุด\n`;
-      badimg.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.detail?" — "+l.detail:(l.area?" — "+l.area:"")}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
-    }
-    if (removed.length) {
-      s += `🔌 ถอดกล้อง ${removed.length} จุด\n`;
-      removed.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.cam||"-"} (${l.zone})${l.area?" — "+l.area:""}${l.fix&&!fixDone(l)?" ["+normFix(l.fix)+"]":""}\n`; });
-    }
-    if (other.length) {
-      s += `⚠️ เหตุการณ์อื่น ${other.length} รายการ\n`;
-      other.forEach(l=>{ s += `  • ${l.time?l.time+" ":""}${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`; });
-    }
-    if (normal.length && !down.length && !adjust.length && !badimg.length && !removed.length && !other.length) {
-      s += `✅ ตรวจสอบแล้ว ไม่พบความผิดปกติ\n`;
-    }
+
+    // รวมรายการของแต่ละคนไว้ด้วยกัน
+    const groups = [], at = {};
+    rows.forEach(l => {
+      const who = String(l.by||"").trim() || "— ไม่ระบุผู้บันทึก";
+      if (at[who]===undefined) { at[who] = groups.length; groups.push({ who, items:[], shifts:[] }); }
+      const g = groups[at[who]];
+      g.items.push(l);
+      if (l.shift && g.shifts.indexOf(l.shift)<0) g.shifts.push(l.shift);
+    });
+    // เรียงตามกะ เช้า → บ่าย → ดึก → Day (IT) กะที่ไม่รู้จักไว้ท้าย
+    const rank = (g) => Math.min(...g.shifts.map(k => { const i = SHIFTS.findIndex(x=>x.key===k); return i<0 ? 90 : i; }).concat([99]));
+    groups.sort((a,b) => rank(a)-rank(b));
+
+    groups.forEach((g, i) => {
+      if (i) s += `\n`;
+      s += `👤 ${g.who}${g.shifts.length ? " · " + g.shifts.join(", ") : ""}\n`;
+      const abn = g.items.filter(l => l.status !== "ปกติ");
+      if (!abn.length) { s += `  ✅ ตรวจแล้ว ไม่พบความผิดปกติ\n`; return; }
+      abn.forEach(l => {
+        const em = stOf(l.status).emoji;
+        const tm = l.time ? l.time + " " : "";
+        const fx = l.fix && !fixDone(l) ? " [" + normFix(l.fix) + "]" : "";
+        if (l.status === "เหตุการณ์อื่น") {
+          s += `  ${em} ${tm}${l.detail||l.area||"-"}${l.zone?" ("+l.zone+")":""}\n`;
+        } else {
+          const where = l.cam ? `${l.cam}${l.zone?" ("+l.zone+")":""}` : (l.zone||"-");
+          const ex = l.status==="ภาพผิดปกติ" ? (l.detail?" — "+l.detail:(l.area?" — "+l.area:"")) : (l.area?" — "+l.area:"");
+          s += `  ${em} ${tm}${where}${ex}${fx}\n`;
+        }
+      });
+    });
+
     s += `━━━━━━━━━━━━━\n`;
-    const shifts = [...new Set(rows.map(l=>l.shift).filter(Boolean))];
-    if (shifts.length) s += `🕐 กะ: ${shifts.join(", ")}\n`;
-    s += `👤 ผู้รายงาน: ${reporters.length ? reporters.join(", ") : "—"}`;
+    // บรรทัดรวมท้ายสุด ให้คนอ่านเห็นยอดรวมโดยไม่ต้องไล่นับเอง
+    const cnt = {};
+    rows.forEach(l => { if (l.status && l.status !== "ปกติ") cnt[l.status] = (cnt[l.status]||0) + 1; });
+    const parts = Object.keys(cnt).map(k => `${stOf(k).emoji} ${k} ${cnt[k]}`);
+    s += parts.length ? `รวม: ${parts.join(" · ")}` : `✅ ตรวจสอบแล้ว ไม่พบความผิดปกติ`;
+    if (myName) s += `\n📤 ส่งสรุปโดย: ${myName}`;
     return s;
   };
   const copySummary = (dArg) => {
@@ -891,7 +907,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "สถานะ":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":normFix(l.fix), "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุ / สาเหตุ":l.fixNote||"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "อาการที่แจ้ง":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":normFix(l.fix), "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุ / สาเหตุ":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -901,7 +917,7 @@ function App() {
     try {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("รายงานกล้อง");
-      const headers = ["ลำดับ","วันที่","เวลา","กะ","สถานะ","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","สถานะงาน","วันที่งานเสร็จ","ผู้ดำเนินการ","หมายเหตุ / สาเหตุ","รูปหลังแก้"];
+      const headers = ["ลำดับ","วันที่","เวลา","กะ","อาการที่แจ้ง","พื้นที่","ชื่อกล้อง","IP Address","บริเวณ / รูปก่อนแก้","รายละเอียด","ผู้รายงาน","สถานะงาน","วันที่งานเสร็จ","ผู้ดำเนินการ","หมายเหตุ / สาเหตุ","รูปหลังแก้"];
       ws.columns = [
         {width:6},{width:12},{width:8},{width:7},{width:13},{width:12},{width:20},{width:16},{width:16},{width:26},{width:16},{width:10},{width:13},{width:14},{width:26},{width:16}
       ];
@@ -1401,7 +1417,7 @@ function App() {
 
               <div style={t.filterDiv} className="rb-hideM"/>
 
-              <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={sFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกสถานะกล้อง</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
+              <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={sFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกอาการที่แจ้ง</option><option value="กล้องดับ">🔴 กล้องดับ</option><option value="ภาพผิดปกติ">📺 ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">🎥 ปรับมุมกล้อง</option><option value="ถอดกล้อง">🔌 ถอดกล้อง</option><option value="เหตุการณ์อื่น">⚠️ เหตุการณ์อื่น</option><option value="ปกติ">✅ ปกติ</option></select>
               <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={fFilter!=="all"?t.selectOn:t.select}>
                 <option value="all">ทุกงานซ่อม</option>
                 <option value="open">⏳ ยังไม่เสร็จ</option>
@@ -1459,7 +1475,7 @@ function App() {
                       <div style={t.jobTop}>
                         <span style={{display:"flex", alignItems:"center", gap:9}}>
                           {jobMode && needsFix(l.status) && !fixDone(l) && <span style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</span>}
-                          <span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.18:.12), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.3,dark)}}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
+                          <span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
                         </span>
                         <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""}{needsFix(l.status)&&!fixDone(l) ? <b style={{color:daysOpen(l.date)>7?"#EF4444":t.dim}}> · ค้าง {daysOpen(l.date)} วัน</b> : ` · ${l.shift}`}</span>
                       </div>
@@ -1510,7 +1526,7 @@ function App() {
                       title="กดเพื่อสลับลำดับวันที่">
                     วันที่ <span style={t.sortTag}>{dateDesc ? "▼ ใหม่→เก่า" : "▲ เก่า→ใหม่"}</span>
                   </th>
-                  {["กะ","สถานะ","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
+                  {["กะ","อาการที่แจ้ง","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
@@ -1523,7 +1539,7 @@ function App() {
                       </td>}
                       <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}>🕐 {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
-                      <td style={t.td}><span style={{...t.badge, background:hex(stOf(l.status).dot,dark?.15:.12), color:stOf(l.status).dot}}>{stOf(l.status).emoji} {l.status}</span></td>
+                      <td style={t.td}><span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status}</span>{fixDone(l) && <div style={t.stDone}>ซ่อมเสร็จแล้ว</div>}</td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
@@ -2041,7 +2057,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setDetailBox(null)}>
           <div style={{...t.modalCard, maxWidth:540, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={t.dHead}>
-              <span style={{...t.badge, background:hexA(stOf(l.status).dot,dark?.18:.12,dark), color:stOf(l.status).dot, borderColor:hexA(stOf(l.status).dot,.35,dark)}}>{stOf(l.status).emoji} {l.status}</span>
+              <span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status}</span>
               <span style={t.dDate}>{fmtTH(l.date)}{l.time ? ` · ${l.time} น.` : ""} · กะ{l.shift}</span>
             </div>
 
@@ -2111,7 +2127,7 @@ function App() {
               </div>
             </div>
 
-            <div style={t.label}>📌 สถานะ</div>
+            <div style={t.label}>📌 อาการที่แจ้ง</div>
             <div style={t.chipRow}>
               {Object.keys(STATUS).map(s=>(
                 <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (FIX_STEPS.some(x=>x.key===normFix(editBox.fix)) ? normFix(editBox.fix) : defaultFix(s)) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}>{stOf(s).emoji} {s}</button>
@@ -2545,6 +2561,7 @@ function mk(dark){
     modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
     previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
+    stDone:{fontSize:10.5, color:"#16A34A", fontWeight:700, marginTop:5},
     toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1E293B", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
   };
 }
