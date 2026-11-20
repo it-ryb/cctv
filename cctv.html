@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#EEF1F6">
+<meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -12,7 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
-  html,body{margin:0;padding:0;background:#EEF1F6;font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif;}
+  html,body{margin:0;padding:0;background:#FFFCEF;font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   button{cursor:pointer;font-family:inherit;}select{font-family:inherit;cursor:pointer;}
   ::-webkit-scrollbar{width:8px;height:8px;}
@@ -20,7 +20,7 @@
   ::-webkit-scrollbar-track{background:transparent;}
   input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);cursor:pointer;}
   input,select,textarea{font-family:inherit;}
-  input:focus,select:focus{border-color:#2E8B3D !important;}
+  input:focus,select:focus{border-color:#0B6FC4 !important;}
   @keyframes fade{from{opacity:0;}to{opacity:1;}}
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
   /* Edge/IE ใส่ไอคอนตากับกากบาทในช่องรหัสผ่านเอง ต้องซ่อน ไม่งั้นซ้อนกับปุ่มของเรา */
@@ -1387,7 +1387,7 @@ function App() {
                   {myShifts.map(s=>{ const on=shift===s.key;
                     return <button key={s.key} onClick={()=>setShift(s.key)} className="tap" style={on?t.shiftCardOn:t.shiftCard}>
                       <span style={t.shiftName}>{s.key}</span>
-                      <span style={{...t.shiftClock, color:on?(dark?"#5FD16E":"#2E8B3D"):t.dim}}>{s.time}</span>
+                      <span style={{...t.shiftClock, color:on?t.accentTxt:t.dim}}>{s.time}</span>
                     </button>;
                   })}
                 </div>
@@ -2395,7 +2395,7 @@ function DeptPicker({ value, onChange, style }) {
   const [other, setOther] = React.useState(!!value && !DEPARTMENTS.includes(value));
   return (
     <div>
-      <select value={other ? "__other" : (value||"")} style={{...style, color: (value||other) ? undefined : "#94A3B8"}}
+      <select value={other ? "__other" : (value||"")} style={{...style, color: (value||other) ? undefined : "#9A937F"}}
               onChange={e=>{ const v=e.target.value; if (v==="__other") { setOther(true); onChange(""); } else { setOther(false); onChange(v); } }}>
         <option value="" disabled>🏷️ เลือกแผนก</option>
         {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
@@ -2412,35 +2412,36 @@ const sans = "'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Se
 const head = "'IBM Plex Sans Thai','IBM Plex Sans Thai Looped',-apple-system,'Segoe UI',sans-serif";
 
 function mk(dark){
-  // โทนพาสเทล: พื้นอมเขียวมิ้นต์ ขอบและเงานุ่ม ตัวอักษรยังเข้มพอให้อ่านง่าย
-  const bg = dark?"#080B10":"#EDF3FA";
-  const sideB = dark?"#0D1218":"#FAFCFF";
+  // โทนครีม: พื้นครีมอุ่น การ์ดขาว ขอบสีทราย ตัวอักษรเข้มอมน้ำตาล ปุ่มหลักสีน้ำเงิน
+  const bg = dark?"#080B10":"#FFFCEF";
+  const sideB = dark?"#0D1218":"#FFFDF5";
   const surf = dark?"#0F151C":"#FFFFFF";
-  const surf2 = dark?"rgba(255,255,255,.025)":"#F3F7FC";
-  const border = dark?"rgba(255,255,255,.07)":"rgba(37,99,235,.11)";
-  const text = dark?"#E6EAF0":"#1F2A37";
-  const dim = dark?"#7B8696":"#78879A";
-  const inputBg = dark?"rgba(0,0,0,.3)":"#F1F6FC";
-  const accent = "#2E8B3D";
-  const shadow = dark?"none":"0 1px 3px rgba(30,64,120,.07)";
-  const G = "linear-gradient(135deg,#3DA847,#1B6B2B)";
+  const surf2 = dark?"rgba(255,255,255,.025)":"#FCF9EE";
+  const border = dark?"rgba(255,255,255,.07)":"#ECE5D0";
+  const text = dark?"#E6EAF0":"#1A1811";
+  const dim = dark?"#7B8696":"#7A7466";
+  const inputBg = dark?"rgba(0,0,0,.3)":"#FFFEF9";
+  const accent = "#0B6FC4";                       // น้ำเงินหลัก
+  const accentTxt = dark?"#5AA8F0":accent;        // น้ำเงินที่อ่านชัดบนพื้นมืด
+  const shadow = dark?"none":"0 1px 3px rgba(90,80,50,.07)";
+  const G = "linear-gradient(135deg,#1C82D9,#0A5FAD)";
   return {
-    dim, border, text,
+    dim, border, text, accentTxt,
     app:{display:"flex", minHeight:"100vh", color:text, fontFamily:sans,
-      background: dark ? bg : "linear-gradient(160deg,#E8F1FB 0%,#F2F6FC 50%,#EDF2FA 100%)", backgroundAttachment:"fixed"},
+      background: dark ? bg : "radial-gradient(900px 600px at 92% 8%, rgba(46,125,79,.06), transparent 60%), linear-gradient(160deg,#FBF5E2 0%,#FFFCEF 42%,#FFFDF6 100%)", backgroundAttachment:"fixed"},
     side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${border}`, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
     logoImg:{width:"100%", maxWidth:180, height:"auto", display:"block"},
     sideTitle:{fontSize:17, fontWeight:700},
     sideSub:{fontSize:12.5, color:dim, marginTop:3, marginBottom:22},
     nav:{display:"flex", flexDirection:"column", gap:5},
     navBtn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:"1px solid transparent", background:"transparent", color:dim, fontSize:15, fontWeight:500, textAlign:"left", position:"relative"},
-    navOn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:`1px solid ${hexA(accent,.4,dark)}`, background:hexA(accent,dark?.16:.11,dark), color:dark?"#5FD16E":accent, fontSize:15, fontWeight:600, textAlign:"left", position:"relative", boxShadow:dark?`inset 0 0 0 1px ${hexA(accent,.1,dark)}`:"none"},
+    navOn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:`1px solid ${hexA(accent,.4,dark)}`, background:hexA(accent,dark?.16:.11,dark), color:accentTxt, fontSize:15, fontWeight:600, textAlign:"left", position:"relative", boxShadow:dark?`inset 0 0 0 1px ${hexA(accent,.1,dark)}`:"none"},
     navBadge:{position:"absolute", right:11, background:"#F59E0B", color:"#0B0F14", fontSize:11, fontWeight:800, minWidth:20, height:20, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 5px"},
     sideCard:{marginTop:22, padding:15, borderRadius:14, background:surf2, border:`1px solid ${border}`},
     sideCardTitle:{fontSize:11, fontWeight:700, color:dim, marginBottom:11, letterSpacing:.3, textTransform:"uppercase"},
     syncWarn:{marginTop:9, padding:"9px 11px", borderRadius:10, background:hexA("#EF4444",dark?.14:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:11, fontWeight:600, lineHeight:1.5},
     sideStat:{display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12.5, padding:"5px 0", color:text},
-    themeToggle:{position:"fixed", top:20, right:24, zIndex:40, width:42, height:42, borderRadius:12, border:`1px solid ${border}`, background:surf, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:dark?"0 4px 16px rgba(0,0,0,.3)":"0 2px 10px rgba(15,23,42,.1)"},
+    themeToggle:{position:"fixed", top:20, right:24, zIndex:40, width:42, height:42, borderRadius:12, border:`1px solid ${border}`, background:surf, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:dark?"0 4px 16px rgba(0,0,0,.3)":"0 2px 10px rgba(60,50,20,.1)"},
     themeBtn:{padding:"11px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13, fontWeight:600, marginBottom:12},
 
     main:{flex:1, minWidth:0, overflowX:"hidden", position:"relative"},
@@ -2452,7 +2453,7 @@ function mk(dark){
 
     recGrid:{display:"grid", gridTemplateColumns:"minmax(0,1.4fr) minmax(0,1fr)", gap:20, alignItems:"start"},
     dashGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20},
-    panel:{background:surf, border:`1px solid ${border}`, borderRadius:20, padding:26, boxShadow:dark?"0 1px 0 rgba(255,255,255,.02) inset, 0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
+    panel:{background:surf, border:`1px solid ${border}`, borderRadius:20, padding:26, boxShadow:dark?"0 1px 0 rgba(255,255,255,.02) inset, 0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(60,50,20,.05)"},
     panelTitle:{fontFamily:head, fontSize:16.5, fontWeight:600, marginBottom:18},
     label:{fontSize:13, color:dim, fontWeight:600, margin:"18px 0 9px", letterSpacing:.1},
     dimLabel:{color:dim, fontWeight:400},
@@ -2460,8 +2461,8 @@ function mk(dark){
     seg:{padding:"18px 8px", borderRadius:15, border:"1.5px solid", fontSize:14, fontWeight:600, display:"flex", flexDirection:"column", alignItems:"center", gap:8},
     chipRow:{display:"flex", gap:7, flexWrap:"wrap"},
     chip:{padding:"11px 16px", borderRadius:12, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:14, fontWeight:500, display:"flex", alignItems:"center", gap:7},
-    chipOn:{padding:"11px 16px", borderRadius:12, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.11,dark), color:dark?"#5FD16E":accent, fontSize:14, fontWeight:600, display:"flex", alignItems:"center", gap:7},
-    miniCount:{fontSize:10.5, padding:"1px 7px", borderRadius:20, background:dark?"rgba(255,255,255,.08)":"rgba(15,23,42,.06)", color:dim, fontFamily:mono},
+    chipOn:{padding:"11px 16px", borderRadius:12, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.11,dark), color:accentTxt, fontSize:14, fontWeight:600, display:"flex", alignItems:"center", gap:7},
+    miniCount:{fontSize:10.5, padding:"1px 7px", borderRadius:20, background:dark?"rgba(255,255,255,.08)":"rgba(60,50,20,.06)", color:dim, fontFamily:mono},
     input:{width:"100%", padding:"14px 16px", borderRadius:13, border:`1px solid ${border}`, background:inputBg, color:text, fontSize:15, outline:"none", fontFamily:sans, transition:"border-color .15s"},
     camGrid:{display:"flex", flexWrap:"wrap", gap:6, marginTop:10, maxHeight:280, overflowY:"auto", padding:"2px 4px 2px 0"},
     busyTag:{fontSize:11, fontWeight:700, color:"#F59E0B", background:hexA("#F59E0B",dark?.16:.1,dark), border:`1px solid ${hexA("#F59E0B",.35,dark)}`, borderRadius:20, padding:"2px 9px", marginLeft:8},
@@ -2470,11 +2471,11 @@ function mk(dark){
     searchZone:{fontSize:11.5, color:dim, whiteSpace:"nowrap"},
     camBusy:{borderColor:hexA("#F59E0B",.55,dark), background:hexA("#F59E0B",dark?.12:.08,dark), color:"#F59E0B"},
     camBusyOn:{borderColor:"#F59E0B", background:hexA("#F59E0B",dark?.2:.14,dark), color:"#F59E0B"},
-    camChip:{padding:"8px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf2, color:dark?"#AEB7C4":"#475569", fontSize:12, fontFamily:mono},
-    camOn:{padding:"8px 12px", borderRadius:10, border:`1px solid ${accent}`, background:hexA(accent,dark?.2:.12,dark), color:dark?"#5FD16E":accent, fontSize:12, fontFamily:mono, fontWeight:700},
+    camChip:{padding:"8px 12px", borderRadius:10, border:`1px solid ${border}`, background:surf2, color:dark?"#AEB7C4":"#4F4A3D", fontSize:12, fontFamily:mono},
+    camOn:{padding:"8px 12px", borderRadius:10, border:`1px solid ${accent}`, background:hexA(accent,dark?.2:.12,dark), color:accentTxt, fontSize:12, fontFamily:mono, fontWeight:700},
     empty:{fontSize:12, color:dim, padding:"8px 2px", width:"100%"},
     hint:{marginTop:10, fontSize:12.5, color:dim, textAlign:"center", padding:"16px", borderRadius:12, border:`1.5px dashed ${border}`},
-    picked:{marginTop:12, fontSize:13, color:dark?"#5FD16E":accent, fontFamily:mono, padding:"11px 13px", borderRadius:11, background:hexA(accent,dark?.1:.07,dark)},
+    picked:{marginTop:12, fontSize:13, color:accentTxt, fontFamily:mono, padding:"11px 13px", borderRadius:11, background:hexA(accent,dark?.1:.07,dark)},
     note:{marginTop:14, padding:"16px", borderRadius:13, background:hexA("#22C55E",dark?.08:.09,dark), border:`1px solid ${hexA("#22C55E",.22,dark)}`, fontSize:13.5, color:dark?"#86EFAC":"#15803D"},
     uploadBox:{padding:"18px", borderRadius:13, border:`1.5px dashed ${border}`, background:inputBg, textAlign:"center"},
     fileInput:{fontSize:13, color:text, maxWidth:"100%"},
@@ -2486,7 +2487,7 @@ function mk(dark){
     dupLine:{fontSize:12.5, color:dim, marginTop:2},
     dupImg:{width:104, height:74, objectFit:"cover", borderRadius:9, border:`1px solid ${hexA("#F59E0B",.4,dark)}`, marginTop:9, cursor:"pointer", display:"block"},
     dupBtn:{padding:"9px 14px", borderRadius:10, border:`1px solid ${hexA("#F59E0B",.45,dark)}`, background:"transparent", color:"#F59E0B", fontSize:13, fontWeight:600},
-    submit:{width:"100%", marginTop:26, padding:"17px", borderRadius:15, border:"none", background:G, color:"#fff", fontSize:16.5, fontWeight:600, letterSpacing:.2, display:"block", boxShadow:`0 6px 20px ${hexA("#22C55E",.25,dark)}`},
+    submit:{width:"100%", marginTop:26, padding:"17px", borderRadius:15, border:"none", background:G, color:"#fff", fontSize:16.5, fontWeight:600, letterSpacing:.2, display:"block", boxShadow:`0 6px 20px ${hexA("#0B6FC4",.22,dark)}`},
 
     miniLog:{display:"flex", gap:11, padding:"12px 13px 12px 0", background:surf2, border:`1px solid ${border}`, borderRadius:13, overflow:"hidden"},
     miniBar:{width:3, borderRadius:3, alignSelf:"stretch", flexShrink:0},
@@ -2495,10 +2496,10 @@ function mk(dark){
     miniMeta:{fontSize:13, color:dim, marginTop:4, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
 
     select:{padding:"11px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:13, outline:"none"},
-    exportBtn:{padding:"11px 17px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.13:.1,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, whiteSpace:"nowrap"},
+    exportBtn:{padding:"11px 17px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.13:.1,dark), color:accentTxt, fontSize:13, fontWeight:700, whiteSpace:"nowrap"},
     filterBar:{display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", background:surf, border:`1px solid ${border}`, borderRadius:15, padding:"12px 14px", marginBottom:16, boxShadow:shadow},
     filterDiv:{width:1, height:26, background:border, margin:"0 3px"},
-    selectOn:{padding:"11px 14px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.09,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:600, outline:"none"},
+    selectOn:{padding:"11px 14px", borderRadius:11, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.09,dark), color:accentTxt, fontSize:13, fontWeight:600, outline:"none"},
     clearFilter:{padding:"11px 14px", borderRadius:11, border:`1px solid ${hexA("#EF4444",.3,dark)}`, background:"transparent", color:"#EF4444", fontSize:13, fontWeight:600, marginLeft:"auto"},
     sortTag:{color:accent, fontSize:10.5, fontWeight:700, background:hexA(accent,dark?.16:.1,dark), padding:"2px 7px", borderRadius:7, marginLeft:5, whiteSpace:"nowrap"},
     pager:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, marginTop:14, flexWrap:"wrap"},
@@ -2508,7 +2509,7 @@ function mk(dark){
     table:{width:"100%", borderCollapse:"collapse", fontSize:14.5},
     th:{textAlign:"left", padding:"16px 14px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
     tr:{borderBottom:`1px solid ${border}`},
-    stickyR:{position:"sticky", right:0, background:surf, boxShadow:`-8px 0 10px -8px ${dark?"rgba(0,0,0,.5)":"rgba(15,23,42,.12)"}`},  // ปุ่มติดขอบขวาเสมอ แม้ตารางต้องเลื่อน
+    stickyR:{position:"sticky", right:0, background:surf, boxShadow:`-8px 0 10px -8px ${dark?"rgba(0,0,0,.5)":"rgba(60,50,20,.12)"}`},  // ปุ่มติดขอบขวาเสมอ แม้ตารางต้องเลื่อน
     stickyRh:{position:"sticky", right:0, background:dark?surf:surf2},   // หัวคอลัมน์ที่ติดขอบต้องทึบ ไม่งั้นเห็นตัวหนังสือลอดข้างใต้
     // ปุ่มในการ์ดรายละเอียด: เรียงแถวเดียว ยืดเต็มแถวตามความยาวคำ สีบอกหน้าที่ (เขียว=อัปเดต เหลือง=แก้ไข แดง=ปิด)
     dBtnMain:{flex:"1 1 auto", padding:"11px 16px", borderRadius:12, border:"none", background:G, color:"#fff", fontSize:14.5, fontWeight:600, whiteSpace:"nowrap", boxShadow:`0 4px 12px ${hexA("#22C55E",.22,dark)}`},
@@ -2599,7 +2600,7 @@ function mk(dark){
     miniLabel:{fontSize:14, color:text, fontWeight:700, marginTop:9, lineHeight:1.3},
     miniSub:{fontSize:12, marginTop:3, fontWeight:600},
     statGrid:{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20},
-    bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
+    bigStat:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"26px 18px", textAlign:"center", boxShadow:dark?"0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(60,50,20,.05)"},
     bigNum:{fontSize:44, fontWeight:600, fontFamily:mono, lineHeight:1, margin:"12px 0 7px"},
     bigStatBtn:{cursor:"pointer", width:"100%", textAlign:"center", fontFamily:"inherit"},
     bigSub:{fontSize:11, color:dim, marginTop:3},
@@ -2608,7 +2609,7 @@ function mk(dark){
     rankRow:{display:"flex", alignItems:"center", gap:12, marginBottom:15},
     rankNo:{width:26, fontSize:17, textAlign:"center"},
     rankCam:{width:130, fontSize:12.5, fontFamily:mono, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
-    barTrack:{flex:1, height:9, background:dark?"rgba(255,255,255,.05)":"#E2E8F0", borderRadius:5, overflow:"hidden"},
+    barTrack:{flex:1, height:9, background:dark?"rgba(255,255,255,.05)":"#F1ECDD", borderRadius:5, overflow:"hidden"},
     barFill:{height:"100%", background:"linear-gradient(90deg,#F59E0B,#FBBF24)", borderRadius:5},
     rankN:{width:22, textAlign:"right", fontSize:14, fontWeight:800, fontFamily:mono, color:"#F59E0B"},
 
@@ -2627,7 +2628,7 @@ function mk(dark){
     roleVendor:{padding:"7px 12px", borderRadius:9, border:`1px solid ${hexA("#F59E0B",.35,dark)}`, background:hexA("#F59E0B",dark?.12:.09,dark), color:"#F59E0B", fontSize:12, fontWeight:600, whiteSpace:"nowrap"},
     roleStaff:{padding:"7px 12px", borderRadius:9, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:12, fontWeight:600, whiteSpace:"nowrap"},
     accAddBox:{padding:15, borderRadius:13, background:hexA(accent,dark?.06:.05,dark), border:`1px solid ${hexA(accent,.18,dark)}`},
-    accAddTitle:{fontSize:14, fontWeight:600, marginBottom:12, color:dark?"#5FD16E":accent},
+    accAddTitle:{fontSize:14, fontWeight:600, marginBottom:12, color:accentTxt},
     accAddGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10},
     pwHint:{fontSize:13, color:dim, marginBottom:16, lineHeight:1.5},
     pwRow:{marginBottom:16},
@@ -2656,9 +2657,9 @@ function mk(dark){
     lineSummaryBtn:{width:"100%", padding:"13px", borderRadius:12, border:"none", background:"linear-gradient(135deg,#06C755,#04A344)", color:"#fff", fontSize:14.5, fontWeight:600, marginBottom:16, boxShadow:`0 4px 14px ${hexA("#06C755",.28,dark)}`},
     copyBtn:{padding:"15px 26px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#06C755,#04A344)", color:"#fff", fontSize:15.5, fontWeight:600, boxShadow:`0 6px 20px ${hexA("#06C755",.3,dark)}`},
     dashExport:{padding:"15px 26px", borderRadius:14, border:`1px solid ${border}`, background:surf, color:text, fontSize:15.5, fontWeight:600},
-    dashToggle:{display:"flex", gap:3, padding:3, borderRadius:11, background:dark?"rgba(255,255,255,.05)":"#E2E8F0", border:`1px solid ${border}`},
+    dashToggle:{display:"flex", gap:3, padding:3, borderRadius:11, background:dark?"rgba(255,255,255,.05)":"#F1ECDD", border:`1px solid ${border}`},
     dashTg:{padding:"8px 14px", borderRadius:8, border:"none", background:"transparent", color:dim, fontSize:13, fontWeight:600},
-    dashTgOn:{padding:"8px 14px", borderRadius:8, border:"none", background:surf, color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, boxShadow:dark?"none":"0 1px 3px rgba(15,23,42,.1)"},
+    dashTgOn:{padding:"8px 14px", borderRadius:8, border:"none", background:surf, color:accentTxt, fontSize:13, fontWeight:700, boxShadow:dark?"none":"0 1px 3px rgba(60,50,20,.1)"},
     shiftGrid:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10},
     shiftCard:{padding:"14px 10px", borderRadius:13, border:`1px solid ${border}`, background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:5},
     shiftCardOn:{padding:"14px 10px", borderRadius:13, border:`1.5px solid ${accent}`, background:hexA(accent,dark?.14:.09,dark), display:"flex", flexDirection:"column", alignItems:"center", gap:5},
@@ -2667,7 +2668,7 @@ function mk(dark){
     shiftTime:{fontSize:11, opacity:.7, fontFamily:mono, marginLeft:2},
     reqNote:{marginTop:10, fontSize:13, color:"#EF4444", fontWeight:500, display:"flex", alignItems:"center", gap:4},
     staffRow:{display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:surf2, border:`1px solid ${border}`, borderRadius:12},
-    staffNo:{width:26, height:26, borderRadius:8, background:hexA(accent,dark?.15:.1,dark), color:dark?"#5FD16E":accent, fontSize:13, fontWeight:700, fontFamily:mono, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
+    staffNo:{width:26, height:26, borderRadius:8, background:hexA(accent,dark?.15:.1,dark), color:accentTxt, fontSize:13, fontWeight:700, fontFamily:mono, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
     staffName:{flex:1, fontSize:14.5, fontWeight:600},
     staffEdit:{padding:"7px 12px", borderRadius:9, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:12.5, fontWeight:600},
     staffDel:{padding:"7px 12px", borderRadius:9, border:`1px solid ${hexA("#EF4444",.3,dark)}`, background:hexA("#EF4444",dark?.1:.07,dark), color:"#EF4444", fontSize:12.5, fontWeight:600},
@@ -2679,18 +2680,18 @@ function mk(dark){
       color:text, fontFamily:sans, padding:20, position:"relative", overflow:"hidden",
       background: dark
         ? "radial-gradient(900px 520px at 50% 34%, rgba(56,132,255,.18), transparent 62%), linear-gradient(160deg,#080D14 0%,#0C1219 45%,#0A1018 100%)"
-        : "radial-gradient(900px 520px at 50% 34%, rgba(56,132,255,.16), transparent 62%), linear-gradient(160deg,#DFEBFA 0%,#EEF4FC 48%,#E7EEF9 100%)"},
+        : "radial-gradient(900px 520px at 80% 20%, rgba(46,125,79,.07), transparent 60%), radial-gradient(800px 500px at 15% 85%, rgba(11,111,196,.06), transparent 60%), linear-gradient(160deg,#FBF5E2 0%,#FFFCEF 48%,#FFFDF6 100%)"},
     loginHelp:{marginTop:16, fontSize:11.5, color:dim, textAlign:"center"},
     loginKicker:{position:"relative", fontFamily:mono, fontSize:11, fontWeight:700, letterSpacing:"1.4px", color:dim},
     loginBox:{width:"100%", maxWidth:860, display:"grid", gridTemplateColumns:"1fr 1fr", borderRadius:22, overflow:"hidden",
-      boxShadow:dark?"0 30px 80px rgba(0,0,0,.5)":"0 26px 70px rgba(30,64,120,.16)", border:`1px solid ${border}`},
+      boxShadow:dark?"0 30px 80px rgba(0,0,0,.5)":"0 26px 70px rgba(90,80,50,.14)", border:`1px solid ${border}`},
     loginSide:{position:"relative", overflow:"hidden", padding:"44px 36px", color:"#fff", display:"flex", flexDirection:"column", justifyContent:"space-between",
-      background:"linear-gradient(155deg,#1F5F2B 0%,#2E8B3D 58%,#24702F 100%)"},
+      background:"linear-gradient(155deg,#0A5AA3 0%,#0B6FC4 58%,#0A63B2 100%)"},
     circA:{position:"absolute", right:-80, top:-60, width:250, height:250, borderRadius:"50%", background:"rgba(255,255,255,.07)"},
     circB:{position:"absolute", left:-70, bottom:-80, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,.055)"},
     loginBtn:{width:"100%", marginTop:24, padding:"15px", borderRadius:13, border:"none",
-      background:"linear-gradient(135deg,#3DA847,#1B6B2B)", color:"#fff", fontSize:15.5, fontWeight:700,
-      boxShadow:"0 8px 22px rgba(46,139,61,.26)", fontFamily:"inherit"},
+      background:"linear-gradient(135deg,#1C82D9,#0A5FAD)", color:"#fff", fontSize:15.5, fontWeight:700,
+      boxShadow:"0 8px 22px rgba(11,111,196,.26)", fontFamily:"inherit"},
     sideLogo:{marginBottom:16, padding:"4px 2px"},
     sideFoot:{marginTop:16, fontSize:11, color:dim, fontFamily:mono, letterSpacing:".2px"},
     loginSideFoot:{position:"relative", fontSize:11, opacity:.62, fontFamily:mono, color:"#fff"},
@@ -2720,7 +2721,7 @@ function mk(dark){
     pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
     roleViewer:{padding:"5px 11px", borderRadius:9, border:`1px solid ${hexA("#8B5CF6",.3,dark)}`, background:hexA("#8B5CF6",dark?.14:.1,dark), color:"#8B5CF6", fontSize:12, fontWeight:700},
     stDone:{fontSize:10.5, color:"#16A34A", fontWeight:700, marginTop:5},
-    toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1E293B", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
+    toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1A1811", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
   };
 }
 function hexA(c,a,dark){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
