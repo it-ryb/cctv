@@ -2204,8 +2204,8 @@ function App() {
 
             <div style={{display:"flex", gap:10, marginTop:18, flexWrap:"wrap"}}>
               {needsFix(l.status) && !isViewer && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={t.dBtnMain}>🔧 อัปเดตสถานะงาน</button>}
-              {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={t.dBtn}>✏️ แก้ไข</button>}
-              <button onClick={()=>setDetailBox(null)} className="tap" style={{...t.dBtn, marginLeft:"auto"}}>ปิด</button>
+              {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={t.dBtnEdit}>✏️ แก้ไข</button>}
+              <button onClick={()=>setDetailBox(null)} className="tap" style={t.dBtnClose}>✕ ปิด</button>
             </div>
           </div>
         </div></Modal>
@@ -2485,9 +2485,10 @@ function mk(dark){
     tr:{borderBottom:`1px solid ${border}`},
     stickyR:{position:"sticky", right:0, background:surf, boxShadow:`-8px 0 10px -8px ${dark?"rgba(0,0,0,.5)":"rgba(15,23,42,.12)"}`},  // ปุ่มติดขอบขวาเสมอ แม้ตารางต้องเลื่อน
     stickyRh:{position:"sticky", right:0, background:dark?surf:surf2},   // หัวคอลัมน์ที่ติดขอบต้องทึบ ไม่งั้นเห็นตัวหนังสือลอดข้างใต้
-    // ปุ่มในการ์ดรายละเอียด: ขนาดพอดีตัวหนังสือ บรรทัดเดียว ไม่ยืดเต็มกล่อง
-    dBtnMain:{padding:"11px 18px", borderRadius:12, border:"none", background:G, color:"#fff", fontSize:14.5, fontWeight:600, whiteSpace:"nowrap", boxShadow:`0 4px 12px ${hexA("#22C55E",.22,dark)}`},
-    dBtn:{padding:"11px 18px", borderRadius:12, border:`1px solid ${border}`, background:surf, color:text, fontSize:14.5, fontWeight:600, whiteSpace:"nowrap"},
+    // ปุ่มในการ์ดรายละเอียด: เรียงแถวเดียว ยืดเต็มแถวตามความยาวคำ สีบอกหน้าที่ (เขียว=อัปเดต เหลือง=แก้ไข แดง=ปิด)
+    dBtnMain:{flex:"1 1 auto", padding:"11px 16px", borderRadius:12, border:"none", background:G, color:"#fff", fontSize:14.5, fontWeight:600, whiteSpace:"nowrap", boxShadow:`0 4px 12px ${hexA("#22C55E",.22,dark)}`},
+    dBtnEdit:{flex:"1 1 auto", padding:"11px 16px", borderRadius:12, border:`1px solid ${hexA("#F59E0B",.45,dark)}`, background:hexA("#F59E0B",dark?.16:.12,dark), color:dark?"#FBBF24":"#B45309", fontSize:14.5, fontWeight:600, whiteSpace:"nowrap"},
+    dBtnClose:{flex:"1 1 auto", padding:"11px 16px", borderRadius:12, border:`1px solid ${hexA("#EF4444",.4,dark)}`, background:hexA("#EF4444",dark?.14:.09,dark), color:dark?"#F87171":"#DC2626", fontSize:14.5, fontWeight:600, whiteSpace:"nowrap"},
     actCol:{display:"flex", gap:6, alignItems:"center", justifyContent:"flex-end", whiteSpace:"nowrap"},  // ปุ่มแก้ไข/ลบ อยู่แถวเดียวกัน
     td:{padding:"15px 14px", verticalAlign:"top", fontSize:14.5},
     dHead:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap", marginBottom:12},
