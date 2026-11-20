@@ -642,13 +642,19 @@ function App() {
     setJobSel([]); setJobNote("");
   };
   const copyJobList = () => {
-    const rows = view.filter(l=>needsFix(l.status) && !fixDone(l));
+    const open = view.filter(l=>needsFix(l.status) && !fixDone(l));
+    // ติ๊กไว้บางรายการ = เอาเฉพาะที่ติ๊ก ไม่ได้ติ๊ก = เอาทั้งหมดที่กรองอยู่
+    const picked = open.filter(l=>jobSel.includes(l.id));
+    const rows = picked.length ? picked : open;
+    if (!rows.length) { setToast("ไม่มีงานค้างให้คัดลอก"); setTimeout(()=>setToast(""),2400); return; }
     let out = `🛠 งานซ่อมกล้องค้างอยู่ ${rows.length} รายการ\n━━━━━━━━━━━━━\n`;
     rows.forEach(l=>{
       out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ค้าง ${daysOpen(l.date)} วัน\n`;
       if (l.area || l.detail) out += `   ${[l.area,l.detail].filter(Boolean).join(" — ")}\n`;
     });
     setSummaryText(out);
+    setSummaryCopied(false);
+    setShowSummary(true);   // ต้องเปิดกล่องด้วย ไม่งั้นกดแล้วเหมือนไม่มีอะไรเกิดขึ้น
   };
   const selectableIds = useMemo(() => view.filter(l=>needsFix(l.status) && !fixDone(l)).map(l=>l.id), [view]);
   const openCamSet = useMemo(() => {
