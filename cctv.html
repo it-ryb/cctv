@@ -259,7 +259,8 @@ function App() {
   const [pwEdit, setPwEdit] = useState({});
   const [pwShow, setPwShow] = useState({}); // กดดูรหัสผ่านที่กำลังพิมพ์ได้ทีละบัญชี
   const [accounts, setAccounts] = useState(DEFAULT_USERS);
-  const [newAcc, setNewAcc] = useState({ user:"", name:"", pass:"", role:"staff", dept:"CCTV" });
+  const [newAcc, setNewAcc] = useState({ user:"", name:"", pass:"", role:"staff", dept:"" });
+  const [accFormKey, setAccFormKey] = useState(0); // เปลี่ยนค่าเพื่อล้างช่องแผนกหลังเพิ่มบัญชี
   const [logs, setLogs] = useState(null);
   const [reporters, setReporters] = useState(DEFAULT_REPORTERS);
   const [newRep, setNewRep] = useState("");
@@ -1096,10 +1097,11 @@ function App() {
     if (!u || !newAcc.name.trim() || !newAcc.pass.trim()) { setToast("กรอกชื่อผู้ใช้ ชื่อ-นามสกุล และรหัสผ่านให้ครบ"); setTimeout(()=>setToast(""),2600); return; }
     if (accounts[u]) { setToast("มีชื่อผู้ใช้นี้แล้ว"); setTimeout(()=>setToast(""),2400); return; }
     if (newAcc.pass.trim().length < 4) { setToast("รหัสผ่านต้องยาวอย่างน้อย 4 ตัวอักษร"); setTimeout(()=>setToast(""),2400); return; }
-    const acc = { pass: newAcc.pass.trim(), role: newAcc.role, name: newAcc.name.trim(), reporter: newAcc.name.trim(), dept: newAcc.dept.trim()||"CCTV" };
+    if (!newAcc.dept.trim()) { setToast("เลือกแผนกด้วย"); setTimeout(()=>setToast(""),2400); return; }
+    const acc = { pass: newAcc.pass.trim(), role: newAcc.role, name: newAcc.name.trim(), reporter: newAcc.name.trim(), dept: newAcc.dept.trim() };
     setAccounts({...accounts, [u]: acc});
     setPasswords({...passwords, [u]: newAcc.pass.trim()});
-    setNewAcc({ user:"", name:"", pass:"", role:"staff", dept:"CCTV" });
+    setNewAcc({ user:"", name:"", pass:"", role:"staff", dept:"" }); setAccFormKey(k=>k+1);
     setToast(`เพิ่มบัญชี ${u} แล้ว`); setTimeout(()=>setToast(""),2400);
   };
   const delAccount = (u) => {
@@ -1991,8 +1993,7 @@ function App() {
                     <input value={newAcc.user} onChange={e=>setNewAcc({...newAcc, user:e.target.value})} placeholder="ชื่อผู้ใช้ (เช่น somchai)" style={t.input}/>
                     <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
                     <input value={newAcc.pass} onChange={e=>setNewAcc({...newAcc, pass:e.target.value})} placeholder="รหัสผ่าน" style={t.input}/>
-                    <input list="deptlist" value={newAcc.dept} onChange={e=>setNewAcc({...newAcc, dept:e.target.value})} placeholder="แผนก/ตำแหน่ง" style={t.input}/>
-                    <datalist id="deptlist">{DEPARTMENTS.map(d=><option key={d} value={d}/>)}</datalist>
+                    <DeptPicker key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
                     <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={t.input}>
                       {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
                     </select>
@@ -2048,8 +2049,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setPromptBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}>✏️ {promptBox.msg}</div>
-            <input value={promptBox.val} onChange={e=>setPromptBox({...promptBox, val:e.target.value})} onKeyDown={e=>{if(e.key==="Enter"){const fn=promptBox.onOk;const v=promptBox.val;setPromptBox(null);if(fn)fn(v);}}} autoFocus list="deptlist2" style={{...t.input, marginTop:12}}/>
-            <datalist id="deptlist2">{DEPARTMENTS.map(d=><option key={d} value={d}/>)}</datalist>
+            <div style={{marginTop:12}}><DeptPicker value={promptBox.val} onChange={v=>setPromptBox(pb=>({...pb, val:v}))} style={t.input}/></div>
             <div style={{display:"flex", gap:10, marginTop:16}}>
               <button onClick={()=>setPromptBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
               <button onClick={()=>{const fn=promptBox.onOk;const v=promptBox.val;setPromptBox(null);if(fn)fn(v);}} className="tap" style={{...t.submit, marginTop:0, flex:1}}>บันทึก</button>
@@ -2379,6 +2379,21 @@ function Name({ text }) {
   if (!text) return null;
   const parts = String(text).trim().split(/\s+/);
   return <>{parts.map((w,i)=><React.Fragment key={i}>{i>0?" ":""}<span style={{whiteSpace:"nowrap"}}>{w}</span></React.Fragment>)}</>;
+}
+// เลือกแผนกจากรายการ (ไม่ใช่ช่องพิมพ์ที่กรองตามคำที่ค้างอยู่ ซึ่งทำให้เห็นแค่ตัวเลือกเดียว)
+function DeptPicker({ value, onChange, style }) {
+  const [other, setOther] = React.useState(!!value && !DEPARTMENTS.includes(value));
+  return (
+    <div>
+      <select value={other ? "__other" : (value||"")} style={{...style, color: (value||other) ? undefined : "#94A3B8"}}
+              onChange={e=>{ const v=e.target.value; if (v==="__other") { setOther(true); onChange(""); } else { setOther(false); onChange(v); } }}>
+        <option value="" disabled>🏷️ เลือกแผนก</option>
+        {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
+        <option value="__other">✏️ อื่น ๆ (พิมพ์เอง)</option>
+      </select>
+      {other && <input autoFocus value={value||""} onChange={e=>onChange(e.target.value)} placeholder="พิมพ์ชื่อแผนก" style={{...style, marginTop:8}}/>}
+    </div>
+  );
 }
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 const mono = "'IBM Plex Mono',ui-monospace,Menlo,monospace";
