@@ -1627,7 +1627,7 @@ function App() {
                       title="กดเพื่อสลับลำดับวันที่">
                     วันที่ <span style={t.sortTag}>{dateDesc ? "▼ ใหม่→เก่า" : "▲ เก่า→ใหม่"}</span>
                   </th>
-                  {["กะ","อาการที่แจ้ง","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={t.th}>{h}</th>)}
+                  {["กะ","อาการที่แจ้ง","พื้นที่","กล้อง","บริเวณ / รายละเอียด","ผู้รายงาน","การแก้ไข",""].map(h=><th key={h} style={h?t.th:{...t.th, ...t.stickyRh, width:48, padding:"16px 10px"}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {pageRows.map(l=>(
@@ -1646,7 +1646,7 @@ function App() {
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
                       <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
+                      <td style={{...t.td, ...t.stickyR, padding:"15px 10px"}} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={t.actCol}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={jobMode?10:9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
@@ -2473,11 +2473,14 @@ function mk(dark){
     pager:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, marginTop:14, flexWrap:"wrap"},
     pageBtn:{padding:"9px 14px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:text, fontSize:14, fontWeight:600},
     pageInfo:{fontSize:13, color:dim},
-    tableWrap:{background:surf, border:`1px solid ${border}`, borderRadius:16, overflow:"hidden", boxShadow:shadow},
+    tableWrap:{background:surf, border:`1px solid ${border}`, borderRadius:16, overflowX:"auto", overflowY:"hidden", boxShadow:shadow},
     table:{width:"100%", borderCollapse:"collapse", fontSize:14.5},
-    th:{textAlign:"left", padding:"16px 18px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
+    th:{textAlign:"left", padding:"16px 14px", fontSize:13, fontWeight:600, color:dim, letterSpacing:.2, borderBottom:`1px solid ${border}`, background:surf2, whiteSpace:"nowrap"},
     tr:{borderBottom:`1px solid ${border}`},
-    td:{padding:"15px 18px", verticalAlign:"top", fontSize:14.5},
+    stickyR:{position:"sticky", right:0, background:surf, boxShadow:`-8px 0 10px -8px ${dark?"rgba(0,0,0,.5)":"rgba(15,23,42,.12)"}`},  // ปุ่มติดขอบขวาเสมอ แม้ตารางต้องเลื่อน
+    stickyRh:{position:"sticky", right:0, background:dark?surf:surf2},   // หัวคอลัมน์ที่ติดขอบต้องทึบ ไม่งั้นเห็นตัวหนังสือลอดข้างใต้
+    actCol:{display:"flex", flexDirection:"column", gap:6, alignItems:"center"},  // ปุ่มแก้ไข/ลบ ซ้อนแนวตั้ง คอลัมน์แคบ ไม่ล้นตาราง
+    td:{padding:"15px 14px", verticalAlign:"top", fontSize:14.5},
     dHead:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap", marginBottom:12},
     dDate:{fontSize:13, color:dim, fontWeight:600},
     dCam:{fontFamily:mono, fontSize:19, fontWeight:700, color:text, wordBreak:"break-all"},
@@ -2526,8 +2529,8 @@ function mk(dark){
     tdImg:{width:60, height:44, objectFit:"cover", borderRadius:7, marginTop:6, cursor:"pointer", display:"block"},
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
     fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:11.5, fontWeight:700, fontFamily:mono, whiteSpace:"nowrap"},
-    delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#EF4444", fontWeight:600},
-    editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"7px 11px", fontSize:14, color:"#3B82F6", fontWeight:600},
+    delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"6px 9px", fontSize:13.5, color:"#EF4444", fontWeight:600},
+    editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"6px 9px", fontSize:13.5, color:"#3B82F6", fontWeight:600},
 
     trendWrap:{display:"flex", alignItems:"flex-end", justifyContent:"flex-start", gap:8, height:124, marginTop:8},
     trendCol:{flex:1, minWidth:20, maxWidth:54, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", height:"100%", cursor:"default"},
