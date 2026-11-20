@@ -1363,7 +1363,7 @@ function App() {
         {nav==="record" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#16A34A")}>📝</span>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
             </div>
             <div style={t.recGrid} className="rb-recGrid">
               {/* ฟอร์มซ้าย */}
@@ -1507,7 +1507,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon(isVendor?"#F59E0B":"#0B6FC4")}>{isVendor?"🔧":"📋"}</span>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
               <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
@@ -1695,7 +1695,7 @@ function App() {
         {nav==="dash" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? fmtTH(dayFilter) : "ภาพรวมสถานะกล้อง"}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#8B5CF6")}>📊</span>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? fmtTH(dayFilter) : "ภาพรวมสถานะกล้อง"}</div></div>
               <div style={{display:"flex", gap:10, alignItems:"center", marginRight:52, flexWrap:"wrap"}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setDashMode("month")} className="tap" style={dashMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
@@ -1812,7 +1812,7 @@ function App() {
         {nav==="cams" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#F97316")}>📹</span>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
               <button onClick={resetTree} className="tap" style={{...t.resetBtn, marginRight:52}}>↺ รีเซ็ตข้อมูลกล้อง</button>
             </div>
             <div style={t.camManGrid} className="rb-camManGrid">
@@ -1923,7 +1923,7 @@ function App() {
         {nav==="staff" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}>จัดการพนักงาน</div><div style={t.h1sub}>บัญชีผู้ใช้ · รายชื่อทีม CCTV · รหัสผ่าน</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#EC4899")}>👥</span>จัดการพนักงาน</div><div style={t.h1sub}>รายชื่อผู้รายงาน · บัญชีล็อกอิน · รหัสผ่าน</div></div>
             </div>
             <div style={t.staffGrid} className="rb-camManGrid">
               <div>
@@ -2454,10 +2454,14 @@ function mk(dark){
 
     main:{flex:1, minWidth:0, overflowX:"hidden", position:"relative"},
     wrap:{maxWidth:1240, margin:"0 auto", padding:"34px 40px 70px"},
-    pageHead:{display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:22, gap:16, flexWrap:"wrap"},
-    h1:{fontFamily:head, fontSize:28, fontWeight:700, letterSpacing:-.4, paddingLeft:14, borderLeft:`4px solid ${accent}`, lineHeight:1.15},
+    pageHead:{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:22, gap:16, flexWrap:"wrap", minHeight:62},  // สูงเท่ากันทุกหน้า เนื้อหาจะได้เริ่มที่ระดับเดียวกัน
+    h1:{fontFamily:head, fontSize:28, fontWeight:700, letterSpacing:-.4, lineHeight:1.15, display:"flex", alignItems:"center", gap:14},
+    // กล่องอีโมจิหน้าหัวข้อ สีประจำแต่ละหน้า
+    h1Icon:(c)=>({width:48, height:48, borderRadius:14, flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:24,
+      background:`linear-gradient(145deg, ${hexA(c,dark?.34:.28,dark)}, ${hexA(c,dark?.18:.14,dark)})`, border:`1.5px solid ${hexA(c,dark?.55:.5,dark)}`,
+      boxShadow:`0 4px 14px ${hexA(c,dark?.3:.24,dark)}`}),
     h1Wrap:{},
-    h1sub:{fontSize:14.5, color:dim, marginTop:7, paddingLeft:18},
+    h1sub:{fontSize:14.5, lineHeight:"24px", color:dim, marginTop:4, paddingLeft:62},  // เยื้องให้ตรงกับตัวหนังสือหัวข้อ (กล่องอีโมจิ 48 + ช่องห่าง 14)
 
     recGrid:{display:"grid", gridTemplateColumns:"minmax(0,1.4fr) minmax(0,1fr)", gap:20, alignItems:"start"},
     dashGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20},
