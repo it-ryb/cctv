@@ -37,6 +37,7 @@
     .rb-side .rb-hideM{display:none !important;}
     .rb-loginBox{grid-template-columns:1fr !important; max-width:420px !important;}
     .rb-loginSide{display:none !important;}
+    .rb-showM{display:flex !important;}
     .rb-nav{flex-direction:row !important; flex:1 1 100% !important; min-width:0 !important; overflow-x:auto !important; flex-wrap:nowrap !important; scrollbar-width:none;}
     .rb-nav::-webkit-scrollbar{display:none;}
     .rb-nav > *{flex:0 0 auto !important; white-space:nowrap !important;}
@@ -1265,17 +1266,23 @@ function App() {
     <div style={t.loginWrap}>
       <div style={t.loginBox} className="rb-loginBox">
 
-        {/* ฝั่งซ้าย: แผงสีฟ้ากับวงกลมนุ่ม ๆ */}
+        {/* ฝั่งซ้าย: แผงพาสเทล + น้องกล้อง */}
         <div style={t.loginSide} className="rb-loginSide">
           <div style={t.circA}/>
           <div style={t.circB}/>
           <div style={{position:"relative"}}>
             <img src={LOGO} alt="RAYONGBOARD" style={t.loginSideLogo}/>
-            <div style={t.sideName}>CCTV<br/>RAYONGBOARD</div>
+            <div style={t.loginHero}>
+              <div style={t.loginBubble}>สวัสดี! 👋</div>
+              <span style={t.loginBlob}><Mascot size={104} mount="#D6EAFF" mountLine="#5B9BE0"/></span>
+              <i style={{...t.loginSpark, left:0, top:10}}>✨</i>
+              <i style={{...t.loginSpark, left:122, bottom:4, fontSize:14}}>💙</i>
+            </div>
+            <div style={t.sideName}><span style={t.loginGrad}>CCTV</span> RAYONGBOARD</div>
             <div style={t.sideTxt}>ระบบบันทึกสถานะกล้องและติดตามงานซ่อม</div>
             <div style={t.sideList}>
               <div style={t.sideItem}><span>📝</span> บันทึกเหตุการณ์ประจำกะ</div>
-              <div style={t.sideItem}><span>🛠</span> ติดตามงานซ่อมจนปิดงาน</div>
+              <div style={t.sideItem}><span>🛠️</span> ติดตามงานซ่อมจนปิดงาน</div>
               <div style={t.sideItem}><span>📊</span> สรุปรายงานส่งรายเดือน</div>
             </div>
           </div>
@@ -1285,8 +1292,9 @@ function App() {
         {/* ฝั่งขวา: ฟอร์ม */}
         <div style={t.loginCard}>
           <img src={LOGO} alt="RAYONGBOARD" style={t.loginLogo}/>
+          <div className="rb-showM" style={{display:"none", justifyContent:"center", marginBottom:6}}><span style={{...t.loginBlob, position:"relative", left:0, top:0, width:86, height:86}}><Mascot size={70} mount="#D6EAFF" mountLine="#5B9BE0"/></span></div>
           <div style={t.loginKicker}>CCTV RAYONGBOARD</div>
-          <div style={t.loginTitle}>เข้าสู่ระบบ</div>
+          <div style={t.loginTitle}>เข้าสู่ระบบ <span style={{fontSize:24}}>🩵</span></div>
 
           <div style={t.label}>👤 ชื่อผู้ใช้</div>
           <input value={loginUser} onChange={e=>{setLoginUser(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="ชื่อผู้ใช้" style={t.input} autoFocus/>
@@ -1294,13 +1302,13 @@ function App() {
           <div style={{...t.label, marginTop:14}}>🔒 รหัสผ่าน</div>
           <div style={{position:"relative"}}>
             <input type={showPass?"text":"password"} value={loginPass} onChange={e=>{setLoginPass(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="รหัสผ่าน" style={t.input}/>
-            <button onClick={()=>setShowPass(!showPass)} style={t.eyeBtn}>{showPass?"🙈":"👁"}</button>
+            <button onClick={()=>setShowPass(!showPass)} className="tap" style={t.eyeBtn} title={showPass?"ซ่อนรหัสผ่าน":"ดูรหัสผ่าน"} aria-label={showPass?"ซ่อนรหัสผ่าน":"ดูรหัสผ่าน"}><CuteEye open={showPass}/></button>
           </div>
 
           {loginErr && <div style={t.loginErr}>{loginErr}</div>}
 
-          <button onClick={doLogin} className="tap" style={t.loginBtn}>เข้าสู่ระบบ</button>
-          <div style={t.loginHelp}>ลืมรหัสผ่าน ติดต่อทีมไอที</div>
+          <button onClick={doLogin} className="tap" style={t.loginBtn}>เข้าสู่ระบบ ✨</button>
+          <div style={t.loginHelp}>💬 ลืมรหัสผ่าน ติดต่อทีมไอทีได้เลย</div>
         </div>
       </div>
     </div>
@@ -1325,7 +1333,7 @@ function App() {
       <aside style={t.side} className="rb-side">
         <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
         <div style={t.brandCard} className="rb-hideM">
-          <span style={t.brandIcon}>📹</span>
+          <span style={t.brandBlob}><Mascot size={54}/><i style={t.brandSpark}>✨</i></span>
           <div style={{minWidth:0}}>
             <div style={t.sideTitle}>CCTV</div>
             <div style={t.brandKicker}>RAYONGBOARD</div>
@@ -2418,6 +2426,45 @@ function DeptPicker({ value, onChange, style }) {
     </div>
   );
 }
+// มาสคอต "น้องกล้อง": กล้องวงจรปิดติดผนัง หน้ายิ้ม แก้มชมพู (วาดเอง ใช้ได้อิสระ)
+function Mascot({ size=56, body="#CFE6FF", line="#5B9BE0", mount="#E3D4F7", mountLine="#A98BD9" }) {
+  const ink="#33405C";
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} aria-label="น้องกล้อง" role="img">
+      <rect x="5" y="30" width="7" height="22" rx="3.5" fill={mount} stroke={mountLine} strokeWidth="2"/>
+      <path d="M12 40 H20" stroke={mountLine} strokeWidth="3" strokeLinecap="round"/>
+      <g transform="rotate(-8 34 28)">
+        <rect x="17" y="14" width="40" height="27" rx="13" fill={body} stroke={line} strokeWidth="2.4"/>
+        <circle cx="51" cy="27.5" r="9" fill="#FFFFFF" stroke={line} strokeWidth="2.4"/>
+        <circle cx="51" cy="27.5" r="5.2" fill={ink}/>
+        <circle cx="53" cy="25.4" r="1.9" fill="#FFFFFF"/><circle cx="49.3" cy="29.4" r=".9" fill="#FFFFFF"/>
+        <ellipse cx="28" cy="26" rx="1.9" ry="2.5" fill={ink}/><ellipse cx="37" cy="26" rx="1.9" ry="2.5" fill={ink}/>
+        <circle cx="28.7" cy="25.2" r=".7" fill="#FFFFFF"/><circle cx="37.7" cy="25.2" r=".7" fill="#FFFFFF"/>
+        <ellipse cx="24.5" cy="31" rx="3" ry="1.8" fill="#FFB3C7" opacity=".85"/><ellipse cx="40.5" cy="31" rx="3" ry="1.8" fill="#FFB3C7" opacity=".85"/>
+        <path d="M30 30.5 Q32.5 33 35 30.5" fill="none" stroke={ink} strokeWidth="1.6" strokeLinecap="round"/>
+        <circle cx="23" cy="18.6" r="2.2" fill="#FF7A9C"/>
+      </g>
+    </svg>
+  );
+}
+// ไอคอนตาสำหรับปุ่มดู/ซ่อนรหัสผ่าน
+function CuteEye({ open }) {
+  const c = "#5B9BE0", ink = "#33405C";
+  return open ? (
+    <svg viewBox="0 0 28 22" width="26" height="20" aria-hidden="true">
+      <path d="M3 12 Q14 1 25 12 Q14 22 3 12 Z" fill="#FFFFFF" stroke={c} strokeWidth="2" strokeLinejoin="round"/>
+      <circle cx="14" cy="12" r="5" fill={ink}/>
+      <circle cx="16" cy="10" r="1.8" fill="#FFFFFF"/><circle cx="12.2" cy="14" r=".8" fill="#FFFFFF"/>
+      <path d="M8 6 L6.6 3.6 M14 4.4 V1.6 M20 6 L21.4 3.6" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ) : (
+    <svg viewBox="0 0 28 22" width="26" height="20" aria-hidden="true">
+      <path d="M4 9 Q14 18 24 9" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round"/>
+      <path d="M7.5 12.6 L6 15.2 M14 14.4 V17.4 M20.5 12.6 L22 15.2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+      <ellipse cx="5" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/><ellipse cx="23" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/>
+    </svg>
+  );
+}
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 // ตัวพิมพ์ดีดไม่มีอักษรไทย จึงต่อท้ายด้วย Plex ไทย ตัวอักษรไทยจะได้ไม่หลุดไปใช้ฟอนต์ของเครื่อง
 const mono = "'IBM Plex Mono','IBM Plex Sans Thai Looped','IBM Plex Sans Thai',ui-monospace,Menlo,monospace";
@@ -2443,16 +2490,18 @@ function mk(dark){
     dim, border, text, accentTxt,
     app:{display:"flex", minHeight:"100vh", color:text, fontFamily:sans,
       background: dark ? bg : "radial-gradient(900px 600px at 92% 8%, rgba(46,125,79,.06), transparent 60%), linear-gradient(160deg,#F6EED6 0%,#F9F3E1 45%,#FBF6E8 100%)", backgroundAttachment:"fixed"},
-    side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${dark?border:"#E3D9BE"}`, boxShadow:dark?"none":"4px 0 22px rgba(90,75,30,.07)", zIndex:2, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
+    side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${dark?border:"#E3D9BE"}`, boxShadow:dark?"none":"4px 0 22px rgba(90,75,30,.07)", zIndex:2, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh", overflowY:"auto"},  // จอเตี้ยเลื่อนในแถบได้ ปุ่มออกจากระบบไม่หาย
     logoImg:{width:"100%", maxWidth:180, height:"auto", display:"block"},
-    // การ์ดชื่อระบบใต้โลโก้: ทรงแคปซูล พื้นครีม ไอคอนวงกลม
-    brandCard:{display:"flex", alignItems:"center", gap:11, padding:"8px 16px 8px 8px", marginBottom:20, borderRadius:999,
-      background:dark?surf2:"#FBF6E8", border:`1px solid ${border}`},
-    brandIcon:{width:46, height:46, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:22,
-      background:dark?hexA(accent,.22,dark):"linear-gradient(145deg,#FFFFFF,#DCEBFA)", border:`1.5px solid ${hexA(accent,dark?.5:.4,dark)}`},
-    sideTitle:{fontFamily:head, fontSize:19, fontWeight:700, letterSpacing:".5px", lineHeight:1.05, color:accentTxt},
-    brandKicker:{fontSize:10.5, fontWeight:700, letterSpacing:"1.6px", color:text, marginTop:2, whiteSpace:"nowrap"},
-    sideSub:{fontSize:11.5, color:dim, marginTop:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
+    // ชื่อระบบใต้โลโก้: ไม่มีกรอบ น้องกล้องในวงกลมพาสเทล + ประกาย
+    brandCard:{display:"flex", alignItems:"center", gap:12, padding:"2px 0", marginBottom:22},
+    brandBlob:{position:"relative", width:58, height:58, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center",
+      background:dark?"radial-gradient(circle at 30% 25%,#34405E 0%,#2A2F4A 50%,#1E2A40 100%)":"radial-gradient(circle at 30% 25%,#FFFFFF 0%,#FFE3EE 45%,#D6E9FF 100%)",
+      boxShadow:`0 6px 16px ${dark?"rgba(0,0,0,.35)":"rgba(231,127,163,.25)"}`},   // วงกลมพาสเทล ชมพู→ฟ้า
+    brandSpark:{position:"absolute", right:-6, top:-6, fontStyle:"normal", fontSize:15, lineHeight:1},  // ประกายที่มุม
+    sideTitle:{fontFamily:head, fontSize:21, fontWeight:700, letterSpacing:".5px", lineHeight:1.05,
+      background:dark?"none":"linear-gradient(90deg,#1C82D9,#0A5FAD)", WebkitBackgroundClip:dark?"border-box":"text", WebkitTextFillColor:dark?accentTxt:"transparent", color:accentTxt},
+    brandKicker:{fontSize:10.5, fontWeight:700, letterSpacing:"1.8px", color:text, marginTop:3, whiteSpace:"nowrap"},
+    sideSub:{fontSize:11.5, color:dim, marginTop:3, whiteSpace:"nowrap"},
     nav:{display:"flex", flexDirection:"column", gap:5},
     navBtn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:"1px solid transparent", background:"transparent", color:dim, fontSize:15, fontWeight:500, textAlign:"left", position:"relative"},
     navOn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:`1px solid ${hexA(accent,.4,dark)}`, background:hexA(accent,dark?.16:.11,dark), color:accentTxt, fontSize:15, fontWeight:600, textAlign:"left", position:"relative", boxShadow:dark?`inset 0 0 0 1px ${hexA(accent,.1,dark)}`:"none"},
@@ -2704,35 +2753,44 @@ function mk(dark){
       color:text, fontFamily:sans, padding:20, position:"relative", overflow:"hidden",
       background: dark
         ? "radial-gradient(900px 520px at 50% 34%, rgba(56,132,255,.18), transparent 62%), linear-gradient(160deg,#080D14 0%,#0C1219 45%,#0A1018 100%)"
-        : "radial-gradient(900px 520px at 80% 20%, rgba(46,125,79,.07), transparent 60%), radial-gradient(800px 500px at 15% 85%, rgba(11,111,196,.06), transparent 60%), linear-gradient(160deg,#FBF5E2 0%,#FFFCEF 48%,#FFFDF6 100%)"},
-    loginHelp:{marginTop:16, fontSize:11.5, color:dim, textAlign:"center"},
+        : "radial-gradient(700px 480px at 85% 15%, rgba(120,190,255,.28), transparent 62%), radial-gradient(760px 520px at 12% 88%, rgba(70,140,230,.22), transparent 62%), radial-gradient(600px 400px at 50% 50%, rgba(170,215,255,.14), transparent 70%), linear-gradient(160deg,#FBF5E2 0%,#FFFCEF 48%,#FFFDF6 100%)"},
+    loginHelp:{marginTop:16, fontSize:12, color:dim, textAlign:"center"},
+    loginHero:{position:"relative", width:150, height:132, margin:"8px 0 14px"},
+    loginBubble:{position:"absolute", left:104, top:4, padding:"6px 12px", borderRadius:"14px 14px 14px 4px", fontSize:12.5, fontWeight:700, whiteSpace:"nowrap",
+      background:dark?"#2A3550":"#FFFFFF", color:dark?"#E6EAF0":"#1C6FB8", boxShadow:"0 4px 12px rgba(28,130,217,.18)"},
+    loginBlob:{position:"absolute", left:10, top:14, width:122, height:122, borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center",
+      background:dark?"radial-gradient(circle at 30% 25%,#2B4570,#1A2E4E)":"radial-gradient(circle at 30% 25%,#FFFFFF 0%,#EEF7FF 50%,#D4E9FF 100%)", boxShadow:"0 10px 26px rgba(28,130,217,.25)"},
+    loginSpark:{position:"absolute", fontStyle:"normal", fontSize:18, lineHeight:1},
+    loginGrad:{background:"linear-gradient(90deg,#3FA2F0,#0A5FAD)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"},
     loginKicker:{position:"relative", fontFamily:mono, fontSize:11, fontWeight:700, letterSpacing:"1.4px", color:dim},
     loginBox:{width:"100%", maxWidth:860, display:"grid", gridTemplateColumns:"1fr 1fr", borderRadius:22, overflow:"hidden",
       boxShadow:dark?"0 30px 80px rgba(0,0,0,.5)":"0 26px 70px rgba(90,80,50,.14)", border:`1px solid ${border}`},
-    loginSide:{position:"relative", overflow:"hidden", padding:"44px 36px", color:"#fff", display:"flex", flexDirection:"column", justifyContent:"space-between",
-      background:"linear-gradient(155deg,#0A5AA3 0%,#0B6FC4 58%,#0A63B2 100%)"},
-    circA:{position:"absolute", right:-80, top:-60, width:250, height:250, borderRadius:"50%", background:"rgba(255,255,255,.07)"},
-    circB:{position:"absolute", left:-70, bottom:-80, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,.055)"},
-    loginBtn:{width:"100%", marginTop:24, padding:"15px", borderRadius:13, border:"none",
-      background:"linear-gradient(135deg,#1C82D9,#0A5FAD)", color:"#fff", fontSize:15.5, fontWeight:700,
-      boxShadow:"0 8px 22px rgba(11,111,196,.26)", fontFamily:"inherit"},
+    loginSide:{position:"relative", overflow:"hidden", padding:"40px 34px", color:text, display:"flex", flexDirection:"column", justifyContent:"space-between",
+      background:dark?"linear-gradient(155deg,#12223D 0%,#152B4D 55%,#0F2443 100%)":"linear-gradient(155deg,#E4F1FF 0%,#CFE5FC 52%,#B9D8F8 100%)"},
+    circA:{position:"absolute", right:-70, top:-60, width:230, height:230, borderRadius:"50%", background:dark?"rgba(255,255,255,.05)":"rgba(255,255,255,.55)"},
+    circB:{position:"absolute", left:-60, bottom:-70, width:190, height:190, borderRadius:"50%", background:dark?"rgba(255,255,255,.04)":"rgba(255,255,255,.45)"},
+    loginBtn:{width:"100%", marginTop:24, padding:"15px", borderRadius:999, border:"none",
+      background:"linear-gradient(135deg,#5AB4F5 0%,#1C82D9 55%,#0A5FAD 100%)", color:"#fff", fontSize:15.5, fontWeight:700,
+      boxShadow:"0 8px 22px rgba(28,130,217,.32)", fontFamily:"inherit"},
     sideLogo:{marginBottom:18, padding:"6px 4px 0"},
     sideFoot:{marginTop:16, fontSize:11, color:dim, fontFamily:mono, letterSpacing:".2px"},
-    loginSideFoot:{position:"relative", fontSize:11, opacity:.62, fontFamily:mono, color:"#fff"},
-    loginSideLogo:{width:152, height:"auto", display:"block", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
-    sideList:{marginTop:24, display:"flex", flexDirection:"column", gap:11},
-    sideItem:{fontSize:13, opacity:.92, display:"flex", alignItems:"center", gap:10},
-    sideName:{fontFamily:head, fontSize:30, fontWeight:700, lineHeight:1.2, letterSpacing:"-.6px"},
-    sideTxt:{fontSize:13, opacity:.88, marginTop:14, lineHeight:1.7},
+    loginSideFoot:{position:"relative", fontSize:11, color:dim, fontFamily:mono},
+    loginSideLogo:{width:150, height:"auto", display:"block", marginBottom:6},
+    sideList:{marginTop:20, display:"flex", flexDirection:"column", gap:8},
+    sideItem:{fontSize:13, display:"inline-flex", alignSelf:"flex-start", alignItems:"center", gap:9, padding:"7px 14px 7px 10px", borderRadius:999,
+      background:dark?"rgba(255,255,255,.07)":"rgba(255,255,255,.75)", border:`1px solid ${dark?"rgba(255,255,255,.08)":"rgba(255,255,255,.9)"}`, boxShadow:dark?"none":"0 2px 8px rgba(28,130,217,.10)"},
+    sideName:{fontFamily:head, fontSize:24, fontWeight:700, lineHeight:1.25, letterSpacing:"-.3px"},
+    sideTxt:{fontSize:13, color:dim, marginTop:8, lineHeight:1.6},
     loginCard:{position:"relative", background:surf, padding:"44px 40px 38px", display:"flex", flexDirection:"column", justifyContent:"center"},
     loginLogo:{width:150, maxWidth:"55%", height:"auto", display:"block", margin:"0 0 22px"},
-    loginTitle:{fontFamily:head, fontSize:27, fontWeight:700, letterSpacing:"-.5px", margin:"3px 0 24px"},
-    eyeBtn:{position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", fontSize:17, padding:6},
+    loginTitle:{fontFamily:head, fontSize:27, fontWeight:700, letterSpacing:"-.5px", margin:"3px 0 24px", display:"flex", alignItems:"center", gap:8},
+    eyeBtn:{position:"absolute", right:9, top:"50%", transform:"translateY(-50%)", width:38, height:32, borderRadius:999, display:"inline-flex", alignItems:"center", justifyContent:"center",
+      background:dark?"rgba(91,155,224,.15)":"#EEF5FF", border:`1px solid ${dark?"rgba(91,155,224,.3)":"#D6E7FB"}`, padding:0},
     loginErr:{marginTop:14, padding:"11px 14px", borderRadius:11, background:hexA("#EF4444",dark?.1:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:13, fontWeight:600},
     loginHint:{marginTop:20, padding:"14px 16px", borderRadius:12, background:surf2, border:`1px solid ${border}`, fontSize:12.5, color:dim, lineHeight:1.7},
     loginHintRow:{},
     loginFoot:{position:"relative", marginTop:22, fontSize:11.5, color:dim, fontFamily:mono, letterSpacing:".3px"},
-    userCard:{display:"flex", alignItems:"center", gap:11, padding:"11px 13px", background:surf2, border:`1px solid ${border}`, borderRadius:13, marginBottom:10},
+    userCard:{display:"flex", alignItems:"center", gap:11, padding:"11px 13px", background:surf2, border:`1px solid ${border}`, borderRadius:13, marginTop:16, marginBottom:10},  // ห่างจากกล่องสถานะเสมอ แม้จอเตี้ย
     userAvatar:{fontSize:19, width:36, height:36, borderRadius:10, background:hexA(accent,dark?.15:.1,dark), display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0},
     userName:{fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
     userRole:{fontSize:11, color:dim, marginTop:1},
