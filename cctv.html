@@ -1324,8 +1324,14 @@ function App() {
       {/* ===== SIDEBAR ===== */}
       <aside style={t.side} className="rb-side">
         <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
-        <div style={t.sideTitle} className="rb-hideM">CCTV RAYONGBOARD</div>
-        <div style={t.sideSub} className="rb-hideM">ระบบบันทึกสถานะกล้อง</div>
+        <div style={t.brandCard} className="rb-hideM">
+          <span style={t.brandIcon}>📹</span>
+          <div style={{minWidth:0}}>
+            <div style={t.sideTitle}>CCTV</div>
+            <div style={t.brandKicker}>RAYONGBOARD</div>
+            <div style={t.sideSub}>ระบบบันทึกสถานะกล้อง</div>
+          </div>
+        </div>
 
         <nav style={t.nav} className="rb-nav">
           {NAV.map(([k,ic,label])=>(
@@ -2439,8 +2445,14 @@ function mk(dark){
       background: dark ? bg : "radial-gradient(900px 600px at 92% 8%, rgba(46,125,79,.06), transparent 60%), linear-gradient(160deg,#F6EED6 0%,#F9F3E1 45%,#FBF6E8 100%)", backgroundAttachment:"fixed"},
     side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${dark?border:"#E3D9BE"}`, boxShadow:dark?"none":"4px 0 22px rgba(90,75,30,.07)", zIndex:2, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
     logoImg:{width:"100%", maxWidth:180, height:"auto", display:"block"},
-    sideTitle:{fontSize:17, fontWeight:700},
-    sideSub:{fontSize:12.5, color:dim, marginTop:3, marginBottom:22},
+    // การ์ดชื่อระบบใต้โลโก้: ทรงแคปซูล พื้นครีม ไอคอนวงกลม
+    brandCard:{display:"flex", alignItems:"center", gap:11, padding:"8px 16px 8px 8px", marginBottom:20, borderRadius:999,
+      background:dark?surf2:"#FBF6E8", border:`1px solid ${border}`},
+    brandIcon:{width:46, height:46, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:22,
+      background:dark?hexA(accent,.22,dark):"linear-gradient(145deg,#FFFFFF,#DCEBFA)", border:`1.5px solid ${hexA(accent,dark?.5:.4,dark)}`},
+    sideTitle:{fontFamily:head, fontSize:19, fontWeight:700, letterSpacing:".5px", lineHeight:1.05, color:accentTxt},
+    brandKicker:{fontSize:10.5, fontWeight:700, letterSpacing:"1.6px", color:text, marginTop:2, whiteSpace:"nowrap"},
+    sideSub:{fontSize:11.5, color:dim, marginTop:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
     nav:{display:"flex", flexDirection:"column", gap:5},
     navBtn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:"1px solid transparent", background:"transparent", color:dim, fontSize:15, fontWeight:500, textAlign:"left", position:"relative"},
     navOn:{display:"flex", alignItems:"center", gap:12, padding:"13px 15px", borderRadius:13, border:`1px solid ${hexA(accent,.4,dark)}`, background:hexA(accent,dark?.16:.11,dark), color:accentTxt, fontSize:15, fontWeight:600, textAlign:"left", position:"relative", boxShadow:dark?`inset 0 0 0 1px ${hexA(accent,.1,dark)}`:"none"},
@@ -2704,7 +2716,7 @@ function mk(dark){
     loginBtn:{width:"100%", marginTop:24, padding:"15px", borderRadius:13, border:"none",
       background:"linear-gradient(135deg,#1C82D9,#0A5FAD)", color:"#fff", fontSize:15.5, fontWeight:700,
       boxShadow:"0 8px 22px rgba(11,111,196,.26)", fontFamily:"inherit"},
-    sideLogo:{marginBottom:16, padding:"4px 2px"},
+    sideLogo:{marginBottom:18, padding:"6px 4px 0"},
     sideFoot:{marginTop:16, fontSize:11, color:dim, fontFamily:mono, letterSpacing:".2px"},
     loginSideFoot:{position:"relative", fontSize:11, opacity:.62, fontFamily:mono, color:"#fff"},
     loginSideLogo:{width:152, height:"auto", display:"block", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
