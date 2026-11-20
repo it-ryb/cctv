@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#EEF1F6">
 <title>CCTV RAYONGBOARD</title>
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
-  html,body{margin:0;padding:0;background:#EEF1F6;}
+  html,body{margin:0;padding:0;background:#EEF1F6;font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   button{cursor:pointer;font-family:inherit;}select{font-family:inherit;cursor:pointer;}
   ::-webkit-scrollbar{width:8px;height:8px;}
@@ -172,6 +172,13 @@ const UKEY = "cctv_users_v2";
 const FIX_BY = ["ช่างผู้รับเหมา (DD)", "IT"];
 // สาเหตุที่เจอบ่อย กดเติมลงช่องหมายเหตุได้เลย
 const NOTE_PRESETS = ["ถอดกล้องทำฝ้า", "ตัดไฟปรับปรุงพื้นที่", "รออะไหล่", "สาย LAN ขาด", "รอผู้รับเหมาเข้าพื้นที่", "งานโครงสร้างยังไม่เสร็จ"];
+const ROLES = [
+  { key:"staff",  label:"👤 พนักงาน",      desc:"บันทึกเหตุการณ์ · แก้/ลบได้เฉพาะของตัวเอง" },
+  { key:"admin",  label:"🛡️ ผู้ดูแล",       desc:"จัดการได้ทุกอย่าง รวมบัญชีและกล้อง" },
+  { key:"vendor", label:"🔧 ผู้รับเหมา",    desc:"เห็นเฉพาะงานซ่อม อัปเดตสถานะงานได้" },
+  { key:"viewer", label:"👁 ผู้ดูรายงาน",   desc:"เปิดดูและส่งออกได้อย่างเดียว เช่น HR" },
+];
+const ROLE_LABEL = Object.fromEntries(ROLES.map(r=>[r.key, r.label]));
 const DEPARTMENTS = ["CCTV", "IT", "HR", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
 // ─────────── จัดการพื้นที่เก็บในเครื่อง (localStorage ~5 MB) ───────────
 // รูปทุกใบที่เปิดดูจะถูกสำเนาไว้ในเครื่องเพื่อให้เปิดเร็ว ถ้าปล่อยสะสมจะเต็ม
@@ -250,6 +257,7 @@ function App() {
   const [showPass, setShowPass] = useState(false);
   const [passwords, setPasswords] = useState({ admin: DEFAULT_USERS.admin.pass, atchara: DEFAULT_USERS.atchara.pass, sasina: DEFAULT_USERS.sasina.pass, mon: DEFAULT_USERS.mon.pass });
   const [pwEdit, setPwEdit] = useState({});
+  const [pwShow, setPwShow] = useState({}); // กดดูรหัสผ่านที่กำลังพิมพ์ได้ทีละบัญชี
   const [accounts, setAccounts] = useState(DEFAULT_USERS);
   const [newAcc, setNewAcc] = useState({ user:"", name:"", pass:"", role:"staff", dept:"CCTV" });
   const [logs, setLogs] = useState(null);
@@ -1104,13 +1112,16 @@ function App() {
       const p = {...passwords}; delete p[u]; setPasswords(p);
     });
   };
-  const toggleRole = (u) => {
+  // เลือกสิทธิ์จากรายการ ไม่ใช่กดวนทีละขั้น เพราะมี 4 สิทธิ์ กดพลาดแล้วต้องวนใหม่ทั้งรอบ
+  const setRole = (u, role) => {
     if (u === "admin") { setToast("เปลี่ยนสิทธิ์ผู้ดูแลหลักไม่ได้"); setTimeout(()=>setToast(""),2400); return; }
-    const cur = accounts[u].role;
-    if (cur==="admin") { const admins = Object.values(accounts).filter(a=>a.role==="admin").length; if(admins<=1){ setToast("ต้องมีผู้ดูแลอย่างน้อย 1 บัญชี"); setTimeout(()=>setToast(""),2600); return; } }
-    // พนักงาน → ผู้ดูแล → ผู้รับเหมา → ผู้ดูรายงาน → พนักงาน
-    const next = cur==="staff" ? "admin" : (cur==="admin" ? "vendor" : (cur==="vendor" ? "viewer" : "staff"));
-    setAccounts({...accounts, [u]: {...accounts[u], role: next}});
+    const a = accounts[u]; if (!a || a.role === role) return;
+    if (a.role === "admin") {
+      const admins = Object.values(accounts).filter(x=>x.role==="admin").length;
+      if (admins <= 1) { setToast("ต้องมีผู้ดูแลอย่างน้อย 1 บัญชี"); setTimeout(()=>setToast(""),2600); return; }
+    }
+    setAccounts({...accounts, [u]: {...a, role}});
+    setToast(`เปลี่ยนสิทธิ์ ${a.name} เป็น ${ROLE_LABEL[role]||role} แล้ว`); setTimeout(()=>setToast(""),2600);
   };
   const changePassword = (user) => {
     const np = (pwEdit[user]||"").trim();
@@ -1150,7 +1161,9 @@ function App() {
       } else full.push(l);
     }
     const payload = { app:"cctv-rayongboard", type:"backup", savedAt:new Date().toISOString(),
-      logs: full, tree, ips, reporters, accounts };
+      logs: full, tree, ips, reporters,
+      // ไม่ใส่รหัสผ่านลงไฟล์สำรอง ไฟล์นี้ถูกส่งต่อ/เก็บไว้หลายที่
+      accounts: Object.fromEntries(Object.entries(accounts).map(([k,a])=>{ const {pass, ...rest}=a; return [k, rest]; })) };
     const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1199,8 +1212,34 @@ function App() {
   const doLogout = () => { setAuth(null); try { sessionStorage.removeItem(AUTH_KEY); } catch(e){} };
 
   const addRep = () => { const v=newRep.trim(); if(!v||reporters.includes(v))return; setReporters([...reporters,v]); setNewRep(""); setToast("เพิ่มพนักงานแล้ว"); setTimeout(()=>setToast(""),2000); };
-  const delRep = (i) => { const name=reporters[i]; askConfirm(`ลบชื่อ "${name}" ออกจากรายชื่อพนักงาน?`, ()=>{ setReporters(reporters.filter((_,x)=>x!==i)); if(by===name)setBy(""); }); };
-  const saveEdit = () => { const v=editVal.trim(); if(!v){setEditIdx(-1);return;} setReporters(reporters.map((r,i)=>i===editIdx?v:r)); setEditIdx(-1); setEditVal(""); };
+  const usedBy = (name) => (logs||[]).filter(l => l.by === name).length;
+  const delRep = (i) => {
+    const name = reporters[i];
+    const n = usedBy(name);
+    askConfirm(
+      `ลบชื่อ "${name}" ออกจากรายชื่อพนักงาน?` + (n ? `\nประวัติ ${n} รายการที่ลงชื่อนี้ไว้ยังอยู่เหมือนเดิม ไม่ถูกลบ` : ""),
+      ()=>{ setReporters(reporters.filter((_,x)=>x!==i)); if(by===name)setBy(""); });
+  };
+  const saveEdit = () => {
+    const v = editVal.trim(), i = editIdx, old = reporters[i];
+    if (!v || !old || v === old) { setEditIdx(-1); setEditVal(""); return; }
+    if (reporters.some((r,x)=>x!==i && r===v)) { setToast("มีชื่อนี้อยู่แล้ว"); setTimeout(()=>setToast(""),2400); return; }
+    const n = usedBy(old);
+    const apply = () => {
+      setReporters(reporters.map((r,x)=>x===i?v:r));
+      // แก้ประวัติตามไปด้วย ไม่งั้นชื่อเดิมกับชื่อใหม่จะกลายเป็นคนละคนในรายงาน
+      if (n) setLogs((logs||[]).map(l => l.by===old ? {...l, by:v} : l));
+      // บัญชีที่ผูกชื่อนี้ไว้ต้องเปลี่ยนตาม ไม่งั้นบันทึกครั้งหน้าจะกลับไปใช้ชื่อเก่า
+      const hit = Object.entries(accounts).filter(([,a]) => a.reporter === old);
+      if (hit.length) { const na = {...accounts}; hit.forEach(([k,a])=>{ na[k] = {...a, reporter:v}; }); setAccounts(na); }
+      if (by === old) setBy(v);
+      if (byFilter === old) setByFilter(v);
+      setEditIdx(-1); setEditVal("");
+      setToast(n ? `เปลี่ยนชื่อแล้ว · แก้ประวัติ ${n} รายการ` : "เปลี่ยนชื่อแล้ว"); setTimeout(()=>setToast(""),3000);
+    };
+    if (n) askConfirm(`เปลี่ยน "${old}" เป็น "${v}"?\nประวัติ ${n} รายการที่ลงชื่อเดิมไว้จะถูกแก้ตามไปด้วย`, apply, "ยืนยันเปลี่ยนชื่อ");
+    else apply();
+  };
   // กล้องที่ยังมีงานค้างอยู่ ห้ามแจ้งซ้ำ จะได้ไม่มีงานซ้ำในคิวและตัวเลขไม่เพี้ยน
   // ค้นจากประวัติทั้งหมด ไม่ใช่แค่ที่กรองอยู่ และเทียบชื่อแบบไม่สนตัวพิมพ์/ช่องว่าง เผื่อข้อมูลเก่าพิมพ์ไม่ตรงเป๊ะ
   const camKey = (v) => (v||"").trim().toLowerCase();
@@ -1559,7 +1598,7 @@ function App() {
 
                       <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
                         {needsFix(l.status)
-                          ? <button onClick={()=>openFix(l.id)} className={isViewer?"":"tap"} style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+" ▾"}</button>
+                          ? <FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+(isViewer?"":" ▾")}</FixTag>
                           : <span style={{fontSize:12, color:t.dim}}>ไม่มีงานติดตาม</span>}
                         <div style={{display:"flex", gap:7, marginLeft:"auto"}}>
                           {!isVendor && !isViewer && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}>✏️</button>}
@@ -1606,7 +1645,7 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className={isViewer?"":"tap"} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
@@ -1880,14 +1919,15 @@ function App() {
               <div><div style={t.h1}>จัดการพนักงาน</div><div style={t.h1sub}>บัญชีผู้ใช้ · รายชื่อทีม CCTV · รหัสผ่าน</div></div>
             </div>
               <div style={t.panel}>
-                <div style={t.panelTitle}>➕ เพิ่มพนักงาน</div>
+                <div style={t.panelTitle}>➕ เพิ่มชื่อผู้รายงาน</div>
+                <div style={t.pwHint}>ชื่อที่ใช้เลือกตอนบันทึกเหตุการณ์ ไม่ใช่บัญชีล็อกอิน</div>
                 <div style={{display:"flex", gap:10}}>
                   <input value={newRep} onChange={e=>setNewRep(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addRep();}} placeholder="ชื่อ-นามสกุล เช่น สมชาย ใจดี" style={{...t.input, flex:1}}/>
                   <button onClick={addRep} className="tap" style={{...t.submit, margin:0, width:"auto", padding:"12px 22px", fontSize:14}}>เพิ่ม</button>
                 </div>
               </div>
               <div style={{...t.panel, marginTop:16}}>
-                <div style={t.panelTitle}>👥 รายชื่อพนักงาน CCTV</div>
+                <div style={t.panelTitle}>👥 รายชื่อผู้รายงาน</div>
                 <div style={{display:"flex", flexDirection:"column", gap:8}}>
                   {reporters.map((r,i)=>(
                     <div key={i} style={t.staffRow}>
@@ -1915,11 +1955,11 @@ function App() {
                   {reporters.length===0 && <div style={{...t.empty, textAlign:"center", padding:30}}>ยังไม่มีพนักงาน เพิ่มด้านบนได้เลย</div>}
                 </div>
               </div>
-              <div style={t.staffNote}>💡 รายชื่อทีม CCTV จะปรากฏให้เลือกเมื่อล็อกอินด้วยบัญชีพนักงานกลาง (mon) · ส่วนบัญชีที่มีชื่อของตัวเอง (เช่น IT) จะบันทึกในนามตัวเองอัตโนมัติ</div>
+              <div style={t.staffNote}>💡 เปลี่ยนชื่อที่นี่ ประวัติเก่าที่ลงชื่อเดิมไว้จะถูกแก้ตามให้อัตโนมัติ · บัญชีที่มีชื่อของตัวเอง (เช่น IT) จะบันทึกในนามตัวเองโดยไม่ต้องเลือกจากรายการนี้</div>
 
               <div style={{...t.panel, marginTop:16}}>
-                <div style={t.panelTitle}>👤 จัดการบัญชีผู้ใช้</div>
-                <div style={t.pwHint}>บัญชีล็อกอินและสิทธิ์</div>
+                <div style={t.panelTitle}>🔐 บัญชีสำหรับล็อกอิน</div>
+                <div style={t.pwHint}>ชื่อผู้ใช้ รหัสผ่าน และสิทธิ์การเข้าถึง · คนละส่วนกับรายชื่อผู้รายงานด้านบน</div>
 
                 <div style={t.accList}>
                   {Object.entries(accounts).map(([u,a])=>(
@@ -1929,11 +1969,16 @@ function App() {
                           <div style={t.accName}>{a.name}</div>
                           <div style={t.accMeta}>@{u}<span onClick={()=>askPrompt(`แผนก/ตำแหน่งของ ${a.name}`, a.dept||"", (d)=>setAccounts({...accounts, [u]:{...a, dept:d.trim()}}))} className="tap" style={t.deptBadge} title="แตะเพื่อแก้แผนก">{a.dept||"+ แผนก"}</span></div>
                         </div>
-                        <button onClick={()=>toggleRole(u)} className="tap" style={a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:(a.role==="viewer"?t.roleViewer:t.roleStaff))} title="แตะเพื่อเปลี่ยนสิทธิ์">{a.role==="admin"?"🛡️ ผู้ดูแล":(a.role==="vendor"?"🔧 ผู้รับเหมา":(a.role==="viewer"?"👁 ผู้ดูรายงาน":"👤 พนักงาน"))}</button>
+                        <select value={a.role} disabled={u==="admin"} onChange={e=>setRole(u, e.target.value)}
+                                style={{...(a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:(a.role==="viewer"?t.roleViewer:t.roleStaff))), ...t.roleSel, ...(u==="admin"?{opacity:.6}:{})}}
+                                title={u==="admin" ? "บัญชีผู้ดูแลหลัก เปลี่ยนสิทธิ์ไม่ได้" : "เลือกสิทธิ์"}>
+                          {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
+                        </select>
                         <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}>🗑</button>
                       </div>
                       <div style={t.accPwRow}>
-                        <input type="text" value={pwEdit[u]||""} onChange={e=>setPwEdit({...pwEdit, [u]:e.target.value})} placeholder="🔑 ตั้งรหัสผ่านใหม่" style={{...t.input, flex:1}}/>
+                        <input type={pwShow[u]?"text":"password"} value={pwEdit[u]||""} onChange={e=>setPwEdit({...pwEdit, [u]:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")changePassword(u);}} placeholder="🔑 ตั้งรหัสผ่านใหม่" autoComplete="new-password" style={{...t.input, flex:1}}/>
+                        <button onClick={()=>setPwShow({...pwShow, [u]:!pwShow[u]})} className="tap" style={t.pwEye} title={pwShow[u]?"ซ่อนรหัสผ่าน":"แสดงรหัสผ่าน"}>{pwShow[u]?"🙈":"👁"}</button>
                         <button onClick={()=>changePassword(u)} className="tap" style={t.pwBtn}>เปลี่ยน</button>
                       </div>
                     </div>
@@ -1949,13 +1994,11 @@ function App() {
                     <input list="deptlist" value={newAcc.dept} onChange={e=>setNewAcc({...newAcc, dept:e.target.value})} placeholder="แผนก/ตำแหน่ง" style={t.input}/>
                     <datalist id="deptlist">{DEPARTMENTS.map(d=><option key={d} value={d}/>)}</datalist>
                     <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={t.input}>
-                      <option value="staff">👤 พนักงาน (บันทึก/ดูอย่างเดียว)</option>
-                      <option value="admin">🛡️ ผู้ดูแล (จัดการได้ทุกอย่าง)</option>
-                      <option value="vendor">🔧 ผู้รับเหมา (เห็นเฉพาะงานซ่อม อัปเดตสถานะได้)</option>
-                      <option value="viewer">👁 ผู้ดูรายงาน (ดูอย่างเดียว เช่น HR/หัวหน้า)</option>
+                      {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
                     </select>
                   </div>
-                  <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:14}}>➕ เพิ่มบัญชี</button>
+                  <div style={t.roleHint}>{(ROLES.find(r=>r.key===newAcc.role)||{}).desc}</div>
+                  <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:12}}>➕ เพิ่มบัญชี</button>
                 </div>
               </div>
 
@@ -2160,7 +2203,7 @@ function App() {
             )}
 
             <div style={{display:"flex", gap:10, marginTop:18, flexWrap:"wrap"}}>
-              {needsFix(l.status) && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={{...t.submit, marginTop:0, flex:1, minWidth:150}}>🔧 อัปเดตสถานะงาน</button>}
+              {needsFix(l.status) && !isViewer && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={{...t.submit, marginTop:0, flex:1, minWidth:150}}>🔧 อัปเดตสถานะงาน</button>}
               {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={{...t.dashExport, flex:1, minWidth:110}}>✏️ แก้ไข</button>}
               <button onClick={()=>setDetailBox(null)} className="tap" style={{...t.dashExport, flex:1, minWidth:90}}>ปิด</button>
             </div>
@@ -2325,9 +2368,17 @@ function App() {
   );
 }
 
+// ปุ่มสถานะงานซ่อม: ไม่มีสิทธิ์แก้ = แสดงเป็นป้ายธรรมดา ไม่ใช่ปุ่มที่กดแล้วโดนเตือน
+function FixTag({ ro, children, style, title, onClick }) {
+  return ro
+    ? <span style={{...style, display:"inline-block", cursor:"default"}}>{children}</span>
+    : <button onClick={onClick} className="tap" style={style} title={title}>{children}</button>;
+}
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 const mono = "'IBM Plex Mono',ui-monospace,Menlo,monospace";
-const sans = "'Prompt',-apple-system,'Segoe UI',sans-serif";
+// เนื้อหาใช้แบบมีหัว (อ่านง่ายตัวเล็ก) หัวข้อใช้แบบไม่มีหัว (ดูทันสมัย) ตระกูลเดียวกัน
+const sans = "'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif";
+const head = "'IBM Plex Sans Thai','IBM Plex Sans Thai Looped',-apple-system,'Segoe UI',sans-serif";
 
 function mk(dark){
   // โทนพาสเทล: พื้นอมเขียวมิ้นต์ ขอบและเงานุ่ม ตัวอักษรยังเข้มพอให้อ่านง่าย
@@ -2364,14 +2415,14 @@ function mk(dark){
     main:{flex:1, minWidth:0, overflowX:"hidden", position:"relative"},
     wrap:{maxWidth:1240, margin:"0 auto", padding:"34px 40px 70px"},
     pageHead:{display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:22, gap:16, flexWrap:"wrap"},
-    h1:{fontSize:28, fontWeight:700, letterSpacing:-.4, paddingLeft:14, borderLeft:`4px solid ${accent}`, lineHeight:1.15},
+    h1:{fontFamily:head, fontSize:28, fontWeight:700, letterSpacing:-.4, paddingLeft:14, borderLeft:`4px solid ${accent}`, lineHeight:1.15},
     h1Wrap:{},
     h1sub:{fontSize:14.5, color:dim, marginTop:7, paddingLeft:18},
 
     recGrid:{display:"grid", gridTemplateColumns:"minmax(0,1.4fr) minmax(0,1fr)", gap:20, alignItems:"start"},
     dashGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20},
     panel:{background:surf, border:`1px solid ${border}`, borderRadius:20, padding:26, boxShadow:dark?"0 1px 0 rgba(255,255,255,.02) inset, 0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(15,23,42,.05)"},
-    panelTitle:{fontSize:16.5, fontWeight:600, marginBottom:18},
+    panelTitle:{fontFamily:head, fontSize:16.5, fontWeight:600, marginBottom:18},
     label:{fontSize:13, color:dim, fontWeight:600, margin:"18px 0 9px", letterSpacing:.1},
     dimLabel:{color:dim, fontWeight:400},
     segRow:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:9},
@@ -2606,11 +2657,11 @@ function mk(dark){
     loginSideLogo:{width:152, height:"auto", display:"block", filter:"brightness(0) invert(1)", opacity:.95, marginBottom:26},
     sideList:{marginTop:24, display:"flex", flexDirection:"column", gap:11},
     sideItem:{fontSize:13, opacity:.92, display:"flex", alignItems:"center", gap:10},
-    sideName:{fontSize:30, fontWeight:800, lineHeight:1.2, letterSpacing:"-.6px"},
+    sideName:{fontFamily:head, fontSize:30, fontWeight:700, lineHeight:1.2, letterSpacing:"-.6px"},
     sideTxt:{fontSize:13, opacity:.88, marginTop:14, lineHeight:1.7},
     loginCard:{position:"relative", background:surf, padding:"44px 40px 38px", display:"flex", flexDirection:"column", justifyContent:"center"},
     loginLogo:{width:150, maxWidth:"55%", height:"auto", display:"block", margin:"0 0 22px"},
-    loginTitle:{fontSize:27, fontWeight:800, letterSpacing:"-.5px", margin:"3px 0 24px"},
+    loginTitle:{fontFamily:head, fontSize:27, fontWeight:700, letterSpacing:"-.5px", margin:"3px 0 24px"},
     eyeBtn:{position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", fontSize:17, padding:6},
     loginErr:{marginTop:14, padding:"11px 14px", borderRadius:11, background:hexA("#EF4444",dark?.1:.08,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, color:"#EF4444", fontSize:13, fontWeight:600},
     loginHint:{marginTop:20, padding:"14px 16px", borderRadius:12, background:surf2, border:`1px solid ${border}`, fontSize:12.5, color:dim, lineHeight:1.7},
@@ -2624,6 +2675,9 @@ function mk(dark){
     modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
     previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
+    roleSel:{appearance:"none", WebkitAppearance:"none", cursor:"pointer", flexShrink:0, maxWidth:150},
+    roleHint:{fontSize:12, color:dim, marginTop:9, lineHeight:1.5},
+    pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
     roleViewer:{padding:"5px 11px", borderRadius:9, border:`1px solid ${hexA("#8B5CF6",.3,dark)}`, background:hexA("#8B5CF6",dark?.14:.1,dark), color:"#8B5CF6", fontSize:12, fontWeight:700},
     stDone:{fontSize:10.5, color:"#16A34A", fontWeight:700, marginTop:5},
     toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1E293B", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
