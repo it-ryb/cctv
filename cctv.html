@@ -36,7 +36,11 @@
     .rb-side .rb-hideM{display:none !important;}
     .rb-loginBox{grid-template-columns:1fr !important; max-width:420px !important;}
     .rb-loginSide{display:none !important;}
-    .rb-nav{flex-direction:row !important; flex:1 !important;}
+    .rb-nav{flex-direction:row !important; flex:1 1 100% !important; min-width:0 !important; overflow-x:auto !important; flex-wrap:nowrap !important; scrollbar-width:none;}
+    .rb-nav::-webkit-scrollbar{display:none;}
+    .rb-nav > *{flex:0 0 auto !important; white-space:nowrap !important;}
+    .rb-app{overflow-x:hidden !important;}
+    html,body{overflow-x:hidden;}
     .rb-recGrid{grid-template-columns:1fr !important;}
     .rb-dashGrid{grid-template-columns:1fr !important;}
     .rb-camManGrid{grid-template-columns:1fr !important;}
@@ -1801,10 +1805,9 @@ function App() {
             <button onClick={exportX} className="tap" style={{...t.submit, maxWidth:320, margin:"24px auto 0", background:"linear-gradient(135deg,#2E8B3D,#14532D)"}}>⬇️ ส่งออกรายงาน Excel</button>
           </div>
         )}
-      </main>
 
         {nav==="cams" && (
-          <div style={t.wrap}>
+          <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
               <div><div style={t.h1}>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
               <button onClick={resetTree} className="tap" style={{...t.resetBtn, marginRight:52}}>↺ รีเซ็ตข้อมูลกล้อง</button>
@@ -1915,11 +1918,12 @@ function App() {
         )}
 
         {nav==="staff" && (
-          <div style={{...t.wrap, width:"100%", maxWidth:"none", marginLeft:0, marginRight:0, display:"flex", flexDirection:"column", alignItems:"center"}}>
-            <div style={{width:"100%", maxWidth:640}}>
-            <div style={{...t.pageHead, justifyContent:"flex-start"}}>
+          <div style={t.wrap} className="rb-wrap">
+            <div style={t.pageHead}>
               <div><div style={t.h1}>จัดการพนักงาน</div><div style={t.h1sub}>บัญชีผู้ใช้ · รายชื่อทีม CCTV · รหัสผ่าน</div></div>
             </div>
+            <div style={t.staffGrid} className="rb-camManGrid">
+              <div>
               <div style={t.panel}>
                 <div style={t.panelTitle}>➕ เพิ่มชื่อผู้รายงาน</div>
                 <div style={t.pwHint}>ชื่อที่ใช้เลือกตอนบันทึกเหตุการณ์ ไม่ใช่บัญชีล็อกอิน</div>
@@ -1959,7 +1963,9 @@ function App() {
               </div>
               <div style={t.staffNote}>💡 เปลี่ยนชื่อที่นี่ ประวัติเก่าที่ลงชื่อเดิมไว้จะถูกแก้ตามให้อัตโนมัติ · บัญชีที่มีชื่อของตัวเอง (เช่น IT) จะบันทึกในนามตัวเองโดยไม่ต้องเลือกจากรายการนี้</div>
 
-              <div style={{...t.panel, marginTop:16}}>
+              </div>
+              <div>
+              <div style={t.panel}>
                 <div style={t.panelTitle}>🔐 บัญชีสำหรับล็อกอิน</div>
                 <div style={t.pwHint}>ชื่อผู้ใช้ รหัสผ่าน และสิทธิ์การเข้าถึง · คนละส่วนกับรายชื่อผู้รายงานด้านบน</div>
 
@@ -2002,7 +2008,10 @@ function App() {
                   <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:12}}>➕ เพิ่มบัญชี</button>
                 </div>
               </div>
+              </div>
+            </div>
 
+              <div style={t.staffGridB} className="rb-camManGrid">
               <div style={t.panel}>
                 <div style={t.panelTitle}>💾 สำรอง & กู้คืนข้อมูล</div>
                 <div style={t.dangerText}>ดาวน์โหลดเก็บไว้เป็นประจำ · กู้คืนแล้วรวมกับของเดิม ไม่ลบทับ</div>
@@ -2023,14 +2032,15 @@ function App() {
                 </div>
               </div>
 
-              <div style={t.dangerCard}>
+              <div style={{...t.dangerCard, marginTop:0}}>
                 <div style={t.dangerTitle}>⚠️ ล้างข้อมูลระบบ</div>
                 <div style={t.dangerText}>ลบประวัติการบันทึกทั้งหมด แดชบอร์ดและประวัติจะว่างเปล่า เพื่อเริ่มบันทึกใหม่ตั้งแต่ต้น</div>
                 <button onClick={clearAllLogs} className="tap" style={t.dangerBtn}>🗑 ล้างประวัติทั้งหมด</button>
               </div>
-            </div>
+              </div>
           </div>
         )}
+      </main>
 
 
       {confirmBox && (
@@ -2602,6 +2612,8 @@ function mk(dark){
     barFill:{height:"100%", background:"linear-gradient(90deg,#F59E0B,#FBBF24)", borderRadius:5},
     rankN:{width:22, textAlign:"right", fontSize:14, fontWeight:800, fontFamily:mono, color:"#F59E0B"},
 
+    staffGrid:{display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1.25fr)", gap:20, alignItems:"start", marginBottom:20},
+    staffGridB:{display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:20, alignItems:"stretch"},
     camManGrid:{display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1.3fr)", gap:20, alignItems:"start"},
     accList:{marginBottom:16},
     accCard:{background:surf2, border:`1px solid ${border}`, borderRadius:13, padding:13, marginBottom:10},
