@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
-  html,body{margin:0;padding:0;background:#FFFCEF;font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif;}
+  html{overflow-x:hidden;}
+  html,body{margin:0;padding:0;background:#F9F3E1;font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   button{cursor:pointer;font-family:inherit;}select{font-family:inherit;cursor:pointer;}
   ::-webkit-scrollbar{width:8px;height:8px;}
@@ -261,7 +262,9 @@ function App() {
   const [showPass, setShowPass] = useState(false);
   const [passwords, setPasswords] = useState({ admin: DEFAULT_USERS.admin.pass, atchara: DEFAULT_USERS.atchara.pass, sasina: DEFAULT_USERS.sasina.pass, mon: DEFAULT_USERS.mon.pass });
   const [pwEdit, setPwEdit] = useState({});
-  const [pwShow, setPwShow] = useState({}); // กดดูรหัสผ่านที่กำลังพิมพ์ได้ทีละบัญชี
+  const [pwShow, setPwShow] = useState({});
+  const [pwOpen, setPwOpen] = useState({});        // บัญชีไหนกำลังเปิดช่องเปลี่ยนรหัสผ่าน
+  const [showAddAcc, setShowAddAcc] = useState(false); // กางฟอร์มเพิ่มบัญชี // กดดูรหัสผ่านที่กำลังพิมพ์ได้ทีละบัญชี
   const [accounts, setAccounts] = useState(DEFAULT_USERS);
   const [newAcc, setNewAcc] = useState({ user:"", name:"", pass:"", role:"staff", dept:"" });
   const [accFormKey, setAccFormKey] = useState(0); // เปลี่ยนค่าเพื่อล้างช่องแผนกหลังเพิ่มบัญชี
@@ -1105,7 +1108,7 @@ function App() {
     const acc = { pass: newAcc.pass.trim(), role: newAcc.role, name: newAcc.name.trim(), reporter: newAcc.name.trim(), dept: newAcc.dept.trim() };
     setAccounts({...accounts, [u]: acc});
     setPasswords({...passwords, [u]: newAcc.pass.trim()});
-    setNewAcc({ user:"", name:"", pass:"", role:"staff", dept:"" }); setAccFormKey(k=>k+1);
+    setNewAcc({ user:"", name:"", pass:"", role:"staff", dept:"" }); setAccFormKey(k=>k+1); setShowAddAcc(false);
     setToast(`เพิ่มบัญชี ${u} แล้ว`); setTimeout(()=>setToast(""),2400);
   };
   const delAccount = (u) => {
@@ -1135,7 +1138,7 @@ function App() {
     const updated = {...passwords, [user]: np};
     setPasswords(updated);
     lsSet(PKEY, JSON.stringify(updated));
-    setPwEdit({...pwEdit, [user]:""});
+    setPwEdit({...pwEdit, [user]:""}); setPwOpen(o=>({...o, [user]:false}));
     setToast(`เปลี่ยนรหัสผ่าน ${user} แล้ว`); setTimeout(()=>setToast(""),2400);
   };
   // ── พื้นที่เก็บในเครื่อง ──
@@ -1966,9 +1969,26 @@ function App() {
               </div>
               <div>
               <div style={t.panel}>
-                <div style={t.panelTitle}>🔐 บัญชีสำหรับล็อกอิน</div>
-                <div style={t.pwHint}>ชื่อผู้ใช้ รหัสผ่าน และสิทธิ์การเข้าถึง · คนละส่วนกับรายชื่อผู้รายงานด้านบน</div>
+                <div style={t.accHead}>
+                  <div style={{...t.panelTitle, marginBottom:0}}>🔐 บัญชีสำหรับล็อกอิน <span style={t.accCount}>{Object.keys(accounts).length}</span></div>
+                  <button onClick={()=>setShowAddAcc(v=>!v)} className="tap" style={showAddAcc?t.accAddToggleOn:t.accAddToggle}>{showAddAcc?"✕ ยกเลิก":"➕ เพิ่มบัญชี"}</button>
+                </div>
+                <div style={t.pwHint}>ชื่อผู้ใช้ รหัสผ่าน และสิทธิ์การเข้าถึง · คนละส่วนกับรายชื่อผู้รายงาน</div>
 
+                {showAddAcc && <div style={{...t.accAddBox, marginTop:0, marginBottom:16}}>
+                  <div style={t.accAddTitle}>➕ เพิ่มบัญชีใหม่</div>
+                  <div style={t.accAddGrid}>
+                    <input value={newAcc.user} onChange={e=>setNewAcc({...newAcc, user:e.target.value})} placeholder="ชื่อผู้ใช้ (เช่น somchai)" style={t.input}/>
+                    <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
+                    <input value={newAcc.pass} onChange={e=>setNewAcc({...newAcc, pass:e.target.value})} placeholder="รหัสผ่าน" style={t.input}/>
+                    <DeptPicker key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
+                    <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={{...t.input, gridColumn:"1 / -1"}}>
+                      {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
+                    </select>
+                  </div>
+                  <div style={t.roleHint}>{(ROLES.find(r=>r.key===newAcc.role)||{}).desc}</div>
+                  <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:12}}>✓ สร้างบัญชี</button>
+                </div>}
                 <div style={t.accList}>
                   {Object.entries(accounts).map(([u,a])=>(
                     <div key={u} style={t.accCard}>
@@ -1982,31 +2002,18 @@ function App() {
                                 title={u==="admin" ? "บัญชีผู้ดูแลหลัก เปลี่ยนสิทธิ์ไม่ได้" : "เลือกสิทธิ์"}>
                           {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
                         </select>
+                        <button onClick={()=>setPwOpen({...pwOpen, [u]:!pwOpen[u]})} className="tap" style={pwOpen[u]?t.pwKeyOn:t.pwKey} title="เปลี่ยนรหัสผ่าน">🔑</button>
                         <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}>🗑</button>
                       </div>
-                      <div style={t.accPwRow}>
+                      {pwOpen[u] && <div style={t.accPwRow}>
                         <input type={pwShow[u]?"text":"password"} value={pwEdit[u]||""} onChange={e=>setPwEdit({...pwEdit, [u]:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")changePassword(u);}} placeholder="🔑 ตั้งรหัสผ่านใหม่" autoComplete="new-password" style={{...t.input, flex:1}}/>
                         <button onClick={()=>setPwShow({...pwShow, [u]:!pwShow[u]})} className="tap" style={t.pwEye} title={pwShow[u]?"ซ่อนรหัสผ่าน":"แสดงรหัสผ่าน"}>{pwShow[u]?"🙈":"👁"}</button>
                         <button onClick={()=>changePassword(u)} className="tap" style={t.pwBtn}>เปลี่ยน</button>
-                      </div>
+                      </div>}
                     </div>
                   ))}
                 </div>
 
-                <div style={t.accAddBox}>
-                  <div style={t.accAddTitle}>➕ เพิ่มบัญชีใหม่</div>
-                  <div style={t.accAddGrid}>
-                    <input value={newAcc.user} onChange={e=>setNewAcc({...newAcc, user:e.target.value})} placeholder="ชื่อผู้ใช้ (เช่น somchai)" style={t.input}/>
-                    <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
-                    <input value={newAcc.pass} onChange={e=>setNewAcc({...newAcc, pass:e.target.value})} placeholder="รหัสผ่าน" style={t.input}/>
-                    <DeptPicker key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
-                    <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={t.input}>
-                      {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
-                    </select>
-                  </div>
-                  <div style={t.roleHint}>{(ROLES.find(r=>r.key===newAcc.role)||{}).desc}</div>
-                  <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:12}}>➕ เพิ่มบัญชี</button>
-                </div>
               </div>
               </div>
             </div>
@@ -2406,18 +2413,19 @@ function DeptPicker({ value, onChange, style }) {
   );
 }
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
-const mono = "'IBM Plex Mono',ui-monospace,Menlo,monospace";
+// ตัวพิมพ์ดีดไม่มีอักษรไทย จึงต่อท้ายด้วย Plex ไทย ตัวอักษรไทยจะได้ไม่หลุดไปใช้ฟอนต์ของเครื่อง
+const mono = "'IBM Plex Mono','IBM Plex Sans Thai Looped','IBM Plex Sans Thai',ui-monospace,Menlo,monospace";
 // เนื้อหาใช้แบบมีหัว (อ่านง่ายตัวเล็ก) หัวข้อใช้แบบไม่มีหัว (ดูทันสมัย) ตระกูลเดียวกัน
 const sans = "'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',-apple-system,'Segoe UI',sans-serif";
 const head = "'IBM Plex Sans Thai','IBM Plex Sans Thai Looped',-apple-system,'Segoe UI',sans-serif";
 
 function mk(dark){
   // โทนครีม: พื้นครีมอุ่น การ์ดขาว ขอบสีทราย ตัวอักษรเข้มอมน้ำตาล ปุ่มหลักสีน้ำเงิน
-  const bg = dark?"#080B10":"#FFFCEF";
-  const sideB = dark?"#0D1218":"#FFFDF5";
+  const bg = dark?"#080B10":"#F9F3E1";
+  const sideB = dark?"#0D1218":"#FFFFFF";
   const surf = dark?"#0F151C":"#FFFFFF";
   const surf2 = dark?"rgba(255,255,255,.025)":"#FCF9EE";
-  const border = dark?"rgba(255,255,255,.07)":"#ECE5D0";
+  const border = dark?"rgba(255,255,255,.07)":"#E6DDC4";
   const text = dark?"#E6EAF0":"#1A1811";
   const dim = dark?"#7B8696":"#7A7466";
   const inputBg = dark?"rgba(0,0,0,.3)":"#FFFEF9";
@@ -2428,8 +2436,8 @@ function mk(dark){
   return {
     dim, border, text, accentTxt,
     app:{display:"flex", minHeight:"100vh", color:text, fontFamily:sans,
-      background: dark ? bg : "radial-gradient(900px 600px at 92% 8%, rgba(46,125,79,.06), transparent 60%), linear-gradient(160deg,#FBF5E2 0%,#FFFCEF 42%,#FFFDF6 100%)", backgroundAttachment:"fixed"},
-    side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${border}`, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
+      background: dark ? bg : "radial-gradient(900px 600px at 92% 8%, rgba(46,125,79,.06), transparent 60%), linear-gradient(160deg,#F6EED6 0%,#F9F3E1 45%,#FBF6E8 100%)", backgroundAttachment:"fixed"},
+    side:{width:248, flexShrink:0, background:sideB, borderRight:`1px solid ${dark?border:"#E3D9BE"}`, boxShadow:dark?"none":"4px 0 22px rgba(90,75,30,.07)", zIndex:2, padding:"22px 18px", display:"flex", flexDirection:"column", position:"sticky", top:0, height:"100vh"},
     logoImg:{width:"100%", maxWidth:180, height:"auto", display:"block"},
     sideTitle:{fontSize:17, fontWeight:700},
     sideSub:{fontSize:12.5, color:dim, marginTop:3, marginBottom:22},
@@ -2453,7 +2461,7 @@ function mk(dark){
 
     recGrid:{display:"grid", gridTemplateColumns:"minmax(0,1.4fr) minmax(0,1fr)", gap:20, alignItems:"start"},
     dashGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20},
-    panel:{background:surf, border:`1px solid ${border}`, borderRadius:20, padding:26, boxShadow:dark?"0 1px 0 rgba(255,255,255,.02) inset, 0 4px 24px rgba(0,0,0,.2)":"0 2px 12px rgba(60,50,20,.05)"},
+    panel:{background:surf, border:`1px solid ${border}`, borderRadius:20, padding:26, boxShadow:dark?"0 1px 0 rgba(255,255,255,.02) inset, 0 4px 24px rgba(0,0,0,.2)":"0 2px 14px rgba(90,75,30,.08)"},
     panelTitle:{fontFamily:head, fontSize:16.5, fontWeight:600, marginBottom:18},
     label:{fontSize:13, color:dim, fontWeight:600, margin:"18px 0 9px", letterSpacing:.1},
     dimLabel:{color:dim, fontWeight:400},
@@ -2564,7 +2572,7 @@ function mk(dark){
     tdTime:{fontSize:11.5, color:accent, fontWeight:600, marginTop:3},
     tdImg:{width:60, height:44, objectFit:"cover", borderRadius:7, marginTop:6, cursor:"pointer", display:"block"},
     badge:{fontSize:11.5, fontWeight:700, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
-    fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:11.5, fontWeight:700, fontFamily:mono, whiteSpace:"nowrap"},
+    fixBtn:{background:"transparent", border:"1px solid", borderRadius:8, padding:"5px 11px", fontSize:12, fontWeight:600, fontFamily:sans, whiteSpace:"nowrap"},
     delBtn:{background:hexA("#EF4444",dark?.12:.09,dark), border:`1px solid ${hexA("#EF4444",.3,dark)}`, borderRadius:9, padding:"6px 9px", fontSize:13.5, color:"#EF4444", fontWeight:600},
     editBtn:{background:hexA("#3B82F6",dark?.14:.1,dark), border:`1px solid ${hexA("#3B82F6",.32,dark)}`, borderRadius:9, padding:"6px 9px", fontSize:13.5, color:"#3B82F6", fontWeight:600},
 
@@ -2716,6 +2724,12 @@ function mk(dark){
     modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
     previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
+    accHead:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:6},
+    accCount:{fontSize:12, fontWeight:600, color:dim, background:surf2, border:`1px solid ${border}`, borderRadius:20, padding:"1px 9px", marginLeft:4, verticalAlign:"middle"},
+    accAddToggle:{padding:"9px 15px", borderRadius:11, border:"none", background:G, color:"#fff", fontSize:13.5, fontWeight:600, whiteSpace:"nowrap", boxShadow:`0 4px 12px ${hexA(accent,.22,dark)}`},
+    accAddToggleOn:{padding:"9px 15px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:dim, fontSize:13.5, fontWeight:600, whiteSpace:"nowrap"},
+    pwKey:{padding:"7px 10px", borderRadius:9, border:`1px solid ${border}`, background:surf, fontSize:13, flexShrink:0},
+    pwKeyOn:{padding:"7px 10px", borderRadius:9, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.1,dark), fontSize:13, flexShrink:0},
     roleSel:{appearance:"none", WebkitAppearance:"none", cursor:"pointer", flexShrink:0, maxWidth:150},
     roleHint:{fontSize:12, color:dim, marginTop:9, lineHeight:1.5},
     pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
