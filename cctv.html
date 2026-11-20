@@ -41,11 +41,11 @@
     .rb-nav{flex-direction:row !important; flex:1 1 100% !important; min-width:0 !important; overflow-x:auto !important; flex-wrap:nowrap !important; scrollbar-width:none;}
     .rb-nav::-webkit-scrollbar{display:none;}
     .rb-nav > *{flex:0 0 auto !important; white-space:nowrap !important;}
-    .rb-app{overflow-x:hidden !important;}
-    html,body{overflow-x:hidden;}
+    .rb-app{overflow-x:clip !important;}
+    html{overflow-x:hidden;}
     .rb-recGrid{grid-template-columns:1fr !important;}
     .rb-dashGrid{grid-template-columns:1fr !important;}
-    .rb-camManGrid{grid-template-columns:1fr !important;}
+    .rb-camManGrid{grid-template-columns:minmax(0,1fr) !important;}
     .rb-wrap [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
     .rb-statGrid{grid-template-columns:1fr 1fr !important;}
     .rb-heroGrid{grid-template-columns:1fr !important;}
@@ -1273,7 +1273,7 @@ function App() {
           <div style={{position:"relative"}}>
             <img src={LOGO} alt="RAYONGBOARD" style={t.loginSideLogo}/>
             <div style={t.loginHero}>
-              <div style={t.loginBubble}>สวัสดี! 👋</div>
+              <div style={t.loginBubble}>Hi! 👋</div>
               <span style={t.loginBlob}><Mascot size={104} mount="#D6EAFF" mountLine="#5B9BE0"/></span>
               <i style={{...t.loginSpark, left:0, top:10}}>✨</i>
               <i style={{...t.loginSpark, left:122, bottom:4, fontSize:14}}>💙</i>
@@ -1333,7 +1333,7 @@ function App() {
       <aside style={t.side} className="rb-side">
         <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
         <div style={t.brandCard} className="rb-hideM">
-          <span style={t.brandBlob}><Mascot size={54}/><i style={t.brandSpark}>✨</i></span>
+          <span style={t.brandBlob}><Mascot size={54} mount="#D6EAFF" mountLine="#5B9BE0"/><i style={t.brandSpark}>✨</i></span>
           <div style={{minWidth:0}}>
             <div style={t.sideTitle}>CCTV</div>
             <div style={t.brandKicker}>RAYONGBOARD</div>
@@ -1389,12 +1389,12 @@ function App() {
                       <span style={{fontSize:20}}>{stOf(s).emoji}</span>{s}</button>;
                   })}
                 </div>
-                <div style={{display:"flex", gap:12, marginTop:2}}>
+                <div style={{display:"flex", gap:12, marginTop:2, flexWrap:"wrap"}}>{/* จอแคบ: เวลาตกลงไปอยู่ใต้วันที่ */}
                   <div style={{flex:1, minWidth:150}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
                   <div style={{flex:1, minWidth:150}}>
                     <div style={t.label}>🕐 เวลา <span style={{color:t.dim, fontWeight:500}}>(เว้นว่างได้)</span></div>
                     <div style={{display:"flex", gap:8}}>
-                      <input type="time" value={timeVal} onChange={e=>setTimeVal(e.target.value)} style={{...t.input, flex:1}}/>
+                      <input type="time" value={timeVal} onChange={e=>setTimeVal(e.target.value)} style={{...t.input, flex:1, minWidth:0}}/>
                       <button onClick={()=>setTimeVal(timeVal ? "" : nowHM())} className="tap" style={t.timeBtn} title={timeVal ? "ลบเวลาออก" : "ใส่เวลาปัจจุบัน"}>{timeVal ? "✕" : "⏱"}</button>
                     </div>
                   </div>
@@ -1490,7 +1490,7 @@ function App() {
                     </div>
                   </div>
                 )}
-                <button onClick={submit} disabled={!canSubmit} className="tap" style={{...t.submit, opacity:canSubmit?1:.4}}>💾 บันทึกรายงาน</button>
+                <button onClick={submit} disabled={!canSubmit} className="tap" style={{...t.submit, marginTop:20, padding:"13px", fontSize:15, borderRadius:13, opacity:canSubmit?1:.4}}>💾 บันทึกรายงาน</button>
               </div>
 
               {/* รายการล่าสุดขวา */}
@@ -1958,7 +1958,7 @@ function App() {
                       {editIdx===i ? (
                         <input value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit();}} autoFocus style={{...t.input, flex:1, padding:"8px 12px"}}/>
                       ) : (
-                        <span style={t.staffName}>{r}</span>
+                        <span style={t.staffName}><Name text={r}/></span>
                       )}
                       <div style={{display:"flex", gap:6, flexShrink:0}}>
                         {editIdx===i ? (
@@ -2495,11 +2495,11 @@ function mk(dark){
     // ชื่อระบบใต้โลโก้: ไม่มีกรอบ น้องกล้องในวงกลมพาสเทล + ประกาย
     brandCard:{display:"flex", alignItems:"center", gap:12, padding:"2px 0", marginBottom:22},
     brandBlob:{position:"relative", width:58, height:58, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center",
-      background:dark?"radial-gradient(circle at 30% 25%,#34405E 0%,#2A2F4A 50%,#1E2A40 100%)":"radial-gradient(circle at 30% 25%,#FFFFFF 0%,#FFE3EE 45%,#D6E9FF 100%)",
-      boxShadow:`0 6px 16px ${dark?"rgba(0,0,0,.35)":"rgba(231,127,163,.25)"}`},   // วงกลมพาสเทล ชมพู→ฟ้า
+      background:dark?"radial-gradient(circle at 30% 25%,#2B4570,#1A2E4E)":"radial-gradient(circle at 30% 25%,#FFFFFF 0%,#EEF7FF 50%,#D4E9FF 100%)",
+      boxShadow:`0 6px 16px ${dark?"rgba(0,0,0,.35)":"rgba(28,130,217,.25)"}`},   // วงกลมขาวไล่ฟ้า เหมือนหน้า login
     brandSpark:{position:"absolute", right:-6, top:-6, fontStyle:"normal", fontSize:15, lineHeight:1},  // ประกายที่มุม
     sideTitle:{fontFamily:head, fontSize:21, fontWeight:700, letterSpacing:".5px", lineHeight:1.05,
-      background:dark?"none":"linear-gradient(90deg,#1C82D9,#0A5FAD)", WebkitBackgroundClip:dark?"border-box":"text", WebkitTextFillColor:dark?accentTxt:"transparent", color:accentTxt},
+      background:dark?"none":"linear-gradient(90deg,#3FA2F0,#0A5FAD)", WebkitBackgroundClip:dark?"border-box":"text", WebkitTextFillColor:dark?accentTxt:"transparent", color:accentTxt},
     brandKicker:{fontSize:10.5, fontWeight:700, letterSpacing:"1.8px", color:text, marginTop:3, whiteSpace:"nowrap"},
     sideSub:{fontSize:11.5, color:dim, marginTop:3, whiteSpace:"nowrap"},
     nav:{display:"flex", flexDirection:"column", gap:5},
@@ -2513,7 +2513,7 @@ function mk(dark){
     themeToggle:{position:"fixed", top:20, right:24, zIndex:40, width:42, height:42, borderRadius:12, border:`1px solid ${border}`, background:surf, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:dark?"0 4px 16px rgba(0,0,0,.3)":"0 2px 10px rgba(60,50,20,.1)"},
     themeBtn:{padding:"11px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13, fontWeight:600, marginBottom:12},
 
-    main:{flex:1, minWidth:0, overflowX:"hidden", position:"relative"},
+    main:{flex:1, minWidth:0, overflowX:"clip", position:"relative"},  // clip (ไม่ใช่ hidden) ไม่งั้นปุ่มที่ติดขอบจอจะไม่ทำงาน
     wrap:{maxWidth:1240, margin:"0 auto", padding:"34px 40px 70px"},
     pageHead:{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:22, gap:16, flexWrap:"wrap", minHeight:62},  // สูงเท่ากันทุกหน้า เนื้อหาจะได้เริ่มที่ระดับเดียวกัน
     h1:{fontFamily:head, fontSize:28, fontWeight:700, letterSpacing:-.4, lineHeight:1.15, display:"flex", alignItems:"center", gap:14},
