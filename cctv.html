@@ -172,7 +172,7 @@ const UKEY = "cctv_users_v2";
 const FIX_BY = ["ช่างผู้รับเหมา (DD)", "IT"];
 // สาเหตุที่เจอบ่อย กดเติมลงช่องหมายเหตุได้เลย
 const NOTE_PRESETS = ["ถอดกล้องทำฝ้า", "ตัดไฟปรับปรุงพื้นที่", "รออะไหล่", "สาย LAN ขาด", "รอผู้รับเหมาเข้าพื้นที่", "งานโครงสร้างยังไม่เสร็จ"];
-const DEPARTMENTS = ["CCTV", "IT", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
+const DEPARTMENTS = ["CCTV", "IT", "HR", "หัวหน้าเวร", "รปภ.", "ผู้รับเหมา"];
 // ─────────── จัดการพื้นที่เก็บในเครื่อง (localStorage ~5 MB) ───────────
 // รูปทุกใบที่เปิดดูจะถูกสำเนาไว้ในเครื่องเพื่อให้เปิดเร็ว ถ้าปล่อยสะสมจะเต็ม
 // ตัวรูปจริงอยู่บนคลาวด์ (เอกสาร img_<id>) ลบสำเนาในเครื่องได้ ไม่ทำข้อมูลหาย
@@ -471,6 +471,7 @@ function App() {
   // กันพนักงานเข้าหน้า admin (วางกับ hooks อื่นก่อน early return)
   useEffect(() => { if (auth && auth.role!=="admin" && (nav==="cams"||nav==="staff")) setNav("record"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor" && nav!=="history") setNav("history"); }, [auth, nav]);
+  useEffect(() => { if (auth && auth.role==="viewer" && !["history","dash"].includes(nav)) setNav("history"); }, [auth, nav]);
   useEffect(() => { if (auth && auth.role==="vendor") setFFilter("open"); }, [auth]);
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < 900);
@@ -522,9 +523,16 @@ function App() {
   }, [zone, subGrp, camQuery, tree, CAMERAS]);
 
   const isVendor = !!(auth && auth.role === "vendor");
+  // ผู้ดูรายงาน (เช่น HR) เปิดดูได้อย่างเดียว บันทึก/แก้ไข/ลบ/เปลี่ยนสถานะงานไม่ได้
+  const isViewer = !!(auth && auth.role === "viewer");
+  const blockViewer = () => {
+    if (!isViewer) return false;
+    setToast("บัญชีนี้ดูรายงานได้อย่างเดียว"); setTimeout(()=>setToast(""),2600);
+    return true;
+  };
   const myName = (auth && accounts[auth.user] && (accounts[auth.user].reporter || accounts[auth.user].name)) || (auth && auth.name) || "";
   // พนักงานลบได้เฉพาะบันทึกของตัวเอง กันเผลอลบงานกะอื่น ผู้ดูแลลบได้ทุกอัน
-  const canDelete = (l) => isAdmin || (!isVendor && !!l.by && l.by === myName);
+  const canDelete = (l) => !isViewer && (isAdmin || (!isVendor && !!l.by && l.by === myName));
   // ป้าย "อาการที่แจ้ง" คือสิ่งที่พบตอนแจ้ง ไม่ใช่สถานะปัจจุบันของกล้อง
   // งานที่ซ่อมจบแล้วจึงแสดงเป็นสีจาง กันช่างเข้าใจผิดว่ากล้องยังดับอยู่
   const stBadge = (l) => {
@@ -777,6 +785,7 @@ function App() {
     setToast(msg); setTimeout(()=>setToast(""),4000);
   };
   const submit = () => {
+    if (blockViewer()) return;
     const dup = (status!=="ปกติ" && cam) ? openJobFor(cam) : null;
     if (dup) {
       setToast(`${cam} มีงานค้างอยู่แล้ว (แจ้ง ${fmtTH(dup.date)}) บันทึกซ้ำไม่ได้`);
@@ -791,6 +800,7 @@ function App() {
     setTimeout(()=>setToast(""), 2600);
   };
   const openFix = (id) => {
+    if (blockViewer()) return;
     const cur = logs.find(l=>l.id===id);
     if(!cur || !needsFix(cur.status)) return;
     const cf = normFix(cur.fix);
@@ -827,6 +837,7 @@ function App() {
     setTimeout(()=>setToast(""),2400);
   };
   const del = (id) => {
+    if (blockViewer()) return;
     const l = logs.find(x=>x.id===id);
     if (l && !canDelete(l)) {
       setToast(`ลบได้เฉพาะบันทึกของตัวเอง — รายการนี้เป็นของ ${l.by||"คนอื่น"} ให้ผู้ดูแลลบให้`);
@@ -840,6 +851,7 @@ function App() {
   };
   // ── แก้ไขบันทึก (หน้าประวัติ) ──
   const openEdit = (id) => {
+    if (blockViewer()) return;
     const l = logs.find(x=>x.id===id); if(!l) return;
     setEditBox({
       id: l.id, date: l.date||todayISO(), time: l.time||"", shift: l.shift||SHIFTS[0].key, status: l.status||"ปกติ",
@@ -859,6 +871,7 @@ function App() {
     e.target.value = "";
   };
   const saveLogEdit = () => {
+    if (blockViewer()) return;
     if (!editBox) return;
     const e = editBox;
     const normal = e.status==="ปกติ";
@@ -1095,7 +1108,8 @@ function App() {
     if (u === "admin") { setToast("เปลี่ยนสิทธิ์ผู้ดูแลหลักไม่ได้"); setTimeout(()=>setToast(""),2400); return; }
     const cur = accounts[u].role;
     if (cur==="admin") { const admins = Object.values(accounts).filter(a=>a.role==="admin").length; if(admins<=1){ setToast("ต้องมีผู้ดูแลอย่างน้อย 1 บัญชี"); setTimeout(()=>setToast(""),2600); return; } }
-    const next = cur==="staff" ? "admin" : (cur==="admin" ? "vendor" : "staff"); // พนักงาน → ผู้ดูแล → ผู้รับเหมา
+    // พนักงาน → ผู้ดูแล → ผู้รับเหมา → ผู้ดูรายงาน → พนักงาน
+    const next = cur==="staff" ? "admin" : (cur==="admin" ? "vendor" : (cur==="vendor" ? "viewer" : "staff"));
     setAccounts({...accounts, [u]: {...accounts[u], role: next}});
   };
   const changePassword = (user) => {
@@ -1180,7 +1194,7 @@ function App() {
     const a = { user: u, role: rec.role, name: rec.name };
     setAuth(a); try { sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch(e){}
     setLoginUser(""); setLoginPass(""); setLoginErr("");
-    setNav(rec.role==="vendor" ? "history" : "record");
+    setNav(rec.role==="vendor" || rec.role==="viewer" ? "history" : "record");
   };
   const doLogout = () => { setAuth(null); try { sessionStorage.removeItem(AUTH_KEY); } catch(e){} };
 
@@ -1253,7 +1267,9 @@ function App() {
   const canSeeIp = isAdmin || isVendor; // ช่างต้องใช้ IP เข้าไปตรวจกล้อง
   const NAV = isVendor
     ? [["history","🔧","งานซ่อม"]]
-    : ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
+    : isViewer
+      ? [["history","📋","ประวัติ"],["dash","📊","แดชบอร์ด"]]
+      : ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
 
   return (
     <div style={t.app} className="rb-app">
@@ -1287,7 +1303,7 @@ function App() {
           <div style={t.userAvatar}>{isAdmin?"🛡️":"👤"}</div>
           <div style={{flex:1, minWidth:0}}>
             <div style={t.userName}>{auth.name}</div>
-            <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":"พนักงาน")}</div>
+            <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":(isViewer?"ผู้ดูรายงาน":"พนักงาน"))}</div>
           </div>
         </div>
         <button onClick={doLogout} className="tap" style={t.logoutBtn}>🚪 ออกจากระบบ</button>
@@ -1543,11 +1559,11 @@ function App() {
 
                       <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
                         {needsFix(l.status)
-                          ? <button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+" ▾"}</button>
+                          ? <button onClick={()=>openFix(l.id)} className={isViewer?"":"tap"} style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+" ▾"}</button>
                           : <span style={{fontSize:12, color:t.dim}}>ไม่มีงานติดตาม</span>}
                         <div style={{display:"flex", gap:7, marginLeft:"auto"}}>
-                          {!isVendor && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}>✏️</button>}
-                          {!isVendor && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button>}
+                          {!isVendor && !isViewer && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}>✏️</button>}
+                          {!isVendor && !isViewer && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button>}
                         </div>
                       </div>
                       {(l.fixDate||l.fixBy||l.fixNote) && (
@@ -1590,8 +1606,8 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className={isViewer?"":"tap"} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
                   {view.length===0 && <tr><td colSpan={jobMode?10:9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
@@ -1913,7 +1929,7 @@ function App() {
                           <div style={t.accName}>{a.name}</div>
                           <div style={t.accMeta}>@{u}<span onClick={()=>askPrompt(`แผนก/ตำแหน่งของ ${a.name}`, a.dept||"", (d)=>setAccounts({...accounts, [u]:{...a, dept:d.trim()}}))} className="tap" style={t.deptBadge} title="แตะเพื่อแก้แผนก">{a.dept||"+ แผนก"}</span></div>
                         </div>
-                        <button onClick={()=>toggleRole(u)} className="tap" style={a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:t.roleStaff)} title="แตะเพื่อเปลี่ยนสิทธิ์">{a.role==="admin"?"🛡️ ผู้ดูแล":(a.role==="vendor"?"🔧 ผู้รับเหมา":"👤 พนักงาน")}</button>
+                        <button onClick={()=>toggleRole(u)} className="tap" style={a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:(a.role==="viewer"?t.roleViewer:t.roleStaff))} title="แตะเพื่อเปลี่ยนสิทธิ์">{a.role==="admin"?"🛡️ ผู้ดูแล":(a.role==="vendor"?"🔧 ผู้รับเหมา":(a.role==="viewer"?"👁 ผู้ดูรายงาน":"👤 พนักงาน"))}</button>
                         <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}>🗑</button>
                       </div>
                       <div style={t.accPwRow}>
@@ -1936,6 +1952,7 @@ function App() {
                       <option value="staff">👤 พนักงาน (บันทึก/ดูอย่างเดียว)</option>
                       <option value="admin">🛡️ ผู้ดูแล (จัดการได้ทุกอย่าง)</option>
                       <option value="vendor">🔧 ผู้รับเหมา (เห็นเฉพาะงานซ่อม อัปเดตสถานะได้)</option>
+                      <option value="viewer">👁 ผู้ดูรายงาน (ดูอย่างเดียว เช่น HR/หัวหน้า)</option>
                     </select>
                   </div>
                   <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:14}}>➕ เพิ่มบัญชี</button>
@@ -2144,7 +2161,7 @@ function App() {
 
             <div style={{display:"flex", gap:10, marginTop:18, flexWrap:"wrap"}}>
               {needsFix(l.status) && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={{...t.submit, marginTop:0, flex:1, minWidth:150}}>🔧 อัปเดตสถานะงาน</button>}
-              {!isVendor && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={{...t.dashExport, flex:1, minWidth:110}}>✏️ แก้ไข</button>}
+              {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={{...t.dashExport, flex:1, minWidth:110}}>✏️ แก้ไข</button>}
               <button onClick={()=>setDetailBox(null)} className="tap" style={{...t.dashExport, flex:1, minWidth:90}}>ปิด</button>
             </div>
           </div>
@@ -2607,6 +2624,7 @@ function mk(dark){
     modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
     previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
+    roleViewer:{padding:"5px 11px", borderRadius:9, border:`1px solid ${hexA("#8B5CF6",.3,dark)}`, background:hexA("#8B5CF6",dark?.14:.1,dark), color:"#8B5CF6", fontSize:12, fontWeight:700},
     stDone:{fontSize:10.5, color:"#16A34A", fontWeight:700, marginTop:5},
     toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1E293B", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
   };
