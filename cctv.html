@@ -306,6 +306,7 @@ function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [summaryCopied, setSummaryCopied] = useState(false);
   const [summaryText, setSummaryText] = useState("");
+  const [summaryTitle, setSummaryTitle] = useState("สรุปประจำวัน"); // กล่องเดียวกันใช้ได้ทั้งสรุปเวรและรายการงานค้าง
   const [zFilter, setZFilter] = useState("all");
   const [preview, setPreview] = useState("");
   const [syncErr, setSyncErr] = useState(""); // ข้อความเตือนเมื่อซิงก์ขึ้นคลาวด์ไม่สำเร็จ
@@ -626,6 +627,13 @@ function App() {
     return out.slice(-14); // เอา 14 วันล่าสุดพอ ไม่งั้นแท่งเล็กจนอ่านไม่ออก
   }, [dashView]);
   const daysOpen = (iso) => Math.max(0, Math.round((Date.now() - new Date(iso+"T00:00:00").getTime())/86400000));
+  // ถอดกล้องคือรอหน้างานพร้อม ไม่ใช่งานที่ช่างทำช้า จึงใช้คำกลาง ๆ และไม่เตือนเป็นสีแดง
+  const ageInfo = (l) => {
+    const n = daysOpen(l.date);
+    return l && l.status === "ถอดกล้อง"
+      ? { text: `ถอดมา ${n} วัน`, warn: false }
+      : { text: `ค้าง ${n} วัน`, warn: n > 7 };
+  };
   const toggleJob = (id) => setJobSel(v => v.includes(id) ? v.filter(x=>x!==id) : [...v, id]);
   const applyJobs = (target) => {
     if (!jobSel.length) return;
@@ -649,10 +657,11 @@ function App() {
     if (!rows.length) { setToast("ไม่มีงานค้างให้คัดลอก"); setTimeout(()=>setToast(""),2400); return; }
     let out = `🛠 งานซ่อมกล้องค้างอยู่ ${rows.length} รายการ\n━━━━━━━━━━━━━\n`;
     rows.forEach(l=>{
-      out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ค้าง ${daysOpen(l.date)} วัน\n`;
+      out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ${ageInfo(l).text}\n`;
       if (l.area || l.detail) out += `   ${[l.area,l.detail].filter(Boolean).join(" — ")}\n`;
     });
     setSummaryText(out);
+    setSummaryTitle("รายการงานซ่อมค้าง");
     setSummaryCopied(false);
     setShowSummary(true);   // ต้องเปิดกล่องด้วย ไม่งั้นกดแล้วเหมือนไม่มีอะไรเกิดขึ้น
   };
@@ -905,6 +914,7 @@ function App() {
   const copySummary = (dArg) => {
     // เปิดกล่องให้แก้ข้อความก่อน แล้วค่อยกดคัดลอกในกล่อง
     setSummaryText(buildSummary(dArg));
+    setSummaryTitle("สรุปประจำวัน");
     setSummaryCopied(false);
     setShowSummary(true);
   };
@@ -1354,7 +1364,7 @@ function App() {
                 {dupJob && (
                   <div style={t.dupWarn}>
                     <div style={{fontWeight:700, marginBottom:4}}>⚠️ กล้องนี้มีงานค้างอยู่แล้ว</div>
-                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · ค้าง {daysOpen(dupJob.date)} วัน</div>
+                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · {ageInfo(dupJob).text}</div>
                     <div style={t.dupLine}>🕐 แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} · กะ{dupJob.shift||"—"} · โดย {dupJob.by||"—"}</div>
                     {(dupJob.zone || dupJob.area) && <div style={t.dupLine}>📍 {[dupJob.zone && `${ZONE_EMOJI[dupJob.zone]||""} ${dupJob.zone}`, dupJob.area].filter(Boolean).join(" · ")}</div>}
                     {dupJob.detail && <div style={t.dupLine}>📄 อาการที่แจ้ง: {dupJob.detail}</div>}
@@ -1483,7 +1493,7 @@ function App() {
                           {jobMode && needsFix(l.status) && !fixDone(l) && <span style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</span>}
                           <span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
                         </span>
-                        <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""}{needsFix(l.status)&&!fixDone(l) ? <b style={{color:daysOpen(l.date)>7?"#EF4444":t.dim}}> · ค้าง {daysOpen(l.date)} วัน</b> : ` · ${l.shift}`}</span>
+                        <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""}{needsFix(l.status)&&!fixDone(l) ? <b style={{color:ageInfo(l).warn?"#EF4444":t.dim}}> · {ageInfo(l).text}</b> : ` · ${l.shift}`}</span>
                       </div>
 
                       {l.cam ? <div style={t.jobCam}>{l.cam}</div> : <div style={{...t.jobCam, fontFamily:"inherit", fontSize:14}}>{l.detail||"เหตุการณ์"}</div>}
@@ -1550,7 +1560,7 @@ function App() {
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:daysOpen(l.date)>7?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>ค้าง {daysOpen(l.date)} วัน</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><button onClick={()=>openFix(l.id)} className="tap" style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+" ▾"}</button>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={t.td} onClick={e=>e.stopPropagation()}>{isVendor ? <span style={{color:t.dim}}>—</span> : <div style={{display:"flex", gap:7}}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
@@ -2249,7 +2259,7 @@ function App() {
       {showSummary && (<Modal>
         <div style={t.modalBg} onClick={()=>setShowSummary(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>📋 สรุปประจำวัน (แก้ไขได้)</div>
+            <div style={t.panelTitle}>📋 {summaryTitle} (แก้ไขได้)</div>
             {summaryCopied
               ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย · แก้ข้อความแล้วกดคัดลอกอีกครั้งได้</div>
               : <div style={t.pwHint}>แก้ข้อความได้ก่อนคัดลอก</div>
