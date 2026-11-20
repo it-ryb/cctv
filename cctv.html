@@ -1608,7 +1608,7 @@ function App() {
                       {(l.fixDate||l.fixBy||l.fixNote) && (
                         <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>
                           {l.fixDate && <span>🗓 {fmtTH(l.fixDate)} </span>}
-                          {l.fixBy && <span>👷 {l.fixBy} </span>}
+                          {l.fixBy && <span>👷 <Name text={l.fixBy}/> </span>}
                           {l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}
                         </div>
                       )}
@@ -1644,8 +1644,8 @@ function App() {
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
-                      <td style={t.td}>{l.by}</td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 {l.fixBy}</div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={{...t.td, minWidth:92}}><Name text={l.by}/></td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 <Name text={l.fixBy}/></div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={{...t.td, ...t.stickyR, padding:"15px 10px"}} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={t.actCol}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
                     </tr>
                   ))}
@@ -2373,6 +2373,12 @@ function FixTag({ ro, children, style, title, onClick }) {
   return ro
     ? <span style={{...style, display:"inline-block", cursor:"default"}}>{children}</span>
     : <button onClick={onClick} className="tap" style={style} title={title}>{children}</button>;
+}
+// ชื่อคน: ตัดบรรทัดได้เฉพาะตรงช่องว่างระหว่างชื่อกับนามสกุล ห้ามตัดกลางคำ เช่น "จัน/ที"
+function Name({ text }) {
+  if (!text) return null;
+  const parts = String(text).trim().split(/\s+/);
+  return <>{parts.map((w,i)=><React.Fragment key={i}>{i>0?" ":""}<span style={{whiteSpace:"nowrap"}}>{w}</span></React.Fragment>)}</>;
 }
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 const mono = "'IBM Plex Mono',ui-monospace,Menlo,monospace";
