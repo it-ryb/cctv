@@ -655,13 +655,43 @@ function App() {
     const picked = open.filter(l=>jobSel.includes(l.id));
     const rows = picked.length ? picked : open;
     if (!rows.length) { setToast("ไม่มีงานค้างให้คัดลอก"); setTimeout(()=>setToast(""),2400); return; }
-    let out = `🛠 งานซ่อมกล้องค้างอยู่ ${rows.length} รายการ\n━━━━━━━━━━━━━\n`;
-    rows.forEach(l=>{
-      out += `• ${l.cam||"-"} (${l.zone||"-"}) · ${normFix(l.fix)} · ${ageInfo(l).text}\n`;
-      if (l.area || l.detail) out += `   ${[l.area,l.detail].filter(Boolean).join(" — ")}\n`;
+
+    // ถ้ารายการทั้งชุดเป็นอาการเดียวกัน เอาไปขึ้นหัวเรื่องเลย จะได้ไม่ต้องเขียนซ้ำทุกบรรทัด
+    const sts = [...new Set(rows.map(l=>l.status).filter(Boolean))];
+    const fxs = [...new Set(rows.map(l=>normFix(l.fix)).filter(Boolean))];
+    const oneSt = sts.length===1 ? sts[0] : "";
+    const label = oneSt ? `งาน${oneSt}` : "งานกล้องที่ยังไม่เสร็จ";
+    let out = `${oneSt ? stOf(oneSt).emoji : "🛠"} ${label}${fxs.length===1 ? " · "+fxs[0] : ""}\n`;
+    out += `รวม ${rows.length} รายการ · ${fmtTH(todayISO())}\n`;
+    out += `━━━━━━━━━━━━━\n`;
+
+    // เรียงงานที่ค้างนานสุดขึ้นก่อน แล้วจัดกลุ่มตามพื้นที่ ช่างจะได้เดินเก็บงานทีละโซน
+    const zones = [], at = {};
+    [...rows].sort((a,b)=>daysOpen(b.date)-daysOpen(a.date)).forEach(l=>{
+      const z = l.zone || "ไม่ระบุพื้นที่";
+      if (at[z]===undefined) { at[z] = zones.length; zones.push({ z, items: [] }); }
+      zones[at[z]].items.push(l);
     });
-    setSummaryText(out);
-    setSummaryTitle("รายการงานซ่อมค้าง");
+
+    let n = 0;
+    zones.forEach((g, i) => {
+      if (i) out += `\n`;
+      out += `${ZONE_EMOJI[g.z] || "📍"} ${g.z} (${g.items.length})\n`;
+      g.items.forEach(l => {
+        n++;
+        const bits = [l.cam || "-"];
+        if (!oneSt) bits.push(`${stOf(l.status).emoji} ${l.status}`);
+        if (fxs.length > 1) bits.push(normFix(l.fix));
+        bits.push(ageInfo(l).text);
+        out += `${n}. ${bits.join(" · ")}\n`;
+        const where = [l.area, l.detail].filter(Boolean).join(" — ");
+        if (where) out += `    ${where}\n`;
+        if (l.fixNote) out += `    📝 ${l.fixNote}\n`;
+      });
+    });
+
+    setSummaryText(out.replace(/\n+$/, ""));   // ตัดบรรทัดว่างท้ายสุด
+    setSummaryTitle(oneSt ? label : "รายการงานค้าง");
     setSummaryCopied(false);
     setShowSummary(true);   // ต้องเปิดกล่องด้วย ไม่งั้นกดแล้วเหมือนไม่มีอะไรเกิดขึ้น
   };
