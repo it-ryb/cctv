@@ -390,7 +390,9 @@ function App() {
   const [editIpCam, setEditIpCam] = useState("");
   const [editIpVal, setEditIpVal] = useState("");
   const [confirmBox, setConfirmBox] = useState(null); // {msg, onYes}
-  const askConfirm = (msg, onYes, okText) => setConfirmBox({ msg, onYes, okText });
+  // opts.typeWord: งานที่ลบทีเดียวหายหมด ต้องพิมพ์คำนี้ก่อนถึงกดยืนยันได้ · opts.backup: มีปุ่มสำรองข้อมูลก่อน
+  const askConfirm = (msg, onYes, okText, opts) => { setConfirmTyped(""); setConfirmBox({ msg, onYes, okText, ...(opts||{}) }); };
+  const [confirmTyped, setConfirmTyped] = useState("");
   const [promptBox, setPromptBox] = useState(null); // {msg, val, onOk}
   const [fixBox, setFixBox] = useState(null); // {id, fixDate, fixBy, fixNote}
   const [editBox, setEditBox] = useState(null); // แก้ไขบันทึกในหน้าประวัติ
@@ -1254,7 +1256,8 @@ function App() {
     () => nav==="staff" ? { mb:(lsBytes()/1048576).toFixed(2), imgs:imgKeys().length } : null,
     [nav, stTick]
   );
-  const purgeImgCache = () => {
+  const purgeImgCache = () => askConfirm("ล้างสำเนารูปที่เก็บไว้ในเครื่องนี้?\nรูปบนคลาวด์ยังอยู่ครบ แต่ครั้งต่อไปจะโหลดรูปช้าลงนิดหน่อย", doPurgeImgCache, "ยืนยันล้าง");
+  const doPurgeImgCache = () => {
     const n = clearImageCache();
     setImgCache({});
     setStTick(stTick+1);
@@ -1307,12 +1310,12 @@ function App() {
     e.target.value = "";
   };
   const clearAllLogs = () => {
-    askConfirm("ล้างประวัติการบันทึกทั้งหมด? แดชบอร์ดและประวัติจะว่างเปล่า เริ่มบันทึกใหม่ตั้งแต่ต้น\nการกระทำนี้ย้อนกลับไม่ได้", ()=>{
+    askConfirm(`ล้างประวัติการบันทึกทั้งหมด ${(logs||[]).length} รายการ?\nแดชบอร์ดและประวัติจะว่างเปล่า และย้อนกลับไม่ได้\nแนะนำให้ดาวน์โหลดไฟล์สำรองเก็บไว้ก่อน`, ()=>{
       allowClear.current.logs = true; // ผู้ใช้สั่งลบเอง อนุญาตให้ค่าว่างซิงก์ขึ้น cloud
       setLogs([]); setToast("ล้างข้อมูลแล้ว เริ่มบันทึกใหม่ได้เลย"); setTimeout(()=>setToast(""),2600);
-    });
+    }, "ยืนยันล้าง", { typeWord:"ลบทั้งหมด", backup:true, title:"ล้างประวัติทั้งหมด" });
   };
-  const resetTree = () => { askConfirm("รีเซ็ตรายชื่อกล้องทั้งหมดกลับเป็นค่าเริ่มต้น? การแก้ไขที่ทำไว้จะหายไป", ()=>{ setTree(DEFAULT_TREE); setMSub(""); setToast("รีเซ็ตข้อมูลกล้องแล้ว"); setTimeout(()=>setToast(""),2200); }); };
+  const resetTree = () => { askConfirm("รีเซ็ตรายชื่อกล้องทุกโซนกลับเป็นค่าเริ่มต้น?\nกล้องที่เพิ่ม/แก้ชื่อ/ลบไว้จะหายทั้งหมด และย้อนกลับไม่ได้", ()=>{ setTree(DEFAULT_TREE); setMSub(""); setToast("รีเซ็ตข้อมูลกล้องแล้ว"); setTimeout(()=>setToast(""),2200); }, "ยืนยันรีเซ็ต", { typeWord:"รีเซ็ต", backup:true, title:"รีเซ็ตรายชื่อกล้อง" }); };
   const totalCams = useMemo(()=> { const set=new Set(); Object.values(tree).forEach(g=>Object.values(g).forEach(l=>l.forEach(c=>set.add(c)))); return set.size; }, [tree]);
 
   const doLogin = () => {
@@ -2179,12 +2182,19 @@ function App() {
       {confirmBox && (
         <Modal><div style={{...t.modalBg, zIndex:60}} onClick={()=>setConfirmBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:34, textAlign:"center", marginBottom:12}}><Emo e="⚠"/></div>
-            <div style={{fontSize:15.5, lineHeight:1.6, textAlign:"center", whiteSpace:"pre-line", marginBottom:22}}>{confirmBox.msg}</div>
+            <div style={{fontSize:34, textAlign:"center", marginBottom:10}}><Emo e="⚠"/></div>
+            <div style={t.confirmTitle}>{confirmBox.title || "ยืนยันก่อนดำเนินการ"}</div>
+            <div style={{fontSize:15, lineHeight:1.6, textAlign:"center", whiteSpace:"pre-line", marginBottom:18}}>{confirmBox.msg}</div>
+            {confirmBox.backup && <button onClick={exportBackup} className="tap" style={{...t.exportBtn, width:"100%", marginBottom:12, padding:"11px"}}><Emo e="💾"/> ดาวน์โหลดไฟล์สำรองก่อน</button>}
+            {confirmBox.typeWord && <div style={{marginBottom:16}}>
+              <div style={t.confirmTypeLabel}>พิมพ์คำว่า <b style={{color:"#EF4444"}}>{confirmBox.typeWord}</b> เพื่อยืนยัน</div>
+              <input value={confirmTyped} onChange={e=>setConfirmTyped(e.target.value)} placeholder={confirmBox.typeWord} style={{...t.input, textAlign:"center"}} autoFocus/>
+            </div>}
+            {(()=>{ const ok = !confirmBox.typeWord || confirmTyped.trim()===confirmBox.typeWord; return (
             <div style={{display:"flex", gap:10}}>
               <button onClick={()=>setConfirmBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
-              <button onClick={()=>{ const fn=confirmBox.onYes; setConfirmBox(null); if(fn)fn(); }} className="tap" style={{...t.submit, marginTop:0, flex:1, background:"#EF4444"}}>{confirmBox.okText || "ยืนยันลบ"}</button>
-            </div>
+              <button disabled={!ok} onClick={()=>{ if(!ok) return; const fn=confirmBox.onYes; setConfirmBox(null); if(fn)fn(); }} className="tap" style={{...t.submit, marginTop:0, flex:1, background:"#EF4444", opacity:ok?1:.4, cursor:ok?"pointer":"not-allowed"}}>{confirmBox.okText || "ยืนยันลบ"}</button>
+            </div>); })()}
           </div>
         </div></Modal>
       )}
@@ -3064,6 +3074,8 @@ function mk(dark){
     iosNo:{width:24, height:24, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12.5, color:"#fff", background:G},
     rolePill:{position:"relative", display:"inline-flex", alignItems:"center", gap:5, flexShrink:0, cursor:"pointer"},
     roleMenu:{position:"absolute", right:0, top:"calc(100% + 6px)", zIndex:60, width:270, maxWidth:"calc(100vw - 40px)", background:surf, border:`1px solid ${border}`, borderRadius:16, padding:6, boxShadow:dark?"0 14px 36px rgba(0,0,0,.55)":"0 14px 36px rgba(60,48,20,.16)", animation:"fade .12s"},
+    confirmTitle:{fontFamily:head, fontSize:18, fontWeight:700, textAlign:"center", color:"#EF4444", marginBottom:8},
+    confirmTypeLabel:{fontSize:13, color:dim, textAlign:"center", marginBottom:6},
     roleGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
     roleTile:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:`1px solid ${border}`, borderRadius:13, background:inputBg, color:text, fontFamily:"inherit", cursor:"pointer"},
     roleTileOn:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:"1.5px solid #0B6FC4", borderRadius:13, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", cursor:"pointer", boxShadow:`0 0 0 3px ${hexA("#0B6FC4",.12,dark)}`},
