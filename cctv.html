@@ -55,6 +55,7 @@
   @media (max-width: 900px){
     /* iPhone ซูมหน้าเองเวลาแตะช่องที่ตัวหนังสือเล็กกว่า 16px แล้วค้างอยู่ จึงให้ช่องกรอกบนมือถือเป็น 16px */
     input,select,textarea{font-size:16px !important;}
+    .rb-roleGrid{grid-template-columns:1fr !important;}
     .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
@@ -2103,11 +2104,17 @@ function App() {
                     <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
                     <input value={newAcc.pass} onChange={e=>setNewAcc({...newAcc, pass:e.target.value})} placeholder="รหัสผ่าน" style={t.input}/>
                     <DeptPicker key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
-                    <select value={newAcc.role} onChange={e=>setNewAcc({...newAcc, role:e.target.value})} style={{...t.input, gridColumn:"1 / -1"}}>
-                      {ROLES.map(r=><option key={r.key} value={r.key}>{"สิทธิ์: "+r.name}</option>)}
-                    </select>
+                    <div style={{gridColumn:"1 / -1"}}>
+                      <div style={{...t.label, marginBottom:6}}>สิทธิ์</div>
+                      <div style={t.roleGrid} className="rb-roleGrid">
+                        {ROLES.map(r=>{ const on = newAcc.role===r.key; return (
+                          <button key={r.key} type="button" data-newrole={r.key} onClick={()=>setNewAcc({...newAcc, role:r.key})} className="tap" style={on?t.roleTileOn:t.roleTile} aria-pressed={on}>
+                            <span style={t.roleOptIc}><Emo e={r.icon}/></span>
+                            <span style={{minWidth:0}}><span style={t.roleOptName}>{r.name}</span><span style={t.roleOptDesc}>{r.desc}</span></span>
+                          </button>); })}
+                      </div>
+                    </div>
                   </div>
-                  <div style={t.roleHint}>{(ROLES.find(r=>r.key===newAcc.role)||{}).desc}</div>
                   <button onClick={addAccount} className="tap" style={{...t.submit, marginTop:12}}>✓ สร้างบัญชี</button>
                 </div>}
                 <div style={t.accList}>
@@ -3057,6 +3064,9 @@ function mk(dark){
     iosNo:{width:24, height:24, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12.5, color:"#fff", background:G},
     rolePill:{position:"relative", display:"inline-flex", alignItems:"center", gap:5, flexShrink:0, cursor:"pointer"},
     roleMenu:{position:"absolute", right:0, top:"calc(100% + 6px)", zIndex:60, width:270, maxWidth:"calc(100vw - 40px)", background:surf, border:`1px solid ${border}`, borderRadius:16, padding:6, boxShadow:dark?"0 14px 36px rgba(0,0,0,.55)":"0 14px 36px rgba(60,48,20,.16)", animation:"fade .12s"},
+    roleGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
+    roleTile:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:`1px solid ${border}`, borderRadius:13, background:inputBg, color:text, fontFamily:"inherit", cursor:"pointer"},
+    roleTileOn:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:"1.5px solid #0B6FC4", borderRadius:13, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", cursor:"pointer", boxShadow:`0 0 0 3px ${hexA("#0B6FC4",.12,dark)}`},
     roleMenuHead:{fontSize:11.5, fontWeight:700, color:dim, padding:"6px 10px 4px"},
     roleOpt:{display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", padding:"9px 10px", border:"1px solid transparent", borderRadius:11, background:"transparent", color:text, fontFamily:"inherit", cursor:"pointer"},
     roleOptOn:{display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", padding:"9px 10px", border:`1px solid ${hexA("#0B6FC4",.3,dark)}`, borderRadius:11, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", cursor:"pointer"},
