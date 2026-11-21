@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
 <!-- เว็บแอป: ติดตั้งลงหน้าจอโฮม/คอมได้ ไฟล์เหล่านี้ต้องอยู่โฟลเดอร์เดียวกับ cctv.html -->
@@ -49,7 +49,9 @@
   .tap:active{transform:scale(.97);}
   #root{opacity:0;animation:fade .4s ease forwards;}
   /* Responsive: มือถือ/แท็บเล็ต */
+  .rb-lbShort{display:none;}
   @media (max-width: 900px){
+    .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
     .rb-side .rb-hideM{display:none !important;}
@@ -70,6 +72,38 @@
     .rb-miniGrid{grid-template-columns:1fr 1fr !important;}
     .rb-wrap{padding:18px 16px 50px !important;}
     .rb-tableWrap{overflow-x:auto !important;}
+
+    /* แถบบน: บาง ๆ มีแค่โลโก้ + ปุ่มออกจากระบบ (ปุ่มโหมดมืดลอยอยู่มุมขวา) */
+    .rb-side{flex-wrap:nowrap !important; padding:calc(10px + env(safe-area-inset-top)) 16px 10px !important; gap:8px !important; border-right:none !important; border-bottom:1px solid #E3D9BE !important; box-shadow:0 2px 12px rgba(90,75,30,.06) !important;}
+    .rb-side > div:first-child{margin:0 !important; padding:0 !important;}
+    .rb-side > div:first-child img{max-width:150px !important;}
+    .rb-side > div[style*="flex: 1"]{flex:1 !important;}
+    .rb-logout{margin:0 56px 0 auto !important; padding:9px 12px !important; border-radius:12px !important; font-size:16px !important; line-height:1 !important;}
+    .rb-logoutTx{display:none;}
+    .rb-theme{position:absolute !important; top:calc(9px + env(safe-area-inset-top)) !important; right:14px !important; width:40px !important; height:40px !important;}
+
+    /* แถบล่างแบบแอปจริง: ไอคอนบน ชื่อล่าง ติดขอบล่างจอตลอด */
+    .rb-nav{position:fixed !important; left:0; right:0; bottom:0; z-index:60; flex:none !important; flex-direction:row !important; justify-content:space-around !important; gap:0 !important; margin:0 !important; overflow:visible !important;
+      background:rgba(255,255,255,.96); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid #E6DDC4; box-shadow:0 -6px 20px rgba(90,75,30,.08);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom)) !important;}
+    .rb-app[data-dark="1"] .rb-nav{background:rgba(15,21,28,.96); border-top-color:rgba(255,255,255,.08);}
+    .rb-app[data-dark="1"] .rb-side{border-bottom-color:rgba(255,255,255,.08) !important;}
+    .rb-nav > button{flex:1 1 0 !important; min-width:0 !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:3px !important;
+      padding:4px 2px !important; margin:0 !important; border:none !important; background:transparent !important; box-shadow:none !important; position:relative !important; font-size:11px !important; font-weight:600 !important;}
+    .rb-nav .rb-navIc{font-size:21px !important; width:52px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+    .rb-nav .rb-navOn .rb-navIc{background:rgba(11,111,196,.13);}
+    .rb-nav .rb-navLb{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .rb-nav .rb-navBadge{position:absolute !important; top:0 !important; right:auto !important; left:calc(50% + 9px) !important; margin:0 !important; min-width:18px !important; height:18px !important; font-size:10px !important; padding:0 5px !important; border:2px solid #fff;}
+    .rb-wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom)) !important;}
+    .rb-toast{bottom:calc(88px + env(safe-area-inset-bottom)) !important; max-width:calc(100vw - 32px); white-space:normal !important; text-align:center;}
+
+    /* ปุ่มสถานะ: 3 ช่องต่อแถว กะทัดรัด (เดิมโดนกฎ 1 คอลัมน์ ทำให้เรียงยาวลงมา 6 ปุ่ม) */
+    .rb-wrap .rb-stGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important;}
+    .rb-wrap .rb-stGrid > button{padding:12px 4px !important; gap:4px !important; font-size:12.5px !important; border-radius:13px !important; min-height:0 !important;}
+    .rb-wrap .rb-stGrid > button > span:first-child{font-size:22px !important;}
+    .rb-wrap .rb-shGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important;}
+    .rb-wrap .rb-shGrid > button{padding:10px 4px !important;}
+    .rb-wrap .rb-shGrid:has(> button:nth-child(4)){grid-template-columns:repeat(2, minmax(0,1fr)) !important;}  /* 4 กะ (บัญชี IT) = 2×2 ไม่ให้ตัวสุดท้ายโดดเดี่ยว */
   }
 </style>
 </head>
@@ -1375,7 +1409,7 @@ function App() {
       : ALL_NAV.filter(n => n[3]==="all" || isAdmin).map(n => [n[0],n[1],n[2]]);
 
   return (
-    <div style={t.app} className="rb-app">
+    <div style={t.app} className="rb-app" data-dark={dark?"1":"0"}>
       {/* ===== SIDEBAR ===== */}
       <aside style={t.side} className="rb-side">
         <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
@@ -1390,9 +1424,9 @@ function App() {
 
         <nav style={t.nav} className="rb-nav">
           {NAV.map(([k,ic,label])=>(
-            <button key={k} onClick={()=>setNav(k)} className="tap" style={nav===k?t.navOn:t.navBtn}>
-              <span style={{fontSize:17}}>{ic}</span><span>{label}</span>
-              {k==="history" && pendingFix>0 && <span style={t.navBadge} title={`งานซ่อมค้างอยู่ ${pendingFix} รายการ`}>{pendingFix}</span>}
+            <button key={k} onClick={()=>setNav(k)} className={"tap"+(nav===k?" rb-navOn":"")} style={nav===k?t.navOn:t.navBtn}>
+              <span className="rb-navIc" style={{fontSize:17}}>{ic}</span><span className="rb-navLb"><span className="rb-lbFull">{label}</span><span className="rb-lbShort">{({cams:"กล้อง", staff:"พนักงาน"})[k]||label}</span></span>
+              {k==="history" && pendingFix>0 && <span className="rb-navBadge" style={t.navBadge} title={`งานซ่อมค้างอยู่ ${pendingFix} รายการ`}>{pendingFix}</span>}
             </button>
           ))}
         </nav>
@@ -1415,8 +1449,8 @@ function App() {
             <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":(isViewer?"ผู้ดูรายงาน":"พนักงาน"))}</div>
           </div>
         </div>
-        {showInstall && <button onClick={installApp} className="tap" style={{...t.installBtn, marginTop:0, marginBottom:8}}>📲 ติดตั้งแอป</button>}
-        <button onClick={doLogout} className="tap" style={t.logoutBtn}>🚪 ออกจากระบบ</button>
+        {showInstall && <button onClick={installApp} className="tap rb-hideM" style={{...t.installBtn, marginTop:0, marginBottom:8}}>📲 ติดตั้งแอป</button>}
+        <button onClick={doLogout} className="tap rb-logout" style={t.logoutBtn} title="ออกจากระบบ">🚪<span className="rb-logoutTx"> ออกจากระบบ</span></button>
         <div style={t.sideFoot} className="rb-hideM">RAYONGBOARD · Rayong</div>
       </aside>
 
@@ -1431,7 +1465,7 @@ function App() {
               {/* ฟอร์มซ้าย */}
               <div style={t.panel}>
                 <div style={t.label}>สถานะ</div>
-                <div style={t.segRow}>
+                <div style={t.segRow} className="rb-stGrid">
                   {Object.keys(STATUS).map(s=>{ const on=status===s;
                     return <button key={s} onClick={()=>setStatus(s)} className="tap" style={{...t.seg, borderColor:on?stOf(s).dot:t.border, background:on?hex(stOf(s).dot,dark?.14:.1):"transparent", color:on?stOf(s).dot:t.dim}}>
                       <span style={{fontSize:20}}>{stOf(s).emoji}</span>{s}</button>;
@@ -1448,7 +1482,7 @@ function App() {
                   </div>
                 </div>
                 <div style={t.label}>⏰ กะการทำงาน</div>
-                <div style={t.shiftGrid}>
+                <div style={t.shiftGrid} className="rb-shGrid">
                   {myShifts.map(s=>{ const on=shift===s.key;
                     return <button key={s.key} onClick={()=>setShift(s.key)} className="tap" style={on?t.shiftCardOn:t.shiftCard}>
                       <span style={t.shiftName}>{s.key}</span>
@@ -2441,9 +2475,9 @@ function App() {
           </div>
         </div></Modal>
       )}
-      <button onClick={()=>setDark(!dark)} className="tap" style={t.themeToggle} title={dark?"โหมดสว่าง":"โหมดมืด"}>{dark?"☀️":"🌙"}</button>
+      <button onClick={()=>setDark(!dark)} className="tap rb-theme" style={t.themeToggle} title={dark?"โหมดสว่าง":"โหมดมืด"}>{dark?"☀️":"🌙"}</button>
       {iosHelpBox}
-      {toast && <div style={t.toast}>{toast}</div>}
+      {toast && <div style={t.toast} className="rb-toast">{toast}</div>}
     </div>
   );
 }
