@@ -1480,7 +1480,7 @@ function App() {
         {nav==="record" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}><span style={t.h1Icon("#16A34A")}>📝</span>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#16A34A")}><PageIcon kind="record"/></span>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
             </div>
             <div style={t.recGrid} className="rb-recGrid">
               {/* ฟอร์มซ้าย */}
@@ -1624,7 +1624,7 @@ function App() {
         {nav==="history" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}><span style={t.h1Icon(isVendor?"#F59E0B":"#0B6FC4")}>{isVendor?"🔧":"📋"}</span>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon(isVendor?"#F59E0B":"#0B6FC4")}><PageIcon kind={isVendor?"repair":"history"}/></span>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
               <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
@@ -1812,7 +1812,7 @@ function App() {
         {nav==="dash" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}><span style={t.h1Icon("#8B5CF6")}>📊</span>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? fmtTH(dayFilter) : "ภาพรวมสถานะกล้อง"}</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#8B5CF6")}><PageIcon kind="dash"/></span>แดชบอร์ด</div><div style={t.h1sub}>{dashMode==="day" ? fmtTH(dayFilter) : "ภาพรวมสถานะกล้อง"}</div></div>
               <div style={{display:"flex", gap:10, alignItems:"center", marginRight:52, flexWrap:"wrap"}}>
                 <div style={t.dashToggle}>
                   <button onClick={()=>setDashMode("month")} className="tap" style={dashMode==="month"?t.dashTgOn:t.dashTg}>รายเดือน</button>
@@ -1929,7 +1929,7 @@ function App() {
         {nav==="cams" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}><span style={t.h1Icon("#F97316")}>📹</span>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#F97316")}><PageIcon kind="cams"/></span>จัดการกล้อง & โซน</div><div style={t.h1sub}>{totalCams} กล้อง · {ZONES.length} โซน</div></div>
               <button onClick={resetTree} className="tap" style={{...t.resetBtn, marginRight:52}}>↺ รีเซ็ตข้อมูลกล้อง</button>
             </div>
             <div style={t.camManGrid} className="rb-camManGrid">
@@ -2040,7 +2040,7 @@ function App() {
         {nav==="staff" && (
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
-              <div><div style={t.h1}><span style={t.h1Icon("#EC4899")}>👥</span>จัดการพนักงาน</div><div style={t.h1sub}>รายชื่อผู้รายงาน · บัญชีล็อกอิน · รหัสผ่าน</div></div>
+              <div><div style={t.h1}><span style={t.h1Icon("#EC4899")}><PageIcon kind="staff"/></span>จัดการพนักงาน</div><div style={t.h1sub}>รายชื่อผู้รายงาน · บัญชีล็อกอิน · รหัสผ่าน</div></div>
             </div>
             <div style={t.staffGrid} className="rb-camManGrid">
               <div>
@@ -2568,6 +2568,18 @@ function CuteEye({ open }) {
       <ellipse cx="5" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/><ellipse cx="23" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/>
     </svg>
   );
+}
+// ไอคอนหัวข้อแต่ละหน้า: วาดเองสไตล์เดียวกับน้องกล้อง (พาสเทล หน้ายิ้ม แก้มชมพู) เป็นข้อความ SVG คงที่ ไม่มีข้อมูลจากผู้ใช้
+const PAGE_ICONS = {
+  record: "<rect x=\"9\" y=\"7\" width=\"26\" height=\"33\" rx=\"6\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"2.2\"/><path d=\"M14 15 H29 M14 20 H25\" stroke=\"#8ED3A8\" stroke-width=\"2\" stroke-linecap=\"round\"/><ellipse cx=\"16.8\" cy=\"28\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><ellipse cx=\"25.2\" cy=\"28\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><circle cx=\"17.35\" cy=\"27.3\" r=\"0.55\" fill=\"#fff\"/><circle cx=\"25.75\" cy=\"27.3\" r=\"0.55\" fill=\"#fff\"/><ellipse cx=\"14.200000000000001\" cy=\"31.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"27.8\" cy=\"31.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M19.2 30.6 Q21 32.4 22.8 30.6\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"1.3\" stroke-linecap=\"round\"/><g transform=\"rotate(38 36 26)\"><rect x=\"33\" y=\"11\" width=\"6.5\" height=\"24\" rx=\"2.4\" fill=\"#FFD66B\" stroke=\"#E2A826\" stroke-width=\"1.8\"/><path d=\"M33 35 L36.25 41 L39.5 35 Z\" fill=\"#FFE8C2\" stroke=\"#E2A826\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><rect x=\"33\" y=\"11\" width=\"6.5\" height=\"4\" rx=\"1.5\" fill=\"#FF9FB8\"/></g>",
+  history: "<rect x=\"7\" y=\"10\" width=\"34\" height=\"30\" rx=\"7\" fill=\"#FFFFFF\" stroke=\"#4C93DE\" stroke-width=\"2.2\"/><path d=\"M7 18 Q7 10 14 10 H34 Q41 10 41 18 Z\" fill=\"#9CCBFA\" stroke=\"#4C93DE\" stroke-width=\"2.2\" stroke-linejoin=\"round\"/><rect x=\"14\" y=\"6\" width=\"3.6\" height=\"8\" rx=\"1.8\" fill=\"#4C93DE\"/><rect x=\"30.4\" y=\"6\" width=\"3.6\" height=\"8\" rx=\"1.8\" fill=\"#4C93DE\"/><ellipse cx=\"19.8\" cy=\"28\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><ellipse cx=\"28.2\" cy=\"28\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><circle cx=\"20.35\" cy=\"27.3\" r=\"0.55\" fill=\"#fff\"/><circle cx=\"28.75\" cy=\"27.3\" r=\"0.55\" fill=\"#fff\"/><ellipse cx=\"17.2\" cy=\"31.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"30.8\" cy=\"31.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M22.2 30.6 Q24 32.4 25.8 30.6\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>",
+  repair: "<path d=\"M18 15 V11.5 Q18 9 20.5 9 H27.5 Q30 9 30 11.5 V15\" fill=\"none\" stroke=\"#E08A1E\" stroke-width=\"2.4\"/><rect x=\"6\" y=\"15\" width=\"36\" height=\"24\" rx=\"7\" fill=\"#FFD9A6\" stroke=\"#E08A1E\" stroke-width=\"2.2\"/><rect x=\"21\" y=\"21\" width=\"6\" height=\"3.6\" rx=\"1.4\" fill=\"#E08A1E\"/><ellipse cx=\"19.8\" cy=\"30\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><ellipse cx=\"28.2\" cy=\"30\" rx=\"1.5\" ry=\"2.0\" fill=\"#33405C\"/><circle cx=\"20.35\" cy=\"29.3\" r=\"0.55\" fill=\"#fff\"/><circle cx=\"28.75\" cy=\"29.3\" r=\"0.55\" fill=\"#fff\"/><ellipse cx=\"17.2\" cy=\"33.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"30.8\" cy=\"33.2\" rx=\"2.3\" ry=\"1.4\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M22.2 32.6 Q24 34.4 25.8 32.6\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>",
+  dash: "<rect x=\"6\" y=\"8\" width=\"36\" height=\"32\" rx=\"8\" fill=\"#F1EAFE\" stroke=\"#8B6BE0\" stroke-width=\"2.2\"/><rect x=\"12\" y=\"25\" width=\"6\" height=\"10\" rx=\"3\" fill=\"#FFB3C7\"/><rect x=\"21\" y=\"17\" width=\"6\" height=\"18\" rx=\"3\" fill=\"#B49CF5\"/><rect x=\"30\" y=\"21\" width=\"6\" height=\"14\" rx=\"3\" fill=\"#8FC3F7\"/><ellipse cx=\"21.396\" cy=\"12.5\" rx=\"0.9299999999999999\" ry=\"1.24\" fill=\"#33405C\"/><ellipse cx=\"26.604\" cy=\"12.5\" rx=\"0.9299999999999999\" ry=\"1.24\" fill=\"#33405C\"/><circle cx=\"21.737000000000002\" cy=\"12.066\" r=\"0.341\" fill=\"#fff\"/><circle cx=\"26.945\" cy=\"12.066\" r=\"0.341\" fill=\"#fff\"/><ellipse cx=\"19.784\" cy=\"14.484\" rx=\"1.426\" ry=\"0.868\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"28.216\" cy=\"14.484\" rx=\"1.426\" ry=\"0.868\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M22.884 14.112 Q24 15.228 25.116 14.112\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.806\" stroke-linecap=\"round\"/>",
+  staff: "<circle cx=\"31\" cy=\"16\" r=\"7.5\" fill=\"#E7DCFB\" stroke=\"#9C7FE0\" stroke-width=\"2\"/><path d=\"M20 41 Q20 27 31 27 Q42 27 42 41 Z\" fill=\"#E7DCFB\" stroke=\"#9C7FE0\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"18\" cy=\"19\" r=\"9\" fill=\"#FFE1EA\" stroke=\"#E57A9E\" stroke-width=\"2.2\"/><path d=\"M5 42 Q5 30 18 30 Q31 30 31 42 Z\" fill=\"#FFE1EA\" stroke=\"#E57A9E\" stroke-width=\"2.2\" stroke-linejoin=\"round\"/><ellipse cx=\"14.975999999999999\" cy=\"19\" rx=\"1.08\" ry=\"1.44\" fill=\"#33405C\"/><ellipse cx=\"21.024\" cy=\"19\" rx=\"1.08\" ry=\"1.44\" fill=\"#33405C\"/><circle cx=\"15.372\" cy=\"18.496\" r=\"0.396\" fill=\"#fff\"/><circle cx=\"21.42\" cy=\"18.496\" r=\"0.396\" fill=\"#fff\"/><ellipse cx=\"13.104\" cy=\"21.304\" rx=\"1.656\" ry=\"1.008\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"22.896\" cy=\"21.304\" rx=\"1.656\" ry=\"1.008\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M16.704 20.872 Q18 22.168 19.296 20.872\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.9359999999999999\" stroke-linecap=\"round\"/><ellipse cx=\"29\" cy=\"15.4\" rx=\".9\" ry=\"1.2\" fill=\"#33405C\"/><ellipse cx=\"33\" cy=\"15.4\" rx=\".9\" ry=\"1.2\" fill=\"#33405C\"/><path d=\"M30 18.6 Q31 19.6 32 18.6\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"1\" stroke-linecap=\"round\"/>",
+  cams: "<g transform=\"translate(-1.5 -0.5) scale(.8)\"><rect x=\"5\" y=\"30\" width=\"7\" height=\"22\" rx=\"3.5\" fill=\"#D6EAFF\" stroke=\"#5B9BE0\" stroke-width=\"2\"/><path d=\"M12 40 H20\" stroke=\"#5B9BE0\" stroke-width=\"3\" stroke-linecap=\"round\"/><g transform=\"rotate(-8 34 28)\"><rect x=\"17\" y=\"14\" width=\"40\" height=\"27\" rx=\"13\" fill=\"#CFE6FF\" stroke=\"#5B9BE0\" stroke-width=\"2.4\"/><circle cx=\"51\" cy=\"27.5\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#5B9BE0\" stroke-width=\"2.4\"/><circle cx=\"51\" cy=\"27.5\" r=\"5.2\" fill=\"#33405C\"/><circle cx=\"53\" cy=\"25.4\" r=\"1.9\" fill=\"#FFFFFF\"/><circle cx=\"49.3\" cy=\"29.4\" r=\".9\" fill=\"#FFFFFF\"/><ellipse cx=\"28\" cy=\"26\" rx=\"1.9\" ry=\"2.5\" fill=\"#33405C\"/><ellipse cx=\"37\" cy=\"26\" rx=\"1.9\" ry=\"2.5\" fill=\"#33405C\"/><circle cx=\"28.7\" cy=\"25.2\" r=\".7\" fill=\"#fff\"/><circle cx=\"37.7\" cy=\"25.2\" r=\".7\" fill=\"#fff\"/><ellipse cx=\"24.5\" cy=\"31\" rx=\"3\" ry=\"1.8\" fill=\"#FFB3C7\" opacity=\".85\"/><ellipse cx=\"40.5\" cy=\"31\" rx=\"3\" ry=\"1.8\" fill=\"#FFB3C7\" opacity=\".85\"/><path d=\"M30 30.5 Q32.5 33 35 30.5\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"1.6\" stroke-linecap=\"round\"/><circle cx=\"23\" cy=\"18.6\" r=\"2.2\" fill=\"#FF7A9C\"/></g></g>"
+};
+function PageIcon({ kind, size = 38 }) {
+  return <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" dangerouslySetInnerHTML={{__html: PAGE_ICONS[kind] || ""}}/>;
 }
 function hex(c, a){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 // ตัวพิมพ์ดีดไม่มีอักษรไทย จึงต่อท้ายด้วย Plex ไทย ตัวอักษรไทยจะได้ไม่หลุดไปใช้ฟอนต์ของเครื่อง
