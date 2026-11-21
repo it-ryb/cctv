@@ -2466,10 +2466,7 @@ function App() {
               <div style={{flex:"1 1 100%"}}>
                 <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
                 <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
-                  {(() => { const mine = auth && accounts[auth.user] && accounts[auth.user].reporter;
-                    // ผู้ดูแลนำเข้าแทนคนอื่นได้ (เช่น พนักงานส่งรายชื่อมาทางไลน์) · บัญชีอื่นที่ผูกชื่อไว้ เห็นแค่ชื่อตัวเอง
-                    const list = mine ? (isAdmin ? [mine, ...reporters.filter(r=>r!==mine)] : [mine]) : reporters;
-                    return list.map(r=><button key={r} type="button" onClick={()=>setBy(r)} className="tap" style={by===r?t.chipOn:t.chip}>{r}{r===mine && list.length>1 ? " (ฉัน)" : ""}</button>); })()}
+                  {(auth && accounts[auth.user] && accounts[auth.user].reporter ? [accounts[auth.user].reporter] : reporters).map(r=><button key={r} type="button" onClick={()=>setBy(r)} className="tap" style={by===r?t.chipOn:t.chip}>{r}</button>)}
                 </div>
                 {!by && <div style={{...t.reqNote, marginTop:6}}><Emo e="⚠"/> แตะเลือกชื่อผู้รายงานก่อน</div>}
               </div>
