@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
 <!-- เว็บแอป: ติดตั้งลงหน้าจอโฮม/คอมได้ ไฟล์เหล่านี้ต้องอยู่โฟลเดอร์เดียวกับ cctv.html -->
@@ -51,6 +51,8 @@
   /* Responsive: มือถือ/แท็บเล็ต */
   .rb-lbShort{display:none;}
   @media (max-width: 900px){
+    /* iPhone ซูมหน้าเองเวลาแตะช่องที่ตัวหนังสือเล็กกว่า 16px แล้วค้างอยู่ จึงให้ช่องกรอกบนมือถือเป็น 16px */
+    input,select,textarea{font-size:16px !important;}
     .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
@@ -436,11 +438,11 @@ function App() {
   const iosHelpBox = iosHelp && (
     <Modal><div style={t.modalBg} onClick={()=>setIosHelp(false)}>
       <div style={{...t.modalCard, maxWidth:380}} onClick={e=>e.stopPropagation()}>
-        <div style={t.panelTitle}>📲 ติดตั้งแอปบน iPhone</div>
+        <div style={t.panelTitle}><Emo e="📲"/> ติดตั้งแอปบน iPhone</div>
         <div style={t.iosStep}><b style={t.iosNo}>1</b><span>เปิดหน้านี้ด้วย <b>Safari</b></span></div>
         <div style={t.iosStep}><b style={t.iosNo}>2</b><span>กดปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น) แถบล่างของจอ</span></div>
         <div style={t.iosStep}><b style={t.iosNo}>3</b><span>เลือก <b>เพิ่มไปยังหน้าจอโฮม</b> แล้วกด <b>เพิ่ม</b></span></div>
-        <button onClick={()=>setIosHelp(false)} className="tap" style={{...t.dBtnMain, width:"100%", marginTop:16}}>👍 เข้าใจแล้ว</button>
+        <button onClick={()=>setIosHelp(false)} className="tap" style={{...t.dBtnMain, width:"100%", marginTop:16}}><Emo e="👍"/> เข้าใจแล้ว</button>
       </div>
     </div></Modal>
   );
@@ -1381,9 +1383,9 @@ function App() {
             <div style={t.sideName}><span style={t.loginGrad}>CCTV</span> RAYONGBOARD</div>
             <div style={t.sideTxt}>ระบบบันทึกสถานะกล้องและติดตามงานซ่อม</div>
             <div style={t.sideList}>
-              <div style={t.sideItem}><span>📝</span> บันทึกเหตุการณ์ประจำกะ</div>
-              <div style={t.sideItem}><span>🛠️</span> ติดตามงานซ่อมจนปิดงาน</div>
-              <div style={t.sideItem}><span>📊</span> สรุปรายงานส่งรายเดือน</div>
+              <div style={t.sideItem}><span><Emo e="📝"/></span> บันทึกเหตุการณ์ประจำกะ</div>
+              <div style={t.sideItem}><span><Emo e="🛠"/></span> ติดตามงานซ่อมจนปิดงาน</div>
+              <div style={t.sideItem}><span><Emo e="📊"/></span> สรุปรายงานส่งรายเดือน</div>
             </div>
           </div>
           <div style={t.loginSideFoot}>Rayong · ใช้งานภายในองค์กร</div>
@@ -1396,10 +1398,10 @@ function App() {
           <div style={t.loginKicker}>CCTV RAYONGBOARD</div>
           <div style={t.loginTitle}>เข้าสู่ระบบ <span style={{fontSize:24}}>🩵</span></div>
 
-          <div style={t.label}>👤 ชื่อผู้ใช้</div>
+          <div style={t.label}><Emo e="👤"/> ชื่อผู้ใช้</div>
           <input value={loginUser} onChange={e=>{setLoginUser(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="ชื่อผู้ใช้" style={t.input} autoFocus/>
 
-          <div style={{...t.label, marginTop:14}}>🔒 รหัสผ่าน</div>
+          <div style={{...t.label, marginTop:14}}><Emo e="🔒"/> รหัสผ่าน</div>
           <div style={{position:"relative"}}>
             <input type={showPass?"text":"password"} value={loginPass} onChange={e=>{setLoginPass(e.target.value);setLoginErr("");}} onKeyDown={e=>{if(e.key==="Enter")doLogin();}} placeholder="รหัสผ่าน" style={t.input}/>
             <button onClick={()=>setShowPass(!showPass)} className="tap" style={t.eyeBtn} title={showPass?"ซ่อนรหัสผ่าน":"ดูรหัสผ่าน"} aria-label={showPass?"ซ่อนรหัสผ่าน":"ดูรหัสผ่าน"}><CuteEye open={showPass}/></button>
@@ -1408,15 +1410,15 @@ function App() {
           {loginErr && <div style={t.loginErr}>{loginErr}</div>}
 
           <button onClick={doLogin} className="tap" style={t.loginBtn}>เข้าสู่ระบบ ✨</button>
-          <div style={t.loginHelp}>💬 ลืมรหัสผ่าน ติดต่อทีมไอทีได้เลย</div>
-          {showInstall && <button onClick={installApp} className="tap" style={t.installBtn}>📲 ติดตั้งเป็นแอปในเครื่องนี้</button>}
+          <div style={t.loginHelp}><Emo e="💬"/> ลืมรหัสผ่าน ติดต่อทีมไอทีได้เลย</div>
+          {showInstall && <button onClick={installApp} className="tap" style={t.installBtn}><Emo e="📲"/> ติดตั้งเป็นแอปในเครื่องนี้</button>}
         </div>
       </div>
       {iosHelpBox}
     </div>
   );
 
-  if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}>📹</div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดระบบ…</div></div></div>;
+  if (logs===null) return <div style={{...t.app, display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:34, animation:"pulse 1.6s infinite"}}><Emo e="📹"/></div><div style={{color:t.dim, marginTop:12, fontFamily:mono, fontSize:13}}>กำลังเปิดระบบ…</div></div></div>;
 
   const ALL_NAV = [["record","📝","บันทึก","all"],["history","📋","ประวัติ","all"],["dash","📊","แดชบอร์ด","all"],["cams","📹","จัดการกล้อง","admin"],["staff","👥","จัดการพนักงาน","admin"]];
   const isAdmin = auth && auth.role === "admin";
@@ -1454,24 +1456,24 @@ function App() {
 
         <div style={t.sideCard} className="rb-hideM">
           <div style={t.sideCardTitle}>สถานะระบบ</div>
-          <div style={t.sideStat}><span>📹 กล้องทั้งหมด</span><b>{totalCams}</b></div>
-          <div style={t.sideStat}><span>✅ ใช้งานได้</span><b style={{color:"#22C55E"}}>{Math.max(0, totalCams - openCamSet.size)}</b></div>
-          <div style={t.sideStat}><span>🔧 รอซ่อม</span><b style={{color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</b></div>
-          <div style={t.sideStat}><span>🔌 รอติดตั้งกลับ</span><b style={{color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</b></div>
-          <div style={t.sideStat}><span>📄 บันทึกรวม</span><b>{logs.length}</b></div>
-          {syncErr && <div style={t.syncWarn} title={syncErr}>⚠️ {syncErr}</div>}
+          <div style={t.sideStat}><span><Emo e="📹"/> กล้องทั้งหมด</span><b>{totalCams}</b></div>
+          <div style={t.sideStat}><span><Emo e="✅"/> ใช้งานได้</span><b style={{color:"#22C55E"}}>{Math.max(0, totalCams - openCamSet.size)}</b></div>
+          <div style={t.sideStat}><span><Emo e="🔧"/> รอซ่อม</span><b style={{color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</b></div>
+          <div style={t.sideStat}><span><Emo e="🔌"/> รอติดตั้งกลับ</span><b style={{color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</b></div>
+          <div style={t.sideStat}><span><Emo e="📄"/> บันทึกรวม</span><b>{logs.length}</b></div>
+          {syncErr && <div style={t.syncWarn} title={syncErr}><Emo e="⚠"/> {syncErr}</div>}
         </div>
 
         <div style={{flex:1}}/>
         <div style={t.userCard} className="rb-hideM">
-          <div style={t.userAvatar}>{isAdmin?"🛡️":"👤"}</div>
+          <div style={t.userAvatar}><Emo e={isAdmin?"🛡️":"👤"}/></div>
           <div style={{flex:1, minWidth:0}}>
             <div style={t.userName}>{auth.name}</div>
             <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":(isViewer?"ผู้ดูรายงาน":"พนักงาน"))}</div>
           </div>
         </div>
-        {showInstall && <button onClick={installApp} className="tap rb-hideM" style={{...t.installBtn, marginTop:0, marginBottom:8}}>📲 ติดตั้งแอป</button>}
-        <button onClick={doLogout} className="tap rb-logout" style={t.logoutBtn} title="ออกจากระบบ">🚪<span className="rb-logoutTx"> ออกจากระบบ</span></button>
+        {showInstall && <button onClick={installApp} className="tap rb-hideM" style={{...t.installBtn, marginTop:0, marginBottom:8}}><Emo e="📲"/> ติดตั้งแอป</button>}
+        <button onClick={doLogout} className="tap rb-logout" style={t.logoutBtn} title="ออกจากระบบ"><Emo e="🚪"/><span className="rb-logoutTx"> ออกจากระบบ</span></button>
         <div style={t.sideFoot} className="rb-hideM">RAYONGBOARD · Rayong</div>
       </aside>
 
@@ -1489,20 +1491,20 @@ function App() {
                 <div style={t.segRow} className="rb-stGrid">
                   {Object.keys(STATUS).map(s=>{ const on=status===s;
                     return <button key={s} onClick={()=>setStatus(s)} className="tap" style={{...t.seg, borderColor:on?stOf(s).dot:t.border, background:on?hex(stOf(s).dot,dark?.14:.1):"transparent", color:on?stOf(s).dot:t.dim}}>
-                      <span style={{fontSize:20}}>{stOf(s).emoji}</span>{s}</button>;
+                      <span style={{fontSize:20}}><Emo e={stOf(s).emoji}/></span>{s}</button>;
                   })}
                 </div>
                 <div style={{display:"flex", gap:12, marginTop:2, flexWrap:"wrap"}} className="rb-dtRow">{/* จอแคบ: เวลาตกลงไปอยู่ใต้วันที่ */}
-                  <div style={{flex:1, minWidth:150}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
+                  <div style={{flex:1, minWidth:150}}><div style={t.label}><Emo e="📅"/> วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
                   <div style={{flex:1, minWidth:150}}>
-                    <div style={t.label}>🕐 เวลา <span style={{color:t.dim, fontWeight:500}}>(เว้นว่างได้)</span></div>
+                    <div style={t.label}><Emo e="🕐"/> เวลา <span style={{color:t.dim, fontWeight:500}}>(เว้นว่างได้)</span></div>
                     <div style={{display:"flex", gap:8}}>
                       <input type="time" value={timeVal} onChange={e=>setTimeVal(e.target.value)} style={{...t.input, flex:1, minWidth:0}}/>
-                      <button onClick={()=>setTimeVal(timeVal ? "" : nowHM())} className="tap" style={t.timeBtn} title={timeVal ? "ลบเวลาออก" : "ใส่เวลาปัจจุบัน"}>{timeVal ? "✕" : "⏱"}</button>
+                      <button onClick={()=>setTimeVal(timeVal ? "" : nowHM())} className="tap" style={t.timeBtn} title={timeVal ? "ลบเวลาออก" : "ใส่เวลาปัจจุบัน"}>{timeVal ? "✕" : <Emo e="⏱"/>}</button>
                     </div>
                   </div>
                 </div>
-                <div style={t.label}>⏰ กะการทำงาน</div>
+                <div style={t.label}><Emo e="⏰"/> กะการทำงาน</div>
                 <div style={t.shiftGrid} className="rb-shGrid">
                   {myShifts.map(s=>{ const on=shift===s.key;
                     return <button key={s.key} onClick={()=>setShift(s.key)} className="tap" style={on?t.shiftCardOn:t.shiftCard}>
@@ -1513,16 +1515,16 @@ function App() {
                 </div>
 
                 {status==="ปกติ" ? (
-                  <div style={t.note}>✅ ไม่มีเหตุผิดปกติ — กรอกชื่อผู้รายงานแล้วบันทึกได้เลย</div>
+                  <div style={t.note}><Emo e="✅"/> ไม่มีเหตุผิดปกติ — กรอกชื่อผู้รายงานแล้วบันทึกได้เลย</div>
                 ) : (
                   <div style={{animation:"fade .25s"}}>
                     <div style={t.label}>พื้นที่</div>
-                    <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setZone(z);setCam("");setCamQuery("");setSubGrp("");}} className="tap" style={zone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}>{ZONE_EMOJI[z]} {z}</button>)}</div>
+                    <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setZone(z);setCam("");setCamQuery("");setSubGrp("");}} className="tap" style={zone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}><Emo e={ZONE_EMOJI[z]}/> {z}</button>)}</div>
                     <div style={t.label}>โซน <span style={t.dimLabel}>({subGroups.length})</span></div>
                     <div style={t.chipRow}>{subGroups.map(sg=><button key={sg} onClick={()=>{setSubGrp(sg===subGrp?"":sg);setCam("");setCamQuery("");}} className="tap" style={subGrp===sg?t.chipOn:t.chip}>{sg} <span style={t.miniCount}>{(tree[zone][sg]||[]).length}</span></button>)}</div>
-                    <div style={t.label}>🔍 เลือกกล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":""} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว)</span>
+                    <div style={t.label}><Emo e="🔍"/> เลือกกล้อง{status==="เหตุการณ์อื่น"?" (ถ้าเกี่ยวข้อง)":""} <span style={t.dimLabel}>({(CAMERAS[zone]||[]).length} ตัว)</span>
                       {(() => { const n=(CAMERAS[zone]||[]).filter(c=>openJobFor(c)).length;
-                        return n ? <span style={t.busyTag}>🔧 มีงานค้าง {n} ตัว เลือกไม่ได้</span> : null; })()}
+                        return n ? <span style={t.busyTag}><Emo e="🔧"/> มีงานค้าง {n} ตัว เลือกไม่ได้</span> : null; })()}
                     </div>
                     <input value={camQuery} onChange={e=>{setCamQuery(e.target.value); if(e.target.value)setSubGrp("");}}
                       onKeyDown={e=>{ if(e.key==="Enter"){ e.preventDefault(); pickByEnter(); } }}
@@ -1533,11 +1535,11 @@ function App() {
                         return <button key={c} onClick={()=>setCam(c)} className="tap"
                           title={busy?"กล้องนี้มีงานค้างอยู่ แจ้งซ้ำไม่ได้":c}
                           style={cam===c ? (busy?{...t.camOn, ...t.camBusyOn}:t.camOn) : (busy?{...t.camChip, ...t.camBusy}:t.camChip)}>
-                          {busy?"🔧 ":""}{c}</button>;
+                          {busy?<><Emo e="🔧"/> </>:""}{c}</button>;
                       })}
                         {camOpts.length===0 && otherZoneHits.length===0 && <div style={t.empty}>ไม่พบกล้องชื่อนี้ในระบบ</div>}
                       </div>
-                    ) : <div style={t.hint}>👆 เลือกโซน หรือพิมพ์ชื่อกล้องค้นหาได้เลย</div>}
+                    ) : <div style={t.hint}><Emo e="👆"/> เลือกโซน หรือพิมพ์ชื่อกล้องค้นหาได้เลย</div>}
 
                     {otherZoneHits.length>0 && (
                       <div style={t.searchBox}>
@@ -1549,8 +1551,8 @@ function App() {
                           return (
                             <button key={z+"/"+c} className="tap" onClick={()=>{ setZone(z); setSubGrp(""); setCamQuery(""); setCam(c); }}
                                     style={{...t.searchHit, ...(busy?t.camBusy:{})}}>
-                              <span style={{fontFamily:mono, fontSize:13}}>{busy?"🔧 ":""}{c}</span>
-                              <span style={t.searchZone}>{ZONE_EMOJI[z]||""} {z}</span>
+                              <span style={{fontFamily:mono, fontSize:13}}>{busy?<><Emo e="🔧"/> </>:""}{c}</span>
+                              <span style={t.searchZone}><Emo e={ZONE_EMOJI[z]||""}/> {z}</span>
                             </button>
                           );
                         })}
@@ -1558,51 +1560,51 @@ function App() {
                     )}
                     {cam && <div style={t.picked}>✓ เลือกกล้อง: <b>{cam}</b></div>}
                     <div style={{display:"flex", gap:12}}>
-                      <div style={{flex:1}}><div style={t.label}>📍 บริเวณ / สถานที่</div><input value={area} onChange={e=>setArea(e.target.value)} placeholder={status==="เหตุการณ์อื่น"?"เช่น หน้าบริษัท, บริเวณ RP SR8":"เช่น กำแพงหลังบ่อน้ำ RP"} style={t.input}/></div>
-                      <div style={{flex:1}}><div style={t.label}>📝 {status==="เหตุการณ์อื่น"?"อธิบายเหตุการณ์":"รายละเอียด"}{status==="เหตุการณ์อื่น" && <span style={{color:"#EF4444"}}> *</span>}</div><input value={detail} onChange={e=>setDetail(e.target.value)} placeholder={status==="เหตุการณ์อื่น"?"เช่น อุบัติเหตุ จยย.ล้ม / สายไฟช็อต 20:25 น.":"เช่น ภาพไม่ขึ้นตั้งแต่ 19:20"} style={t.input}/></div>
+                      <div style={{flex:1}}><div style={t.label}><Emo e="📍"/> บริเวณ / สถานที่</div><input value={area} onChange={e=>setArea(e.target.value)} placeholder={status==="เหตุการณ์อื่น"?"เช่น หน้าบริษัท, บริเวณ RP SR8":"เช่น กำแพงหลังบ่อน้ำ RP"} style={t.input}/></div>
+                      <div style={{flex:1}}><div style={t.label}><Emo e="📝"/> {status==="เหตุการณ์อื่น"?"อธิบายเหตุการณ์":"รายละเอียด"}{status==="เหตุการณ์อื่น" && <span style={{color:"#EF4444"}}> *</span>}</div><input value={detail} onChange={e=>setDetail(e.target.value)} placeholder={status==="เหตุการณ์อื่น"?"เช่น อุบัติเหตุ จยย.ล้ม / สายไฟช็อต 20:25 น.":"เช่น ภาพไม่ขึ้นตั้งแต่ 19:20"} style={t.input}/></div>
                     </div>
-                    <div style={t.label}>📷 แนบรูป</div>
+                    <div style={t.label}><Emo e="📷"/> แนบรูป</div>
                     {img ? <div style={t.imgWrap}><img src={img} style={t.imgPrev} onClick={()=>setPreview(img)}/><button onClick={()=>setImg("")} style={t.imgDel}>✕ ลบรูป</button></div>
-                      : <label style={t.upload}><span style={{fontSize:24}}>📸</span><span>แตะเพื่อถ่าย / เลือกรูป</span><input type="file" accept="image/*" onChange={pickImg} style={{display:"none"}}/></label>}
+                      : <label style={t.upload}><span style={{fontSize:24}}><Emo e="📸"/></span><span>แตะเพื่อถ่าย / เลือกรูป</span><input type="file" accept="image/*" onChange={pickImg} style={{display:"none"}}/></label>}
                   </div>
                 )}
-                <div style={t.label}>👤 ผู้รายงาน <span style={{color:"#EF4444"}}>*</span></div>
+                <div style={t.label}><Emo e="👤"/> ผู้รายงาน <span style={{color:"#EF4444"}}>*</span></div>
                 <div style={t.chipRow}>
                   {(auth && accounts[auth.user] && accounts[auth.user].reporter ? [accounts[auth.user].reporter] : reporters).map(r=><button key={r} onClick={()=>setBy(r)} className="tap" style={by===r?t.chipOn:t.chip}>{r}</button>)}
                   {reporters.length===0 && <div style={t.empty}>ยังไม่มีพนักงาน — เพิ่มที่หน้า "จัดการพนักงาน"</div>}
                 </div>
-                {!by && <div style={t.reqNote}>⚠️ กรุณาเลือกชื่อผู้รายงานก่อนบันทึก</div>}
+                {!by && <div style={t.reqNote}><Emo e="⚠"/> กรุณาเลือกชื่อผู้รายงานก่อนบันทึก</div>}
                 {dupJob && (
                   <div style={t.dupWarn}>
-                    <div style={{fontWeight:700, marginBottom:4}}>⚠️ กล้องนี้มีงานค้างอยู่แล้ว</div>
-                    <div style={t.dupLine}>{stOf(dupJob.status).emoji} {dupJob.status} · {normFix(dupJob.fix)} · {ageInfo(dupJob).text}</div>
-                    <div style={t.dupLine}>🕐 แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} · กะ{dupJob.shift||"—"} · โดย {dupJob.by||"—"}</div>
-                    {(dupJob.zone || dupJob.area) && <div style={t.dupLine}>📍 {[dupJob.zone && `${ZONE_EMOJI[dupJob.zone]||""} ${dupJob.zone}`, dupJob.area].filter(Boolean).join(" · ")}</div>}
-                    {dupJob.detail && <div style={t.dupLine}>📄 อาการที่แจ้ง: {dupJob.detail}</div>}
-                    {dupJob.fixNote && <div style={t.dupLine}>📝 {dupJob.fixNote}</div>}
-                    {dupJob.fixBy && <div style={t.dupLine}>👷 ผู้ดำเนินการ: {dupJob.fixBy}</div>}
+                    <div style={{fontWeight:700, marginBottom:4}}><Emo e="⚠"/> กล้องนี้มีงานค้างอยู่แล้ว</div>
+                    <div style={t.dupLine}><Emo e={stOf(dupJob.status).emoji}/> {dupJob.status} · {normFix(dupJob.fix)} · {ageInfo(dupJob).text}</div>
+                    <div style={t.dupLine}><Emo e="🕐"/> แจ้ง {fmtTH(dupJob.date)}{dupJob.time?` ${dupJob.time} น.`:""} · กะ{dupJob.shift||"—"} · โดย {dupJob.by||"—"}</div>
+                    {(dupJob.zone || dupJob.area) && <div style={t.dupLine}><Emo e="📍"/> {[dupJob.zone && `${ZONE_EMOJI[dupJob.zone]||""} ${dupJob.zone}`, dupJob.area].filter(Boolean).join(" · ")}</div>}
+                    {dupJob.detail && <div style={t.dupLine}><Emo e="📄"/> อาการที่แจ้ง: {dupJob.detail}</div>}
+                    {dupJob.fixNote && <div style={t.dupLine}><Emo e="📝"/> {dupJob.fixNote}</div>}
+                    {dupJob.fixBy && <div style={t.dupLine}><Emo e="👷"/> ผู้ดำเนินการ: {dupJob.fixBy}</div>}
                     {(() => {
                       const hist = (logs||[]).filter(l => camKey(l.cam)===camKey(cam));
                       const closed = hist.filter(l => fixDone(l));
-                      return hist.length>1 ? <div style={{...t.dupLine, marginTop:5}}>📊 กล้องนี้ถูกแจ้งมาแล้ว {hist.length} ครั้ง · ปิดงานไปแล้ว {closed.length} ครั้ง</div> : null;
+                      return hist.length>1 ? <div style={{...t.dupLine, marginTop:5}}><Emo e="📊"/> กล้องนี้ถูกแจ้งมาแล้ว {hist.length} ครั้ง · ปิดงานไปแล้ว {closed.length} ครั้ง</div> : null;
                     })()}
                     {imgOf(dupJob) && <img src={imgOf(dupJob)} style={t.dupImg} onClick={()=>setPreview(imgOf(dupJob))}/>}
                     <div style={{display:"flex", gap:9, marginTop:10, flexWrap:"wrap"}}>
-                      <button onClick={()=>openFix(dupJob.id)} className="tap" style={t.dupBtn}>🛠 อัปเดตงานเดิม</button>
-                      <button onClick={()=>{setNav("history"); setCamQ(cam); setFFilter("all");}} className="tap" style={t.dupBtn}>📋 ดูประวัติกล้องนี้</button>
+                      <button onClick={()=>openFix(dupJob.id)} className="tap" style={t.dupBtn}><Emo e="🛠"/> อัปเดตงานเดิม</button>
+                      <button onClick={()=>{setNav("history"); setCamQ(cam); setFFilter("all");}} className="tap" style={t.dupBtn}><Emo e="📋"/> ดูประวัติกล้องนี้</button>
                     </div>
                   </div>
                 )}
-                <button onClick={submit} disabled={!canSubmit} className="tap" style={{...t.submit, marginTop:20, padding:"13px", fontSize:15, borderRadius:13, opacity:canSubmit?1:.4}}>💾 บันทึกรายงาน</button>
+                <button onClick={submit} disabled={!canSubmit} className="tap" style={{...t.submit, marginTop:20, padding:"13px", fontSize:15, borderRadius:13, opacity:canSubmit?1:.4}}><Emo e="💾"/> บันทึกรายงาน</button>
               </div>
 
               {/* รายการล่าสุดขวา */}
               <div style={t.panel}>
-                <div style={t.panelTitle}>🕒 บันทึกล่าสุด</div>
-                <button onClick={()=>copySummary(dateVal)} className="tap" style={t.lineSummaryBtn}>📋 คัดลอกสรุปวันที่ {fmtTH(dateVal)} (ส่งไลน์)</button>
-                {isAdmin && <button onClick={()=>{setShowBulk(true); setBulkDate(dateVal);}} className="tap" style={t.bulkBtn}>📥 นำเข้ากล้องดับหลายตัว</button>}
+                <div style={t.panelTitle}><Emo e="🕒"/> บันทึกล่าสุด</div>
+                <button onClick={()=>copySummary(dateVal)} className="tap" style={t.lineSummaryBtn}><Emo e="📋"/> คัดลอกสรุปวันที่ {fmtTH(dateVal)} (ส่งไลน์)</button>
+                {isAdmin && <button onClick={()=>{setShowBulk(true); setBulkDate(dateVal);}} className="tap" style={t.bulkBtn}><Emo e="📥"/> นำเข้ากล้องดับหลายตัว</button>}
                 <div style={{display:"flex", flexDirection:"column", gap:10, overflowY:"auto", maxHeight:640}}>
-                  {logs.length===0 && <div style={t.miniEmpty}><div style={{fontSize:30, marginBottom:8}}>📋</div>ยังไม่มีบันทึก<br/><span style={{fontSize:12}}>เริ่มบันทึกเหตุการณ์แรกได้เลย</span></div>}
+                  {logs.length===0 && <div style={t.miniEmpty}><div style={{fontSize:30, marginBottom:8}}><Emo e="📋"/></div>ยังไม่มีบันทึก<br/><span style={{fontSize:12}}>เริ่มบันทึกเหตุการณ์แรกได้เลย</span></div>}
                   {logs.slice(0,8).map(l=>(
                     <div key={l.id} style={t.miniLog}>
                       <div style={{...t.miniBar, background:stOf(l.status).dot}}/>
@@ -1611,7 +1613,7 @@ function App() {
                           <span style={t.miniCam}>{l.cam||"เหตุการณ์ปกติ"}</span>
                           <span style={t.miniDate}>{fmtTH(l.date)}</span>
                         </div>
-                        <div style={t.miniMeta}>{stOf(l.status).emoji} {l.status}{l.zone?` · ${l.zone}`:""}{l.area?` · ${l.area}`:""}</div>
+                        <div style={t.miniMeta}><Emo e={stOf(l.status).emoji}/> {l.status}{l.zone?` · ${l.zone}`:""}{l.area?` · ${l.area}`:""}</div>
                       </div>
                     </div>
                   ))}
@@ -1625,7 +1627,7 @@ function App() {
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
               <div><div style={t.h1}><span style={t.h1Icon(isVendor?"#F59E0B":"#0B6FC4")}><PageIcon kind={isVendor?"repair":"history"}/></span>{isVendor ? "งานซ่อมกล้อง" : "ประวัติการบันทึก"}</div><div style={t.h1sub}>{view.length} รายการ{histMode==="day" ? ` · วันที่ ${fmtTH(histDay)}` : (histMode==="range" ? ((histFrom||histTo) ? ` · ${histFrom?fmtTH(histFrom):"เริ่มต้น"} ถึง ${histTo?fmtTH(histTo):"ล่าสุด"}` : "") : (mFilter!=="all" ? ` · เดือน${TH_M[+mFilter.slice(5)-1]}` : " · ทุกเดือน"))}{byFilter!=="all" ? ` · ${byFilter}` : ""}{camQ ? ` · กล้อง ${camQ}` : ""}</div></div>
-              <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}>⬇️ ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
+              <button onClick={exportX} className="tap" style={{...t.exportBtn, marginRight:52}}><Emo e="⬇"/> ส่งออก Excel{mFilter!=="all" && ` (${TH_M[+mFilter.slice(5)-1]})`}</button>
             </div>
 
             <div style={t.filterBar}>
@@ -1662,7 +1664,7 @@ function App() {
                 <button onClick={()=>setJobSel(jobSel.length===selectableIds.length ? [] : selectableIds)} className="tap" style={jobSel.length?t.selectOn:t.select}>
                   {jobSel.length===selectableIds.length ? "ล้างที่เลือก" : `เลือกทั้งหมด (${selectableIds.length})`}
                 </button>
-                <button onClick={copyJobList} className="tap" style={t.select}>📋 คัดลอกรายการ</button>
+                <button onClick={copyJobList} className="tap" style={t.select}><Emo e="📋"/> คัดลอกรายการ</button>
               </>)}
               {(sFilter!=="all"||fFilter!=="all"||zFilter!=="all"||byFilter!=="all"||mFilter!=="all"||camQ||histMode!=="month") && (
                 <button onClick={()=>{setSFilter("all");setFFilter(isVendor?"open":"all");setZFilter("all");setByFilter("all");setMFilter("all");setCamQ("");setHistMode("month");setHistFrom("");setHistTo("");}} className="tap" style={t.clearFilter}>✕ ล้างตัวกรอง</button>
@@ -1673,22 +1675,22 @@ function App() {
                 <div style={t.bulkTitle}>เลือกไว้ {jobSel.length} งาน</div>
                 <div style={t.bulkRow}>
                   <div style={{flex:"1 1 150px"}}>
-                    <div style={t.label}>📅 วันที่ทำเสร็จ</div>
+                    <div style={t.label}><Emo e="📅"/> วันที่ทำเสร็จ</div>
                     <input type="date" value={jobDate} onChange={e=>setJobDate(e.target.value)} style={t.input}/>
                   </div>
                   <div style={{flex:"1 1 150px"}}>
-                    <div style={t.label}>👷 ผู้ดำเนินการ</div>
+                    <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
                     <input list="fixbylist2" value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input}/>
                     <datalist id="fixbylist2">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
                   </div>
                   <div style={{flex:"2 1 220px"}}>
-                    <div style={t.label}>📝 หมายเหตุ (ต่อท้ายของเดิม)</div>
+                    <div style={t.label}><Emo e="📝"/> หมายเหตุ (ต่อท้ายของเดิม)</div>
                     <input value={jobNote} onChange={e=>setJobNote(e.target.value)} placeholder="เช่น เปลี่ยน Sw ใหม่" style={t.input}/>
                   </div>
                 </div>
                 <div style={{display:"flex", gap:10, marginTop:12, flexWrap:"wrap"}}>
-                  <button onClick={()=>applyJobs(DOING)} className="tap" style={{...t.dashExport, flex:"1 1 160px"}}>🔵 กำลังทำ</button>
-                  <button onClick={()=>applyJobs(DONE)} className="tap" style={{...t.submit, marginTop:0, flex:"1 1 160px"}}>✅ ปิดงาน {jobSel.length} รายการ</button>
+                  <button onClick={()=>applyJobs(DOING)} className="tap" style={{...t.dashExport, flex:"1 1 160px"}}><Emo e="🔵"/> กำลังทำ</button>
+                  <button onClick={()=>applyJobs(DONE)} className="tap" style={{...t.submit, marginTop:0, flex:"1 1 160px"}}><Emo e="✅"/> ปิดงาน {jobSel.length} รายการ</button>
                 </div>
               </div>
             )}
@@ -1702,14 +1704,14 @@ function App() {
                       <div style={t.jobTop}>
                         <span style={{display:"flex", alignItems:"center", gap:9}}>
                           {jobMode && needsFix(l.status) && !fixDone(l) && <span style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</span>}
-                          <span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status||"ไม่ระบุ"}</span>
+                          <span style={stBadge(l)} title={stTitle(l)}><Emo e={stOf(l.status).emoji}/> {l.status||"ไม่ระบุ"}</span>
                         </span>
                         <span style={t.jobWhen}>{fmtTH(l.date)}{l.time?` · ${l.time} น.`:""}{needsFix(l.status)&&!fixDone(l) ? <b style={{color:ageInfo(l).warn?"#EF4444":t.dim}}> · {ageInfo(l).text}</b> : ` · ${l.shift}`}</span>
                       </div>
 
                       {l.cam ? <div style={t.jobCam}>{l.cam}</div> : <div style={{...t.jobCam, fontFamily:"inherit", fontSize:14}}>{l.detail||"เหตุการณ์"}</div>}
                       <div style={t.jobPlace}>
-                        {l.zone && <span>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>}
+                        {l.zone && <span><Emo e={ZONE_EMOJI[l.zone]||""}/> {l.zone}</span>}
                         {l.area && <span> · {l.area}</span>}
                         {l.cam && ips[l.cam] && canSeeIp && <span style={t.jobIp}> · {ips[l.cam]}</span>}
                       </div>
@@ -1727,22 +1729,22 @@ function App() {
                           ? <FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+(isViewer?"":" ▾")}</FixTag>
                           : <span style={{fontSize:12, color:t.dim}}>ไม่มีงานติดตาม</span>}
                         <div style={{display:"flex", gap:7, marginLeft:"auto"}}>
-                          {!isVendor && !isViewer && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}>✏️</button>}
-                          {!isVendor && !isViewer && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button>}
+                          {!isVendor && !isViewer && <button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn}><Emo e="✏"/></button>}
+                          {!isVendor && !isViewer && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}><Emo e="🗑"/></button>}
                         </div>
                       </div>
                       {(l.fixDate||l.fixBy||l.fixNote) && (
                         <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>
-                          {l.fixDate && <span>🗓 {fmtTH(l.fixDate)} </span>}
-                          {l.fixBy && <span>👷 <Name text={l.fixBy}/> </span>}
-                          {l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}
+                          {l.fixDate && <span><Emo e="🗓"/> {fmtTH(l.fixDate)} </span>}
+                          {l.fixBy && <span><Emo e="👷"/> <Name text={l.fixBy}/> </span>}
+                          {l.fixNote && <div style={{color:t.dim}}><Emo e="📝"/> {l.fixNote}</div>}
                         </div>
                       )}
                       <div style={t.jobBy}>ผู้รายงาน: {l.by||"—"}</div>
                     </div>
                   );
                 })}
-                {view.length===0 && <div style={{...t.jobCard, textAlign:"center", color:t.dim, padding:40}}>📭 ไม่มีรายการ</div>}
+                {view.length===0 && <div style={{...t.jobCard, textAlign:"center", color:t.dim, padding:40}}><Emo e="📭"/> ไม่มีรายการ</div>}
               </div>
             ) : (
             <div style={t.tableWrap} className="rb-tableWrap">
@@ -1764,18 +1766,18 @@ function App() {
                           ? <button onClick={()=>toggleJob(l.id)} className="tap" style={jobSel.includes(l.id)?t.ckOn:t.ck}>{jobSel.includes(l.id)?"✓":""}</button>
                           : null}
                       </td>}
-                      <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}>🕐 {l.time}</div>}</td>
+                      <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}><Emo e="🕐"/> {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
-                      <td style={t.td}><span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status}</span>{fixDone(l) && <div style={t.stDone}>ซ่อมเสร็จแล้ว</div>}</td>
-                      <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span>:"—"}</td>
+                      <td style={t.td}><span style={stBadge(l)} title={stTitle(l)}><Emo e={stOf(l.status).emoji}/> {l.status}</span>{fixDone(l) && <div style={t.stDone}>ซ่อมเสร็จแล้ว</div>}</td>
+                      <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}><Emo e={ZONE_EMOJI[l.zone]||""}/> {l.zone}</span>:"—"}</td>
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
                       <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={{...t.td, minWidth:92}}><Name text={l.by}/></td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div>🗓 {fmtTH(l.fixDate)}</div>}{l.fixBy && <div>👷 <Name text={l.fixBy}/></div>}{l.fixNote && <div style={{color:t.dim}}>📝 {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
-                      <td style={{...t.td, ...t.stickyR, padding:"15px 10px"}} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={t.actCol}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก">✏️</button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}>🗑</button></div>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div><Emo e="🗓"/> {fmtTH(l.fixDate)}</div>}{l.fixBy && <div><Emo e="👷"/> <Name text={l.fixBy}/></div>}{l.fixNote && <div style={{color:t.dim}}><Emo e="📝"/> {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={{...t.td, ...t.stickyR, padding:"15px 10px"}} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={t.actCol}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก"><Emo e="✏"/></button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}><Emo e="🗑"/></button></div>}</td>
                     </tr>
                   ))}
-                  {view.length===0 && <tr><td colSpan={jobMode?10:9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}>📭 ไม่มีรายการ</td></tr>}
+                  {view.length===0 && <tr><td colSpan={jobMode?10:9} style={{...t.td, textAlign:"center", padding:50, color:t.dim}}><Emo e="📭"/> ไม่มีรายการ</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1848,14 +1850,14 @@ function App() {
 
               <button onClick={()=>drillTo({fix:"wait_repair"})} className="tap"
                       style={{...t.actTile, borderLeftColor:"#F59E0B", opacity:dashRepair?1:.6}} title="งานที่ต้องตามช่างมาซ่อม">
-                <div style={t.actTop}><span style={{fontSize:16}}>🔧</span><span style={t.actLabel}>รอซ่อม</span></div>
+                <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🔧"/></span><span style={t.actLabel}>รอซ่อม</span></div>
                 <div style={{...t.actNum, color:dashRepair?"#F59E0B":t.dim}}>{dashRepair}</div>
                 <div style={t.actDesc}>ต้องตามช่าง</div>
               </button>
 
               <button onClick={()=>drillTo({fix:"wait_install"})} className="tap"
                       style={{...t.actTile, borderLeftColor:"#0EA5E9", opacity:dashInstall?1:.6}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
-                <div style={t.actTop}><span style={{fontSize:16}}>🔌</span><span style={t.actLabel}>รอติดตั้งกลับ</span></div>
+                <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🔌"/></span><span style={t.actLabel}>รอติดตั้งกลับ</span></div>
                 <div style={{...t.actNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
                 <div style={t.actDesc}>รอหน้างานพร้อม</div>
               </button>
@@ -1872,7 +1874,7 @@ function App() {
                           style={{...t.miniTile, opacity:v?1:.5}}
                           title={track ? `${k} ค้าง ${open} จากทั้งหมด ${v} ครั้ง` : `${k} ${v} ครั้ง`}>
                     <div style={t.miniTop}>
-                      <span style={{fontSize:18}}>{stOf(k).emoji}</span>
+                      <span style={{fontSize:18}}><Emo e={stOf(k).emoji}/></span>
                       <span style={{...t.miniNum, color: v ? stOf(k).dot : t.dim}}>{v}</span>
                       <span style={t.miniUnit}>ครั้ง</span>
                     </div>
@@ -1885,7 +1887,7 @@ function App() {
 
             {trend.length > 1 && (
               <div style={{...t.panel, marginBottom:18}}>
-                <div style={t.panelTitle}>📈 จำนวนการแจ้งรายวัน</div>
+                <div style={t.panelTitle}><Emo e="📈"/> จำนวนการแจ้งรายวัน</div>
                 <div style={t.trendWrap}>
                   {(() => { const mx = Math.max(1, ...trend.map(d=>d[1])); return trend.map(([d,n])=>(
                     <div key={d} style={t.trendCol} title={`${fmtTH(d)} · ${n} รายการ`}>
@@ -1899,7 +1901,7 @@ function App() {
             )}
             <div style={t.dashGrid} className="rb-dashGrid">
               <div style={t.panel}>
-                <div style={t.panelTitle}>🔴 กล้องที่ดับบ่อยที่สุด</div>
+                <div style={t.panelTitle}><Emo e="🔴"/> กล้องที่ดับบ่อยที่สุด</div>
                 {topCams.length===0 && <div style={t.empty}>ยังไม่มีข้อมูล</div>}
                 {topCams.map(([c,n],i)=>(
                   <div key={c} style={{...t.rankRow, cursor:"pointer"}} onClick={()=>drillTo({cam:c})} title={`ดูประวัติของ ${c}`}>
@@ -1911,10 +1913,10 @@ function App() {
                 ))}
               </div>
               <div style={t.panel}>
-                <div style={t.panelTitle}>📍 กล้องดับแยกตามพื้นที่</div>
+                <div style={t.panelTitle}><Emo e="📍"/> กล้องดับแยกตามพื้นที่</div>
                 {ZONES.map(z=>{ const n=zoneStats[z]; const mx=Math.max(1,...Object.values(zoneStats));
                   return <div key={z} style={{...t.rankRow, cursor:"pointer"}} onClick={()=>drillTo({status:"กล้องดับ", zone:z})} title={`ดูกล้องดับในพื้นที่ ${z}`}>
-                    <span style={{fontSize:18, width:28}}>{ZONE_EMOJI[z]}</span>
+                    <span style={{fontSize:18, width:28}}><Emo e={ZONE_EMOJI[z]}/></span>
                     <span style={t.rankCam}>{z}</span>
                     <div style={t.barTrack}><div style={{...t.barFill, width:`${(n/mx)*100}%`, background:ZONE_COLOR[z]||"#64748B"}}/></div>
                     <span style={{...t.rankN, color:ZONE_COLOR[z]||"#64748B"}}>{n}</span>
@@ -1922,7 +1924,7 @@ function App() {
                 })}
               </div>
             </div>
-            <button onClick={exportX} className="tap" style={{...t.submit, maxWidth:320, margin:"24px auto 0", background:"linear-gradient(135deg,#2E8B3D,#14532D)"}}>⬇️ ส่งออกรายงาน Excel</button>
+            <button onClick={exportX} className="tap" style={{...t.submit, maxWidth:320, margin:"24px auto 0", background:"linear-gradient(135deg,#2E8B3D,#14532D)"}}><Emo e="⬇"/> ส่งออกรายงาน Excel</button>
           </div>
         )}
 
@@ -1936,15 +1938,15 @@ function App() {
               {/* ซ้าย: เลือกพื้นที่+โซน */}
               <div style={t.panel}>
                 <div style={t.panelTitle}>1️⃣ เลือกพื้นที่</div>
-                <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setMZone(z);setMSub("");}} className="tap" style={mZone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}>{ZONE_EMOJI[z]} {z} <span style={t.miniCount}>{Object.values(tree[z]||{}).reduce((a,l)=>a+l.length,0)}</span></button>)}</div>
+                <div style={t.chipRow}>{ZONES.map(z=><button key={z} onClick={()=>{setMZone(z);setMSub("");}} className="tap" style={mZone===z?{...t.chipOn, borderColor:ZONE_COLOR[z], background:hex(ZONE_COLOR[z],dark?.16:.11), color:ZONE_COLOR[z]}:t.chip}><Emo e={ZONE_EMOJI[z]}/> {z} <span style={t.miniCount}>{Object.values(tree[z]||{}).reduce((a,l)=>a+l.length,0)}</span></button>)}</div>
 
                 <div style={{...t.panelTitle, marginTop:22}}>2️⃣ โซน <span style={t.dimLabel}>({mSubGroups.length})</span></div>
                 <div style={t.chipRow}>{mSubGroups.map(sg=>(
                   <button key={sg} onClick={()=>setMSub(sg===mSub?"":sg)} className="tap" style={mSub===sg?t.chipOn:t.chip}>{sg} <span style={t.miniCount}>{(tree[mZone][sg]||[]).length}</span></button>
                 ))}</div>
-                {mSub && <button onClick={()=>delSub(mSub)} className="tap" style={{...t.staffDel, marginTop:12}}>🗑 ลบโซน "{mSub}"</button>}
+                {mSub && <button onClick={()=>delSub(mSub)} className="tap" style={{...t.staffDel, marginTop:12}}><Emo e="🗑"/> ลบโซน "{mSub}"</button>}
 
-                <div style={{...t.panelTitle, marginTop:22}}>➕ เพิ่มโซนใหม่</div>
+                <div style={{...t.panelTitle, marginTop:22}}><Emo e="➕"/> เพิ่มโซนใหม่</div>
                 <div style={{display:"flex", gap:8}}>
                   <input value={newSubName} onChange={e=>setNewSubName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addSub();}} placeholder="เช่น SR-7, ControlRoom" style={{...t.input, flex:1}}/>
                   <button onClick={addSub} className="tap" style={{...t.submit, margin:0, width:"auto", padding:"11px 18px", fontSize:13.5}}>เพิ่มโซน</button>
@@ -1954,10 +1956,10 @@ function App() {
               {/* ขวา: กล้องในโซน */}
               <div style={t.panel}>
                 {!mSub ? (
-                  <div style={{...t.empty, textAlign:"center", padding:60}}>👈 เลือกโซนทางซ้ายเพื่อดู/แก้ไขกล้อง</div>
+                  <div style={{...t.empty, textAlign:"center", padding:60}}><Emo e="👈"/> เลือกโซนทางซ้ายเพื่อดู/แก้ไขกล้อง</div>
                 ) : (
                   <>
-                    <div style={t.panelTitle}>📹 กล้องในโซน {ZONE_EMOJI[mZone]} {mZone} · {mSub} <span style={t.dimLabel}>({mCams.length})</span></div>
+                    <div style={t.panelTitle}><Emo e="📹"/> กล้องในโซน <Emo e={ZONE_EMOJI[mZone]}/> {mZone} · {mSub} <span style={t.dimLabel}>({mCams.length})</span></div>
                     <div style={{display:"flex", gap:8, marginBottom:16}}>
                       <input value={newCam} onChange={e=>setNewCam(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCamera();}} placeholder="ชื่อกล้องใหม่ เช่น RM_SR1_099" style={{...t.input, flex:1, fontFamily:mono}}/>
                       <button onClick={addCamera} className="tap" style={{...t.submit, margin:0, width:"auto", padding:"11px 20px", fontSize:14}}>+ เพิ่ม</button>
@@ -1979,14 +1981,14 @@ function App() {
                                 </>
                               ) : (
                                 <>
-                                  <button onClick={()=>{setEditCam(c);setEditCamVal(c);}} className="tap" style={t.staffEdit}>✏️</button>
-                                  <button onClick={()=>delCamera(c)} className="tap" style={t.staffDel}>🗑</button>
+                                  <button onClick={()=>{setEditCam(c);setEditCamVal(c);}} className="tap" style={t.staffEdit}><Emo e="✏"/></button>
+                                  <button onClick={()=>delCamera(c)} className="tap" style={t.staffDel}><Emo e="🗑"/></button>
                                 </>
                               )}
                             </div>
                           </div>
                           <div style={t.camIpRow}>
-                            <span style={t.camIpLabel}>🌐 IP</span>
+                            <span style={t.camIpLabel}><Emo e="🌐"/> IP</span>
                             {editIpCam===c ? (
                               <>
                                 <input value={editIpVal} onChange={e=>setEditIpVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveIp(c);}} autoFocus placeholder="192.168.x.x" style={{...t.input, flex:1, padding:"6px 10px", fontFamily:mono, fontSize:12.5}}/>
@@ -2006,7 +2008,7 @@ function App() {
                     </div>
 
                     <div style={t.bulkCam}>
-                      <div style={t.panelTitle}>📥 นำเข้ารายชื่อทั้งโซน</div>
+                      <div style={t.panelTitle}><Emo e="📥"/> นำเข้ารายชื่อทั้งโซน</div>
                       <div style={t.pwHint}>คัดลอกชื่อกล้องจาก NVR มาวาง บรรทัดละตัว ระบบจะเทียบให้ก่อนแทนที่</div>
                       <textarea value={bulkCamText} onChange={e=>setBulkCamText(e.target.value)} rows={6}
                                 placeholder={"Wall_1\nWall_2\nWareHousel_01"} style={{...t.input, fontFamily:mono, fontSize:13, resize:"vertical"}}/>
@@ -2019,21 +2021,21 @@ function App() {
                           <div style={t.diffRow}><span style={{color:t.dim, fontWeight:700}}>= คงเดิม {camDiff.next.length - camDiff.add.length}</span>
                             <span style={t.diffList}>รวมหลังแทนที่ {camDiff.next.length} ตัว</span></div>
                           {camDiff.usedInLogs.length>0 && (
-                            <div style={{...t.diffRow, color:"#F59E0B"}}>⚠️ {camDiff.usedInLogs.length} ตัวที่จะลบเคยมีบันทึกไว้ — ประวัติเดิมไม่หาย แต่จะเลือกใหม่ไม่ได้</div>
+                            <div style={{...t.diffRow, color:"#F59E0B"}}><Emo e="⚠"/> {camDiff.usedInLogs.length} ตัวที่จะลบเคยมีบันทึกไว้ — ประวัติเดิมไม่หาย แต่จะเลือกใหม่ไม่ได้</div>
                           )}
                         </div>
                       )}
                       <div style={{display:"flex", gap:10, marginTop:12}}>
                         <button onClick={()=>setBulkCamText(mCams.join("\n"))} className="tap" style={{...t.dashExport, flex:1}}>ดึงรายชื่อปัจจุบันมาแก้</button>
                         <button onClick={applyCamList} disabled={!camDiff || !camDiff.next.length} className="tap"
-                                style={{...t.submit, marginTop:0, flex:1, opacity:(camDiff && camDiff.next.length)?1:.4}}>💾 แทนที่รายชื่อ</button>
+                                style={{...t.submit, marginTop:0, flex:1, opacity:(camDiff && camDiff.next.length)?1:.4}}><Emo e="💾"/> แทนที่รายชื่อ</button>
                       </div>
                     </div>
                   </>
                 )}
               </div>
             </div>
-            <div style={t.staffNote}>💡 การแก้ไขที่นี่จะมีผลกับรายการกล้องที่ให้เลือกในหน้า "บันทึก" ทันที · ข้อมูลเก็บในเครื่อง</div>
+            <div style={t.staffNote}><Emo e="💡"/> การแก้ไขที่นี่จะมีผลกับรายการกล้องที่ให้เลือกในหน้า "บันทึก" ทันที · ข้อมูลเก็บในเครื่อง</div>
           </div>
         )}
 
@@ -2045,7 +2047,7 @@ function App() {
             <div style={t.staffGrid} className="rb-camManGrid">
               <div>
               <div style={t.panel}>
-                <div style={t.panelTitle}>➕ เพิ่มชื่อผู้รายงาน</div>
+                <div style={t.panelTitle}><Emo e="➕"/> เพิ่มชื่อผู้รายงาน</div>
                 <div style={t.pwHint}>ชื่อที่ใช้เลือกตอนบันทึกเหตุการณ์ ไม่ใช่บัญชีล็อกอิน</div>
                 <div style={{display:"flex", gap:10}}>
                   <input value={newRep} onChange={e=>setNewRep(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addRep();}} placeholder="ชื่อ-นามสกุล เช่น สมชาย ใจดี" style={{...t.input, flex:1}}/>
@@ -2053,7 +2055,7 @@ function App() {
                 </div>
               </div>
               <div style={{...t.panel, marginTop:16}}>
-                <div style={t.panelTitle}>👥 รายชื่อผู้รายงาน</div>
+                <div style={t.panelTitle}><Emo e="👥"/> รายชื่อผู้รายงาน</div>
                 <div style={{display:"flex", flexDirection:"column", gap:8}}>
                   {reporters.map((r,i)=>(
                     <div key={i} style={t.staffRow}>
@@ -2071,8 +2073,8 @@ function App() {
                           </>
                         ) : (
                           <>
-                            <button onClick={()=>{setEditIdx(i);setEditVal(r);}} className="tap" style={t.staffEdit}>✏️ แก้ไข</button>
-                            <button onClick={()=>delRep(i)} className="tap" style={t.staffDel}>🗑 ลบ</button>
+                            <button onClick={()=>{setEditIdx(i);setEditVal(r);}} className="tap" style={t.staffEdit}><Emo e="✏"/> แก้ไข</button>
+                            <button onClick={()=>delRep(i)} className="tap" style={t.staffDel}><Emo e="🗑"/> ลบ</button>
                           </>
                         )}
                       </div>
@@ -2081,19 +2083,19 @@ function App() {
                   {reporters.length===0 && <div style={{...t.empty, textAlign:"center", padding:30}}>ยังไม่มีพนักงาน เพิ่มด้านบนได้เลย</div>}
                 </div>
               </div>
-              <div style={t.staffNote}>💡 เปลี่ยนชื่อที่นี่ ประวัติเก่าที่ลงชื่อเดิมไว้จะถูกแก้ตามให้อัตโนมัติ · บัญชีที่มีชื่อของตัวเอง (เช่น IT) จะบันทึกในนามตัวเองโดยไม่ต้องเลือกจากรายการนี้</div>
+              <div style={t.staffNote}><Emo e="💡"/> เปลี่ยนชื่อที่นี่ ประวัติเก่าที่ลงชื่อเดิมไว้จะถูกแก้ตามให้อัตโนมัติ · บัญชีที่มีชื่อของตัวเอง (เช่น IT) จะบันทึกในนามตัวเองโดยไม่ต้องเลือกจากรายการนี้</div>
 
               </div>
               <div>
               <div style={t.panel}>
                 <div style={t.accHead}>
-                  <div style={{...t.panelTitle, marginBottom:0}}>🔐 บัญชีสำหรับล็อกอิน <span style={t.accCount}>{Object.keys(accounts).length}</span></div>
-                  <button onClick={()=>setShowAddAcc(v=>!v)} className="tap" style={showAddAcc?t.accAddToggleOn:t.accAddToggle}>{showAddAcc?"✕ ยกเลิก":"➕ เพิ่มบัญชี"}</button>
+                  <div style={{...t.panelTitle, marginBottom:0}}><Emo e="🔐"/> บัญชีสำหรับล็อกอิน <span style={t.accCount}>{Object.keys(accounts).length}</span></div>
+                  <button onClick={()=>setShowAddAcc(v=>!v)} className="tap" style={showAddAcc?t.accAddToggleOn:t.accAddToggle}>{showAddAcc?"✕ ยกเลิก":<><Emo e="➕"/> เพิ่มบัญชี</>}</button>
                 </div>
                 <div style={t.pwHint}>ชื่อผู้ใช้ รหัสผ่าน และสิทธิ์การเข้าถึง · คนละส่วนกับรายชื่อผู้รายงาน</div>
 
                 {showAddAcc && <div style={{...t.accAddBox, marginTop:0, marginBottom:16}}>
-                  <div style={t.accAddTitle}>➕ เพิ่มบัญชีใหม่</div>
+                  <div style={t.accAddTitle}><Emo e="➕"/> เพิ่มบัญชีใหม่</div>
                   <div style={t.accAddGrid}>
                     <input value={newAcc.user} onChange={e=>setNewAcc({...newAcc, user:e.target.value})} placeholder="ชื่อผู้ใช้ (เช่น somchai)" style={t.input}/>
                     <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
@@ -2119,12 +2121,12 @@ function App() {
                                 title={u==="admin" ? "บัญชีผู้ดูแลหลัก เปลี่ยนสิทธิ์ไม่ได้" : "เลือกสิทธิ์"}>
                           {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
                         </select>
-                        <button onClick={()=>setPwOpen({...pwOpen, [u]:!pwOpen[u]})} className="tap" style={pwOpen[u]?t.pwKeyOn:t.pwKey} title="เปลี่ยนรหัสผ่าน">🔑</button>
-                        <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}>🗑</button>
+                        <button onClick={()=>setPwOpen({...pwOpen, [u]:!pwOpen[u]})} className="tap" style={pwOpen[u]?t.pwKeyOn:t.pwKey} title="เปลี่ยนรหัสผ่าน"><Emo e="🔑"/></button>
+                        <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}><Emo e="🗑"/></button>
                       </div>
                       {pwOpen[u] && <div style={t.accPwRow}>
                         <input type={pwShow[u]?"text":"password"} value={pwEdit[u]||""} onChange={e=>setPwEdit({...pwEdit, [u]:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")changePassword(u);}} placeholder="🔑 ตั้งรหัสผ่านใหม่" autoComplete="new-password" style={{...t.input, flex:1}}/>
-                        <button onClick={()=>setPwShow({...pwShow, [u]:!pwShow[u]})} className="tap" style={t.pwEye} title={pwShow[u]?"ซ่อนรหัสผ่าน":"แสดงรหัสผ่าน"}>{pwShow[u]?"🙈":"👁"}</button>
+                        <button onClick={()=>setPwShow({...pwShow, [u]:!pwShow[u]})} className="tap" style={t.pwEye} title={pwShow[u]?"ซ่อนรหัสผ่าน":"แสดงรหัสผ่าน"}><Emo e={pwShow[u]?"🙈":"👁"}/></button>
                         <button onClick={()=>changePassword(u)} className="tap" style={t.pwBtn}>เปลี่ยน</button>
                       </div>}
                     </div>
@@ -2137,10 +2139,10 @@ function App() {
 
               <div style={t.staffGridB} className="rb-camManGrid">
               <div style={t.panel}>
-                <div style={t.panelTitle}>💾 สำรอง & กู้คืนข้อมูล</div>
+                <div style={t.panelTitle}><Emo e="💾"/> สำรอง & กู้คืนข้อมูล</div>
                 <div style={t.dangerText}>ดาวน์โหลดเก็บไว้เป็นประจำ · กู้คืนแล้วรวมกับของเดิม ไม่ลบทับ</div>
                 <div style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
-                  <button onClick={exportBackup} className="tap" style={{...t.exportBtn, padding:"13px 20px", fontSize:14}}>💾 ดาวน์โหลดไฟล์สำรอง ({(logs||[]).length} รายการ)</button>
+                  <button onClick={exportBackup} className="tap" style={{...t.exportBtn, padding:"13px 20px", fontSize:14}}><Emo e="💾"/> ดาวน์โหลดไฟล์สำรอง ({(logs||[]).length} รายการ)</button>
                   <label className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14, display:"inline-block", cursor:"pointer"}}>
                     ♻️ กู้คืนจากไฟล์
                     <input type="file" accept=".json,application/json" onChange={importBackup} style={{display:"none"}}/>
@@ -2149,17 +2151,17 @@ function App() {
               </div>
 
               <div style={t.panel}>
-                <div style={t.panelTitle}>🧹 พื้นที่เก็บในเครื่องนี้</div>
+                <div style={t.panelTitle}><Emo e="🧹"/> พื้นที่เก็บในเครื่องนี้</div>
                 <div style={t.dangerText}>ใช้ไป {stat ? stat.mb : "0.00"} MB (เบราว์เซอร์ให้ประมาณ 5 MB) · สำเนารูป {stat ? stat.imgs : 0} ใบ</div>
                 <div style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
-                  <button onClick={purgeImgCache} className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14}}>🧹 ล้างสำเนารูปในเครื่อง</button>
+                  <button onClick={purgeImgCache} className="tap" style={{...t.dashExport, padding:"13px 20px", fontSize:14}}><Emo e="🧹"/> ล้างสำเนารูปในเครื่อง</button>
                 </div>
               </div>
 
               <div style={{...t.dangerCard, marginTop:0}}>
-                <div style={t.dangerTitle}>⚠️ ล้างข้อมูลระบบ</div>
+                <div style={t.dangerTitle}><Emo e="⚠"/> ล้างข้อมูลระบบ</div>
                 <div style={t.dangerText}>ลบประวัติการบันทึกทั้งหมด แดชบอร์ดและประวัติจะว่างเปล่า เพื่อเริ่มบันทึกใหม่ตั้งแต่ต้น</div>
-                <button onClick={clearAllLogs} className="tap" style={t.dangerBtn}>🗑 ล้างประวัติทั้งหมด</button>
+                <button onClick={clearAllLogs} className="tap" style={t.dangerBtn}><Emo e="🗑"/> ล้างประวัติทั้งหมด</button>
               </div>
               </div>
           </div>
@@ -2170,7 +2172,7 @@ function App() {
       {confirmBox && (
         <Modal><div style={{...t.modalBg, zIndex:60}} onClick={()=>setConfirmBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:34, textAlign:"center", marginBottom:12}}>⚠️</div>
+            <div style={{fontSize:34, textAlign:"center", marginBottom:12}}><Emo e="⚠"/></div>
             <div style={{fontSize:15.5, lineHeight:1.6, textAlign:"center", whiteSpace:"pre-line", marginBottom:22}}>{confirmBox.msg}</div>
             <div style={{display:"flex", gap:10}}>
               <button onClick={()=>setConfirmBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
@@ -2182,7 +2184,7 @@ function App() {
       {promptBox && (
         <Modal><div style={t.modalBg} onClick={()=>setPromptBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>✏️ {promptBox.msg}</div>
+            <div style={t.panelTitle}><Emo e="✏"/> {promptBox.msg}</div>
             <div style={{marginTop:12}}><DeptPicker value={promptBox.val} onChange={v=>setPromptBox(pb=>({...pb, val:v}))} style={t.input}/></div>
             <div style={{display:"flex", gap:10, marginTop:16}}>
               <button onClick={()=>setPromptBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
@@ -2195,16 +2197,16 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setFixBox(null)}>
           <div style={{...t.modalCard, maxWidth:430, maxHeight:"90vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             {(() => null)()}
-            <div style={t.panelTitle}>🛠 อัปเดตสถานะงาน</div>
+            <div style={t.panelTitle}><Emo e="🛠"/> อัปเดตสถานะงาน</div>
 
             <div style={t.jobHead}>
               <div style={t.jobTop}>
-                <span style={{...t.badge, background:hex(stOf(fixBox.status).dot,dark?.18:.12), color:stOf(fixBox.status).dot, borderColor:hexA(stOf(fixBox.status).dot,.3,dark)}}>{stOf(fixBox.status).emoji} {fixBox.status}</span>
+                <span style={{...t.badge, background:hex(stOf(fixBox.status).dot,dark?.18:.12), color:stOf(fixBox.status).dot, borderColor:hexA(stOf(fixBox.status).dot,.3,dark)}}><Emo e={stOf(fixBox.status).emoji}/> {fixBox.status}</span>
                 <span style={t.jobWhen}>แจ้ง {fmtTH(fixBox.repDate)}{fixBox.repTime ? ` · ${fixBox.repTime} น.` : ""}</span>
               </div>
               {fixBox.cam && <div style={t.jobCam}>{fixBox.cam}</div>}
               <div style={t.jobPlace}>
-                {fixBox.zone && <span>{ZONE_EMOJI[fixBox.zone]||""} {fixBox.zone}</span>}
+                {fixBox.zone && <span><Emo e={ZONE_EMOJI[fixBox.zone]||""}/> {fixBox.zone}</span>}
                 {fixBox.area && <span> · {fixBox.area}</span>}
                 {fixBox.cam && ips[fixBox.cam] && <span style={t.jobIp}> · {ips[fixBox.cam]}</span>}
               </div>
@@ -2223,7 +2225,7 @@ function App() {
                   className={blocked?"":"tap"}
                   style={on ? {...t.stepCard, borderColor:FIX[st.key], background:hex(FIX[st.key],dark?.16:.1)} : {...t.stepCard, opacity:blocked?.4:1, cursor:blocked?"not-allowed":"pointer"}}>
                   <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-                    <span style={{fontSize:17}}>{blocked?"🔒":st.emoji}</span>
+                    <span style={{fontSize:17}}><Emo e={blocked?"🔒":st.emoji}/></span>
                     {!fixBox.locked && !on && st.key===nextStep && <span style={t.nextTag}>ขั้นถัดไป</span>}
                   </div>
                   <div style={{...t.stepName, color:on?FIX[st.key]:t.text}}>{st.key}</div>
@@ -2235,7 +2237,7 @@ function App() {
             {fixBox.fix===DONE ? (<>
 
             <div style={{marginTop:4}}>
-              <div style={t.label}>📅 วันที่งานเสร็จ</div>
+              <div style={t.label}><Emo e="📅"/> วันที่งานเสร็จ</div>
               <input type="date" value={fixBox.fixDate} onChange={e=>setFixBox({...fixBox, fixDate:e.target.value})} style={t.input}/>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 <button onClick={()=>setFixBox({...fixBox, fixDate:todayISO()})} className="tap" style={t.chip}>วันนี้</button>
@@ -2243,14 +2245,14 @@ function App() {
               </div>
             </div>
             <div style={{marginTop:12}}>
-              <div style={t.label}>👷 ผู้ดำเนินการ</div>
+              <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
               <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
               <datalist id="fixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
               </div>
             </div>
-            <div style={t.label}>📷 รูปก่อน / หลัง</div>
+            <div style={t.label}><Emo e="📷"/> รูปก่อน / หลัง</div>
             <div style={t.baGrid}>
               <div style={t.baCell}>
                 <div style={t.baTag}>ก่อนแก้</div>
@@ -2271,7 +2273,7 @@ function App() {
             )}
 
             <div style={{marginTop:14}}>
-              <div style={t.label}>📝 หมายเหตุ / สาเหตุ</div>
+              <div style={t.label}><Emo e="📝"/> หมายเหตุ / สาเหตุ</div>
               <input value={fixBox.fixNote} onChange={e=>setFixBox({...fixBox, fixNote:e.target.value})} placeholder="เช่น กล้องดับเนื่องจากถอดกล้องทำฝ้า" style={t.input}/>
               <div style={{display:"flex", gap:7, marginTop:8, flexWrap:"wrap"}}>
                 {NOTE_PRESETS.map(v=>(
@@ -2281,7 +2283,7 @@ function App() {
             </div>
             <div style={{display:"flex", gap:10, marginTop:18}}>
               <button onClick={()=>setFixBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
-              <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึก</button>
+              <button onClick={saveFix} className="tap" style={{...t.submit, marginTop:0, flex:1}}><Emo e="💾"/> บันทึก</button>
             </div>
           </div>
         </div></Modal>
@@ -2297,7 +2299,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setDetailBox(null)}>
           <div style={{...t.modalCard, maxWidth:540, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={t.dHead}>
-              <span style={stBadge(l)} title={stTitle(l)}>{stOf(l.status).emoji} {l.status}</span>
+              <span style={stBadge(l)} title={stTitle(l)}><Emo e={stOf(l.status).emoji}/> {l.status}</span>
               <span style={t.dDate}>{fmtTH(l.date)}{l.time ? ` · ${l.time} น.` : ""} · กะ{l.shift}</span>
             </div>
 
@@ -2305,7 +2307,7 @@ function App() {
             {l.cam && ips[l.cam] && canSeeIp && <div style={t.dIp}>{ips[l.cam]}</div>}
 
             <div style={t.dRows}>
-              {l.zone && <div style={t.dRow}><span style={t.dK}>พื้นที่</span><span style={t.dV}>{ZONE_EMOJI[l.zone]||""} {l.zone}</span></div>}
+              {l.zone && <div style={t.dRow}><span style={t.dK}>พื้นที่</span><span style={t.dV}><Emo e={ZONE_EMOJI[l.zone]||""}/> {l.zone}</span></div>}
               {l.area && <div style={t.dRow}><span style={t.dK}>บริเวณ</span><span style={t.dV}>{l.area}</span></div>}
               {l.detail && <div style={t.dRow}><span style={t.dK}>รายละเอียด</span><span style={t.dV}>{l.detail}</span></div>}
               <div style={t.dRow}><span style={t.dK}>ผู้รายงาน</span><span style={t.dV}>{l.by||"—"}</span></div>
@@ -2337,8 +2339,8 @@ function App() {
             )}
 
             <div style={{display:"flex", gap:10, marginTop:18, flexWrap:"wrap"}}>
-              {needsFix(l.status) && !isViewer && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={t.dBtnMain}>🔧 อัปเดตสถานะงาน</button>}
-              {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={t.dBtnEdit}>✏️ แก้ไข</button>}
+              {needsFix(l.status) && !isViewer && <button onClick={()=>{setDetailBox(null); openFix(l.id);}} className="tap" style={t.dBtnMain}><Emo e="🔧"/> อัปเดตสถานะงาน</button>}
+              {!isVendor && !isViewer && <button onClick={()=>{setDetailBox(null); openEdit(l.id);}} className="tap" style={t.dBtnEdit}><Emo e="✏"/> แก้ไข</button>}
               <button onClick={()=>setDetailBox(null)} className="tap" style={t.dBtnClose}>✕ ปิด</button>
             </div>
           </div>
@@ -2347,43 +2349,43 @@ function App() {
       {editBox && (
         <Modal><div style={t.modalBg} onClick={()=>setEditBox(null)}>
           <div style={{...t.modalCard, maxWidth:560, maxHeight:"88vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>✏️ แก้ไขบันทึก</div>
+            <div style={t.panelTitle}><Emo e="✏"/> แก้ไขบันทึก</div>
 
 
             <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
               <div style={{flex:1, minWidth:150}}>
-                <div style={t.label}>📅 วันที่</div>
+                <div style={t.label}><Emo e="📅"/> วันที่</div>
                 <input type="date" value={editBox.date} onChange={e=>setEditBox({...editBox, date:e.target.value})} style={t.input}/>
               </div>
               <div style={{flex:1, minWidth:130}}>
-                <div style={t.label}>🕐 เวลา</div>
+                <div style={t.label}><Emo e="🕐"/> เวลา</div>
                 <input type="time" value={editBox.time} onChange={e=>setEditBox({...editBox, time:e.target.value})} style={t.input}/>
               </div>
               <div style={{flex:1, minWidth:150}}>
-                <div style={t.label}>🕐 กะ</div>
+                <div style={t.label}><Emo e="🕐"/> กะ</div>
                 <select value={editBox.shift} onChange={e=>setEditBox({...editBox, shift:e.target.value})} style={{...t.input, cursor:"pointer"}}>
                   {SHIFTS.map(s=><option key={s.key} value={s.key}>{s.key} ({s.time})</option>)}
                 </select>
               </div>
             </div>
 
-            <div style={t.label}>📌 อาการที่แจ้ง</div>
+            <div style={t.label}><Emo e="📌"/> อาการที่แจ้ง</div>
             <div style={t.chipRow}>
               {Object.keys(STATUS).map(s=>(
-                <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (FIX_STEPS.some(x=>x.key===normFix(editBox.fix)) ? normFix(editBox.fix) : defaultFix(s)) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}>{stOf(s).emoji} {s}</button>
+                <button key={s} onClick={()=>setEditBox({...editBox, status:s, fix: needsFix(s) ? (FIX_STEPS.some(x=>x.key===normFix(editBox.fix)) ? normFix(editBox.fix) : defaultFix(s)) : "-"})} className="tap" style={editBox.status===s?t.chipOn:t.chip}><Emo e={stOf(s).emoji}/> {s}</button>
               ))}
             </div>
 
             {editBox.status!=="ปกติ" && (<>
               <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                 <div style={{flex:1, minWidth:150}}>
-                  <div style={t.label}>📍 พื้นที่</div>
+                  <div style={t.label}><Emo e="📍"/> พื้นที่</div>
                   <select value={editBox.zone} onChange={e=>setEditBox({...editBox, zone:e.target.value, cam:""})} style={{...t.input, cursor:"pointer"}}>
                     {ZONES.map(z=><option key={z} value={z}>{ZONE_EMOJI[z]} {z}</option>)}
                   </select>
                 </div>
                 <div style={{flex:1, minWidth:150}}>
-                  <div style={t.label}>📹 ชื่อกล้อง{needsFix(editBox.status) && <span style={{color:"#EF4444"}}> *</span>}</div>
+                  <div style={t.label}><Emo e="📹"/> ชื่อกล้อง{needsFix(editBox.status) && <span style={{color:"#EF4444"}}> *</span>}</div>
                   <input list="editcamlist" value={editBox.cam} onChange={e=>setEditBox({...editBox, cam:e.target.value})} placeholder="พิมพ์หรือเลือกชื่อกล้อง" style={{...t.input, fontFamily:mono}}/>
                   <datalist id="editcamlist">{(CAMERAS[editBox.zone]||[]).map(c=><option key={c} value={c}/>)}</datalist>
                 </div>
@@ -2391,22 +2393,22 @@ function App() {
 
               <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                 <div style={{flex:1, minWidth:150}}>
-                  <div style={t.label}>📍 บริเวณ / สถานที่</div>
+                  <div style={t.label}><Emo e="📍"/> บริเวณ / สถานที่</div>
                   <input value={editBox.area} onChange={e=>setEditBox({...editBox, area:e.target.value})} placeholder="เช่น กำแพงหลังบ่อน้ำ RP" style={t.input}/>
                 </div>
                 <div style={{flex:1, minWidth:150}}>
-                  <div style={t.label}>📝 รายละเอียด{editBox.status==="เหตุการณ์อื่น" && <span style={{color:"#EF4444"}}> *</span>}</div>
+                  <div style={t.label}><Emo e="📝"/> รายละเอียด{editBox.status==="เหตุการณ์อื่น" && <span style={{color:"#EF4444"}}> *</span>}</div>
                   <input value={editBox.detail} onChange={e=>setEditBox({...editBox, detail:e.target.value})} placeholder="เช่น ภาพไม่ขึ้นตั้งแต่ 19:20" style={t.input}/>
                 </div>
               </div>
             </>)}
 
-            <div style={t.label}>👤 ผู้รายงาน</div>
+            <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
             <input list="editbylist" value={editBox.by} onChange={e=>setEditBox({...editBox, by:e.target.value})} placeholder="ชื่อผู้รายงาน" style={t.input}/>
             <datalist id="editbylist">{reporters.map(r=><option key={r} value={r}/>)}</datalist>
 
             {needsFix(editBox.status) && (<>
-              <div style={t.label}>🛠 สถานะงาน</div>
+              <div style={t.label}><Emo e="🛠"/> สถานะงาน</div>
               <div style={t.chipRow}>
                 {FIX_STEPS.map(st=>{
                   const f = st.key;
@@ -2415,17 +2417,17 @@ function App() {
                   return <button key={f} onClick={()=>{
                     if (isRevert) askConfirm(`ย้อนสถานะจาก "${DONE}" กลับเป็น "${f}" ?\nวันที่และผู้ดำเนินการที่บันทึกไว้จะถูกล้าง`, apply, "ยืนยันย้อนสถานะ");
                     else apply();
-                  }} className="tap" style={normFix(editBox.fix)===f?{...t.chipOn, borderColor:FIX[f], color:FIX[f]}:t.chip}>{st.emoji} {f}</button>;
+                  }} className="tap" style={normFix(editBox.fix)===f?{...t.chipOn, borderColor:FIX[f], color:FIX[f]}:t.chip}><Emo e={st.emoji}/> {f}</button>;
                 })}
               </div>
               {normFix(editBox.fix)===DONE && (
                 <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                   <div style={{flex:1, minWidth:140}}>
-                    <div style={t.label}>📅 วันที่งานเสร็จ</div>
+                    <div style={t.label}><Emo e="📅"/> วันที่งานเสร็จ</div>
                     <input type="date" value={editBox.fixDate} onChange={e=>setEditBox({...editBox, fixDate:e.target.value})} style={t.input}/>
                   </div>
                   <div style={{flex:1, minWidth:140}}>
-                    <div style={t.label}>👷 ผู้แก้ไข</div>
+                    <div style={t.label}><Emo e="👷"/> ผู้แก้ไข</div>
                     <input list="editfixbylist" value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
                     <datalist id="editfixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
                     <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
@@ -2434,16 +2436,16 @@ function App() {
                   </div>
                 </div>
               )}
-              <div style={t.label}>📝 หมายเหตุ / สาเหตุ</div>
+              <div style={t.label}><Emo e="📝"/> หมายเหตุ / สาเหตุ</div>
               <input value={editBox.fixNote} onChange={e=>setEditBox({...editBox, fixNote:e.target.value})} placeholder="เช่น กล้องดับเนื่องจากถอดกล้องทำฝ้า" style={t.input}/>
             </>)}
 
             {editBox.status!=="ปกติ" && (<>
-              <div style={t.label}>📷 รูปแนบ</div>
+              <div style={t.label}><Emo e="📷"/> รูปแนบ</div>
               {editBox.img
                 ? <div style={t.imgWrap}><img src={editBox.img} style={t.imgPrev} onClick={()=>setPreview(editBox.img)}/><button onClick={()=>setEditBox({...editBox, img:""})} style={t.imgDel}>✕ ลบรูป</button></div>
                 : <div style={t.uploadBox}>
-                    <div style={{fontSize:22, marginBottom:6}}>📸</div>
+                    <div style={{fontSize:22, marginBottom:6}}><Emo e="📸"/></div>
                     <input type="file" accept="image/*" onChange={pickEditImg} style={t.fileInput}/>
                     <div style={{fontSize:12, color:t.dim, marginTop:8}}>ไฟล์ JPG หรือ PNG</div>
                   </div>}
@@ -2451,7 +2453,7 @@ function App() {
 
             <div style={{display:"flex", gap:10, marginTop:18}}>
               <button onClick={()=>setEditBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
-              <button onClick={saveLogEdit} className="tap" style={{...t.submit, marginTop:0, flex:1}}>💾 บันทึกการแก้ไข</button>
+              <button onClick={saveLogEdit} className="tap" style={{...t.submit, marginTop:0, flex:1}}><Emo e="💾"/> บันทึกการแก้ไข</button>
             </div>
           </div>
         </div></Modal>
@@ -2459,22 +2461,22 @@ function App() {
       {showBulk && (
         <Modal><div style={t.modalBg} onClick={()=>setShowBulk(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>📥 นำเข้ากล้องดับหลายตัว</div>
+            <div style={t.panelTitle}><Emo e="📥"/> นำเข้ากล้องดับหลายตัว</div>
             <div style={t.pwHint}>วางชื่อกล้องทีละบรรทัด</div>
             <div style={{display:"flex", gap:10, marginBottom:12, flexWrap:"wrap"}}>
               <div style={{flex:1, minWidth:140}}>
-                <div style={t.label}>📅 วันที่</div>
+                <div style={t.label}><Emo e="📅"/> วันที่</div>
                 <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)} style={t.input}/>
               </div>
               <div style={{flex:1, minWidth:140}}>
-                <div style={t.label}>👤 ผู้รายงาน</div>
+                <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
                 <div style={{...t.input, display:"flex", alignItems:"center", color:by?t.text:t.dim}}>{by||"— เลือกในหน้าบันทึกก่อน —"}</div>
               </div>
             </div>
             <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)} placeholder={"RM_SR6_014\nRP_OF_001\n..."} style={t.summaryArea}/>
             <div style={{fontSize:12.5, color:t.dim, marginTop:8}}>{bulkText.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).length} รายการ</div>
             <div style={{display:"flex", gap:10, marginTop:14}}>
-              <button onClick={bulkImport} className="tap" style={{...t.submit, marginTop:0}}>📥 บันทึกกล้องดับทั้งหมด</button>
+              <button onClick={bulkImport} className="tap" style={{...t.submit, marginTop:0}}><Emo e="📥"/> บันทึกกล้องดับทั้งหมด</button>
               <button onClick={()=>setShowBulk(false)} className="tap" style={{...t.dashExport, flex:"none"}}>ปิด</button>
             </div>
           </div>
@@ -2483,22 +2485,22 @@ function App() {
       {showSummary && (<Modal>
         <div style={t.modalBg} onClick={()=>setShowSummary(false)}>
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
-            <div style={t.panelTitle}>📋 {summaryTitle} (แก้ไขได้)</div>
+            <div style={t.panelTitle}><Emo e="📋"/> {summaryTitle} (แก้ไขได้)</div>
             {summaryCopied
-              ? <div style={t.copiedBanner}>✅ คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย · แก้ข้อความแล้วกดคัดลอกอีกครั้งได้</div>
+              ? <div style={t.copiedBanner}><Emo e="✅"/> คัดลอกแล้ว — เปิดไลน์แล้ววาง (วาง/Paste) ได้เลย · แก้ข้อความแล้วกดคัดลอกอีกครั้งได้</div>
               : <div style={t.pwHint}>แก้ข้อความได้ก่อนคัดลอก</div>
             }
             <textarea id="sumArea" value={summaryText} onChange={e=>setSummaryText(e.target.value)} style={t.summaryArea} placeholder="ข้อความสรุป..."/>
             <div style={{display:"flex", gap:10, marginTop:14}}>
-              <button onClick={async()=>{ let ok=false; if(navigator.clipboard&&window.isSecureContext){try{await navigator.clipboard.writeText(summaryText);ok=true;}catch(e){}} if(!ok){const ta=document.querySelector("#sumArea"); if(ta){ta.focus();ta.select();} try{ok=document.execCommand("copy");}catch(e){}} setSummaryCopied(ok); setToast(ok?"📋 คัดลอกแล้ว — วางในไลน์ได้เลย":"เลือกข้อความแล้วคัดลอกเอง"); setTimeout(()=>setToast(""),2400);}} className="tap" style={{...t.submit, marginTop:0}}>📋 คัดลอก</button>
+              <button onClick={async()=>{ let ok=false; if(navigator.clipboard&&window.isSecureContext){try{await navigator.clipboard.writeText(summaryText);ok=true;}catch(e){}} if(!ok){const ta=document.querySelector("#sumArea"); if(ta){ta.focus();ta.select();} try{ok=document.execCommand("copy");}catch(e){}} setSummaryCopied(ok); setToast(ok?"📋 คัดลอกแล้ว — วางในไลน์ได้เลย":"เลือกข้อความแล้วคัดลอกเอง"); setTimeout(()=>setToast(""),2400);}} className="tap" style={{...t.submit, marginTop:0}}><Emo e="📋"/> คัดลอก</button>
               <button onClick={()=>setShowSummary(false)} className="tap" style={{...t.dashExport, flex:"none"}}>ปิด</button>
             </div>
           </div>
         </div></Modal>
       )}
-      <button onClick={()=>setDark(!dark)} className="tap rb-theme" style={t.themeToggle} title={dark?"โหมดสว่าง":"โหมดมืด"}>{dark?"☀️":"🌙"}</button>
+      <button onClick={()=>setDark(!dark)} className="tap rb-theme" style={t.themeToggle} title={dark?"โหมดสว่าง":"โหมดมืด"}><Emo e={dark?"☀️":"🌙"}/></button>
       {iosHelpBox}
-      {toast && <div style={t.toast} className="rb-toast">{toast}</div>}
+      {toast && <div style={t.toast} className="rb-toast"><EmoText text={toast}/></div>}
     </div>
   );
 }
@@ -2568,6 +2570,95 @@ function CuteEye({ open }) {
       <ellipse cx="5" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/><ellipse cx="23" cy="5.5" rx="2.4" ry="1.4" fill="#9FD0FF" opacity=".9"/>
     </svg>
   );
+}
+// ไอคอนเล็กชุดเดียวกับน้องกล้อง ใช้แทนอิโมจิบนหน้าจอ (ข้อความที่คัดลอกไปไลน์/Excel ยังเป็นอิโมจิเหมือนเดิม)
+const EMO_ICONS = {
+  "⬇": "<rect x=\"3.5\" y=\"2.5\" width=\"17\" height=\"19\" rx=\"3.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\"/><path d=\"M7 7.5h10M7 11h4\" stroke=\"#8ED3A8\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M14.5 10.5v7M11.5 14.8l3 3 3-3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+  "✅": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 12.3l3 3 6-6.3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔴": "<circle cx=\"12\" cy=\"12.5\" r=\"8.5\" fill=\"#FFE0E2\" stroke=\"#E5484D\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8.4 11.6q1.1 1 2.2 0M13.4 11.6q1.1 1 2.2 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\".9\" stroke-linecap=\"round\"/><path d=\"M11 15.2h2\" stroke=\"#33405C\" stroke-width=\".9\" stroke-linecap=\"round\"/><text x=\"17.5\" y=\"7.5\" font-size=\"5.5\" font-weight=\"700\" fill=\"#E5484D\" font-family=\"sans-serif\">z</text>",
+  "📺": "<path d=\"M9 3.5l3 3 3-3\" fill=\"none\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"3\" y=\"6.5\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 13.5l2-2 2 2.5 2-3 2 2.5 2.5-2\" fill=\"none\" stroke=\"#E0558A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🎥": "<rect x=\"3\" y=\"9\" width=\"12\" height=\"9\" rx=\"3\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M15 12l5-2.5v8L15 15z\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"9\" cy=\"13.5\" r=\"2\" fill=\"#fff\" stroke=\"#8B6FD6\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5 6.5a8 8 0 0 1 9-1.5\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M13.2 3.6l1.2 1.5-1.8.6\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔌": "<path d=\"M9 3v4M15 3v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 16v2.5q0 3 3 3h3\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "⚠": "<path d=\"M12 3.5q1 0 1.6 1l7.4 13q.9 1.9-1.3 2.5H4.3q-2.2-.6-1.3-2.5l7.4-13q.6-1 1.6-1z\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 9v4.5\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"16.8\" r=\"1.2\" fill=\"#D9981A\"/>",
+  "❓": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#EEF0F4\" stroke=\"#7A8494\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3q-1 .5-1 1.7\" fill=\"none\" stroke=\"#7A8494\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"16.8\" r=\"1.1\" fill=\"#7A8494\"/>",
+  "🔧": "<path d=\"M15 3.5a4.5 4.5 0 0 0-5 6L4.2 15.3a2.1 2.1 0 0 0 3 3l5.8-5.8a4.5 4.5 0 0 0 6-5l-2.7 2.7-2.6-.6-.6-2.6z\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🛠": "<path d=\"M15 3.5a4.5 4.5 0 0 0-5 6L4.2 15.3a2.1 2.1 0 0 0 3 3l5.8-5.8a4.5 4.5 0 0 0 6-5l-2.7 2.7-2.6-.6-.6-2.6z\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5 4l3.5 3.5M14 14l5.5 5.5\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔵": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\"/><circle cx=\"8\" cy=\"12\" r=\"1.4\" fill=\"#20A39E\"/><circle cx=\"12\" cy=\"12\" r=\"1.4\" fill=\"#20A39E\" opacity=\".75\"/><circle cx=\"16\" cy=\"12\" r=\"1.4\" fill=\"#20A39E\" opacity=\".5\"/>",
+  "👤": "<path d=\"M4 21q0-6.5 8-6.5t8 6.5z\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"8.5\" r=\"5\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"10.72\" cy=\"8.70\" r=\"0.56\" fill=\"#33405C\"/><circle cx=\"13.28\" cy=\"8.70\" r=\"0.56\" fill=\"#33405C\"/><ellipse cx=\"9.75\" cy=\"9.82\" rx=\"0.75\" ry=\"0.45\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"14.25\" cy=\"9.82\" rx=\"0.75\" ry=\"0.45\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.40 9.60 Q12.00 10.20 12.60 9.60\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.56\" stroke-linecap=\"round\"/>",
+  "👥": "<path d=\"M12 21q0-5.5 5.5-5.5T23 21z\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17.5\" cy=\"9.5\" r=\"3.8\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M1.5 21q0-6 7-6t7 6z\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"8.5\" cy=\"9\" r=\"4.5\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"7.39\" cy=\"9.20\" r=\"0.49\" fill=\"#33405C\"/><circle cx=\"9.61\" cy=\"9.20\" r=\"0.49\" fill=\"#33405C\"/><ellipse cx=\"6.55\" cy=\"10.17\" rx=\"0.65\" ry=\"0.39\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"10.45\" cy=\"10.17\" rx=\"0.65\" ry=\"0.39\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M7.98 9.98 Q8.50 10.50 9.02 9.98\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.49\" stroke-linecap=\"round\"/>",
+  "🛡": "<path d=\"M12 2.8l7.5 3v5.6q0 6.3-7.5 9.8-7.5-3.5-7.5-9.8V5.8z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8.6 12l2.4 2.4 4.3-4.6\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "👁": "<path d=\"M2.5 12q4-6.5 9.5-6.5t9.5 6.5q-4 6.5-9.5 6.5T2.5 12z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"12\" r=\"3.2\" fill=\"#33405C\"/><circle cx=\"13.1\" cy=\"10.9\" r=\"1\" fill=\"#fff\"/>",
+  "🙈": "<path d=\"M3 10q9 7.5 18 0\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6 13.2l-1.5 2.3M12 15v2.6M18 13.2l1.5 2.3\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📲": "<rect x=\"6\" y=\"2.5\" width=\"12\" height=\"19\" rx=\"3\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 7v7M9 11.5l3 3 3-3\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.9\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M10.5 18.5h3\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "👍": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 12.3l3 3 6-6.3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📝": "<rect x=\"3.5\" y=\"3\" width=\"13\" height=\"17.5\" rx=\"3\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 8h7M6.5 11.5h5\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M19.6 9.4l1.4 1.4-7.6 7.6-2.4.9.9-2.3z\" fill=\"#FFD66B\" stroke=\"#D9981A\" stroke-width=\"1.3\" stroke-linejoin=\"round\"/>",
+  "📋": "<rect x=\"4\" y=\"4.5\" width=\"16\" height=\"17\" rx=\"3.5\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"8.5\" y=\"2.5\" width=\"7\" height=\"4\" rx=\"1.6\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 11h8M8 14.5h8M8 18h5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📄": "<path d=\"M6 2.8h8l5 5V19a2.2 2.2 0 0 1-2.2 2.2H6.2A2.2 2.2 0 0 1 4 19V5a2.2 2.2 0 0 1 2-2.2z\" fill=\"#EEF0F4\" stroke=\"#7A8494\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M14 2.8V8h5M7.5 12.5h8M7.5 16h6\" fill=\"none\" stroke=\"#7A8494\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📊": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 16.5v-3M12 16.5V8M16 16.5v-5.5\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"2.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📈": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7 16l3.5-4 3 2.5L17.5 9\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M14.5 9h3v3\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔒": "<path d=\"M8 11V8a4 4 0 0 1 8 0v3\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"4.5\" y=\"10.5\" width=\"15\" height=\"11\" rx=\"3.5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"15.5\" r=\"1.5\" fill=\"#D9981A\"/><path d=\"M12 16v2\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔐": "<path d=\"M8 11V8a4 4 0 0 1 8 0v3\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"4.5\" y=\"10.5\" width=\"15\" height=\"11\" rx=\"3.5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"15.5\" r=\"1.5\" fill=\"#D9981A\"/><path d=\"M12 16v2\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔑": "<circle cx=\"8\" cy=\"9\" r=\"5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"8\" cy=\"9\" r=\"1.6\" fill=\"#fff\" stroke=\"#D9981A\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M11.5 12.5l8 8M16.5 17.5l2-2M18.8 19.8l1.6-1.6\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "💬": "<path d=\"M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-8l-5 3.5V18H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"8\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/><circle cx=\"12\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/><circle cx=\"16\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/>",
+  "📹": "<path d=\"M5 16v5M3 21h4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5 16l3-2.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"6\" y=\"5\" width=\"15\" height=\"9\" rx=\"4.5\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"9.5\" r=\"2.4\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"9.5\" r=\"1.1\" fill=\"#33405C\"/><circle cx=\"10\" cy=\"9\" r=\".7\" fill=\"#33405C\"/><circle cx=\"12.6\" cy=\"9\" r=\".7\" fill=\"#33405C\"/>",
+  "🚪": "<rect x=\"5\" y=\"2.5\" width=\"14\" height=\"19\" rx=\"2.5\" fill=\"#F8E4CC\" stroke=\"#B9773A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"8\" y=\"5.5\" width=\"8\" height=\"6\" rx=\"1.5\" fill=\"none\" stroke=\"#B9773A\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"15.3\" cy=\"14.5\" r=\"1.1\" fill=\"#B9773A\"/>",
+  "📅": "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16.5\" rx=\"4\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9.5h18\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 2.5v4M16 2.5v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"10.64\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><circle cx=\"13.36\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><ellipse cx=\"9.60\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"14.40\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.36 14.76 Q12.00 15.40 12.64 14.76\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.60\" stroke-linecap=\"round\"/>",
+  "🗓": "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16.5\" rx=\"4\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9.5h18\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 2.5v4M16 2.5v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"10.64\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><circle cx=\"13.36\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><ellipse cx=\"9.60\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"14.40\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.36 14.76 Q12.00 15.40 12.64 14.76\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.60\" stroke-linecap=\"round\"/>",
+  "🕐": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 7v5l3 2\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🕒": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 7v5l3 2\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "⏱": "<circle cx=\"12\" cy=\"13.5\" r=\"8\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M10 2.5h4M12 2.5v3M12 9.5v4l2.5 1.5M18.5 6.5l1.3-1.3\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"1.9\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "⏰": "<path d=\"M4 6.5l3-3M20 6.5l-3-3\" fill=\"none\" stroke=\"#E8892E\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"13\" r=\"8\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 9v4.2l2.6 1.6M7 21l1.3-1.6M17 21l-1.3-1.6\" fill=\"none\" stroke=\"#E8892E\" stroke-width=\"1.9\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🔍": "<circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M15.5 15.5l5 5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 8.5a3 3 0 0 1 2.5-1.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "👆": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 16.5v-9M8.5 11l3.5-3.5 3.5 3.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "👈": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M16.5 12h-9M11 8.5L7.5 12l3.5 3.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📍": "<path d=\"M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"10\" r=\"2.6\" fill=\"#fff\" stroke=\"#E0558A\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📌": "<path d=\"M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"10\" r=\"2.6\" fill=\"#fff\" stroke=\"#E0558A\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📷": "<path d=\"M8.5 6l1.5-2.5h4L15.5 6\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"2.5\" y=\"6\" width=\"19\" height=\"14\" rx=\"4\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"13\" r=\"3.6\" fill=\"#fff\" stroke=\"#E0558A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"18\" cy=\"9\" r=\".9\" fill=\"#E0558A\"/>",
+  "📸": "<path d=\"M8.5 6l1.5-2.5h4L15.5 6\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"2.5\" y=\"6\" width=\"19\" height=\"14\" rx=\"4\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"13\" r=\"3.6\" fill=\"#fff\" stroke=\"#E0558A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"18\" cy=\"9\" r=\".9\" fill=\"#E0558A\"/>",
+  "👷": "<circle cx=\"12\" cy=\"13\" r=\"6.5\" fill=\"#FFE3D3\" stroke=\"#E8892E\" stroke-width=\"1.6\"/><path d=\"M4.5 11.5q0-7 7.5-7t7.5 7z\" fill=\"#FFD66B\" stroke=\"#D9981A\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M3.5 11.5h17\" stroke=\"#D9981A\" stroke-width=\"1.8\" stroke-linecap=\"round\"/><path d=\"M12 4.5v3\" stroke=\"#D9981A\" stroke-width=\"1.4\" stroke-linecap=\"round\"/><circle cx=\"10.89\" cy=\"14.30\" r=\"0.49\" fill=\"#33405C\"/><circle cx=\"13.11\" cy=\"14.30\" r=\"0.49\" fill=\"#33405C\"/><ellipse cx=\"10.05\" cy=\"15.28\" rx=\"0.65\" ry=\"0.39\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"13.95\" cy=\"15.28\" rx=\"0.65\" ry=\"0.39\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.48 15.08 Q12.00 15.60 12.52 15.08\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.49\" stroke-linecap=\"round\"/>",
+  "💾": "<path d=\"M5 3h11l4 4v11a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"7.5\" y=\"3\" width=\"7.5\" height=\"5\" rx=\"1\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"7\" y=\"13\" width=\"10\" height=\"8\" rx=\"1.5\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📥": "<path d=\"M3 14h5l1.5 2.5h5L16 14h5v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 3v9M8.5 8.5L12 12l3.5-3.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📭": "<path d=\"M3 13l3-8h12l3 8v5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z\" fill=\"#EEF0F4\" stroke=\"#7A8494\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 13h5l1.5 2.5h5L16 13h5\" fill=\"none\" stroke=\"#7A8494\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "➕": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 7.5v9M7.5 12h9\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🌐": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 12h18M12 3q4 4.5 0 18M12 3q-4 4.5 0 18\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "💡": "<path d=\"M12 2.8a6.5 6.5 0 0 0-4 11.6V16.5h8v-2.1a6.5 6.5 0 0 0-4-11.6z\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M9 19.5h6M10.3 21.8h3.4\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "♻": "<path d=\"M19.5 12a7.5 7.5 0 0 1-13 5M4.5 12a7.5 7.5 0 0 1 13-5\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M17.5 3.5V7H14M6.5 20.5V17H10\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🧹": "<path d=\"M17 3l-5 7\" fill=\"none\" stroke=\"#B9773A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M9 9.5l5 3.5-2.5 8.5q-6-1.5-8.5-5z\" fill=\"#FFD66B\" stroke=\"#D9981A\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M7 15l3 2\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M19 13l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z\" fill=\"#8B6FD6\"/>",
+  "✏": "<path d=\"M16 3.5l4.5 4.5L9 19.5l-5.5 1 1-5.5z\" fill=\"#FFD66B\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M13.5 6l4.5 4.5\" stroke=\"#D9981A\" stroke-width=\"1.5\"/><path d=\"M4.5 15l4.5 4.5\" stroke=\"#D9981A\" stroke-width=\"1.3\"/>",
+  "🗑": "<path d=\"M3.5 6.5h17M9 6.5V4.5q0-1.5 1.5-1.5h3Q15 3 15 4.5v2\" fill=\"none\" stroke=\"#E5484D\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5.5 6.5h13l-1 12.5a2.5 2.5 0 0 1-2.5 2.2H9a2.5 2.5 0 0 1-2.5-2.2z\" fill=\"#FFE0E2\" stroke=\"#E5484D\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M10 10.5v6.5M14 10.5v6.5\" fill=\"none\" stroke=\"#E5484D\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "☀": "<circle cx=\"12\" cy=\"12\" r=\"4.5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.9\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🌙": "<path d=\"M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"5\" r=\".9\" fill=\"#D9981A\"/><circle cx=\"20\" cy=\"8.5\" r=\".6\" fill=\"#D9981A\"/>",
+  "🏢": "<rect x=\"5\" y=\"3\" width=\"14\" height=\"18.5\" rx=\"2.5\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8.5 7h2M13.5 7h2M8.5 10.5h2M13.5 10.5h2M8.5 14h2M13.5 14h2\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M10.5 21.5v-3.5h3v3.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "📦": "<path d=\"M12 2.8l8.5 4.4v9.6L12 21.2l-8.5-4.4V7.2z\" fill=\"#F8E4CC\" stroke=\"#B9773A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3.5 7.2L12 11.6l8.5-4.4M12 11.6v9.6\" fill=\"none\" stroke=\"#B9773A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🧱": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2.5\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9.7h18M3 14.3h18M9 5v4.7M15 9.7v4.6M9 14.3V19M15 5v0\" fill=\"none\" stroke=\"#E8892E\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🏬": "<rect x=\"4\" y=\"9\" width=\"16\" height=\"12\" rx=\"2\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9l2-5.5h14L21 9q0 2-2.25 2T16.5 9q0 2-2.25 2T12 9q0 2-2.25 2T7.5 9q0 2-2.25 2T3 9z\" fill=\"#fff\" stroke=\"#E0558A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"10\" y=\"15\" width=\"4\" height=\"6\" rx=\"1\" fill=\"none\" stroke=\"#E0558A\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🖥": "<rect x=\"2.5\" y=\"3.5\" width=\"19\" height=\"13\" rx=\"3\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M9 21h6M12 16.5V21\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 8l2.5 2-2.5 2M11 12.5h4\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🧪": "<path d=\"M9.5 3h5M10.5 3v6l-5.3 9.3A2 2 0 0 0 7 21.3h10a2 2 0 0 0 1.8-3L13.5 9V3\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 15h9\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"11\" cy=\"17.5\" r=\".9\" fill=\"#3FAE6A\"/><circle cx=\"14\" cy=\"18.5\" r=\".7\" fill=\"#3FAE6A\"/>",
+  "⚡": "<path d=\"M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6z\" fill=\"#FFE98A\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/>",
+  "🌲": "<path d=\"M12 2.5l5 6h-2.5l4 5.5h-3l3.5 4.5h-14L8.5 14h-3l4-5.5H7z\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 18.5v3\" fill=\"none\" stroke=\"#B9773A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "⚙": "<path d=\"M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1\" fill=\"none\" stroke=\"#20A39E\" stroke-width=\"2.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"12\" r=\"6\" fill=\"#D5F5F2\" stroke=\"#20A39E\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"12\" r=\"2.2\" fill=\"#fff\" stroke=\"#20A39E\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🏭": "<path d=\"M3 21V11l5 3V11l5 3V11l5 3V4h3v17z\" fill=\"#E2E4FB\" stroke=\"#5B63D6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 17.5h2M11 17.5h2M15.5 17.5h2\" fill=\"none\" stroke=\"#5B63D6\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>"
+};
+function Emo({ e }) {
+  const k = String(e||"").replace(/️/g,"");
+  const svg = EMO_ICONS[k];
+  if (!svg) return <>{e}</>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true" data-emo={k} style={{width:"1.2em", height:"1.2em", verticalAlign:"-0.25em", flex:"none", display:"inline-block"}} dangerouslySetInnerHTML={{__html: svg}}/>;
+}
+// แปลงอิโมจิที่มีไอคอนในข้อความเป็นไอคอน (ใช้กับข้อความแจ้งเตือน)
+function EmoText({ text }) {
+  const s = String(text ?? "");
+  const re = /([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{23F0}-\u{23FA}\u{2B07}])️?/gu;
+  const out = []; let last = 0, m, i = 0;
+  while ((m = re.exec(s))) {
+    if (!EMO_ICONS[m[1]]) continue;
+    if (m.index > last) out.push(s.slice(last, m.index));
+    out.push(<Emo key={"e"+(i++)} e={m[1]}/>);
+    last = m.index + m[0].length;
+  }
+  if (!out.length) return <>{s}</>;
+  if (last < s.length) out.push(s.slice(last));
+  return <>{out}</>;
 }
 // ไอคอนหัวข้อแต่ละหน้า: วาดเองสไตล์เดียวกับน้องกล้อง (พาสเทล หน้ายิ้ม แก้มชมพู) เป็นข้อความ SVG คงที่ ไม่มีข้อมูลจากผู้ใช้
 const PAGE_ICONS = {
