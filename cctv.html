@@ -73,29 +73,50 @@
     .rb-wrap{padding:18px 16px 50px !important;}
     .rb-tableWrap{overflow-x:auto !important;}
 
-    /* แถบบน: บาง ๆ มีแค่โลโก้ + ปุ่มออกจากระบบ (ปุ่มโหมดมืดลอยอยู่มุมขวา) */
-    .rb-side{flex-wrap:nowrap !important; padding:calc(10px + env(safe-area-inset-top)) 16px 10px !important; gap:8px !important; border-right:none !important; border-bottom:1px solid #E3D9BE !important; box-shadow:0 2px 12px rgba(90,75,30,.06) !important;}
-    .rb-side > div:first-child{margin:0 !important; padding:0 !important;}
-    .rb-side > div:first-child img{max-width:150px !important;}
-    .rb-side > div[style*="flex: 1"]{flex:1 !important;}
-    .rb-logout{margin:0 56px 0 auto !important; padding:9px 12px !important; border-radius:12px !important; font-size:16px !important; line-height:1 !important;}
-    .rb-logoutTx{display:none;}
-    .rb-theme{position:absolute !important; top:calc(9px + env(safe-area-inset-top)) !important; right:14px !important; width:40px !important; height:40px !important;}
-
-    /* แถบล่างแบบแอปจริง: ไอคอนบน ชื่อล่าง ติดขอบล่างจอตลอด */
-    .rb-nav{position:fixed !important; left:0; right:0; bottom:0; z-index:60; flex:none !important; flex-direction:row !important; justify-content:space-around !important; gap:0 !important; margin:0 !important; overflow:visible !important;
-      background:rgba(255,255,255,.96); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid #E6DDC4; box-shadow:0 -6px 20px rgba(90,75,30,.08);
-      padding:6px 4px calc(6px + env(safe-area-inset-bottom)) !important;}
-    .rb-app[data-dark="1"] .rb-nav{background:rgba(15,21,28,.96); border-top-color:rgba(255,255,255,.08);}
+    /* แถบบน: กระจกใส ติดด้านบนตอนเลื่อน มีน้องกล้อง + ชื่อระบบ */
+    .rb-side{position:sticky !important; top:0; z-index:55; flex-wrap:nowrap !important; gap:8px !important;
+      padding:calc(8px + env(safe-area-inset-top)) 14px 8px !important; border-right:none !important;
+      background:transparent !important; isolation:isolate;
+      border-bottom:1px solid rgba(255,255,255,.8) !important; box-shadow:0 4px 18px rgba(28,80,140,.08) !important;}
+    /* เบลอไว้ที่ชั้นพื้นหลังแยก: ถ้าใส่ blur ที่ตัวแถบบนตรง ๆ แถบล่าง (ซึ่งอยู่ข้างใน) จะถูกดึงขึ้นไปติดด้านบนแทน */
+    .rb-side::before{content:""; position:absolute; inset:0; z-index:-1; background:rgba(255,255,255,.72); -webkit-backdrop-filter:blur(16px) saturate(1.5); backdrop-filter:blur(16px) saturate(1.5);}
+    .rb-app[data-dark="1"] .rb-side::before{background:rgba(15,21,28,.7);}
     .rb-app[data-dark="1"] .rb-side{border-bottom-color:rgba(255,255,255,.08) !important;}
-    .rb-nav > button{flex:1 1 0 !important; min-width:0 !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:3px !important;
-      padding:4px 2px !important; margin:0 !important; border:none !important; background:transparent !important; box-shadow:none !important; position:relative !important; font-size:11px !important; font-weight:600 !important;}
-    .rb-nav .rb-navIc{font-size:21px !important; width:52px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; transition:background .15s;}
-    .rb-nav .rb-navOn .rb-navIc{background:rgba(11,111,196,.13);}
+    .rb-side .rb-brand{margin:0 !important; gap:9px !important; padding:0 !important; min-width:0;}
+    .rb-side .rb-brand > span:first-child{width:42px !important; height:42px !important;}
+    .rb-side .rb-brand > span:first-child svg{width:38px !important; height:38px !important;}
+    .rb-side .rb-brand > span:first-child i{font-size:11px !important; right:-4px !important; top:-4px !important;}
+    .rb-side .rb-brand > div > div:first-child{font-size:18px !important;}
+    .rb-side .rb-brand > div > div:nth-child(2){font-size:9.5px !important; letter-spacing:1.4px !important; margin-top:2px !important;}
+    .rb-side .rb-brand > div > div:nth-child(3){display:none !important;}
+    .rb-side > div[style*="flex: 1"]{flex:1 !important;}
+    .rb-logout{margin:0 52px 0 auto !important; padding:9px 12px !important; border-radius:999px !important; font-size:16px !important; line-height:1 !important;
+      background:rgba(255,255,255,.7) !important; border:1px solid rgba(239,68,68,.25) !important;}
+    .rb-logoutTx{display:none;}
+    .rb-theme{position:fixed !important; z-index:61 !important; top:calc(9px + env(safe-area-inset-top)) !important; right:14px !important; width:40px !important; height:40px !important; border-radius:999px !important;}
+
+    /* แถบล่าง: การ์ดใสลอยแบบ LINE โค้งมน เห็นพื้นหลังจาง ๆ */
+    .rb-nav{position:fixed !important; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:60; flex:none !important; flex-direction:row !important;
+      justify-content:space-around !important; gap:2px !important; margin:0 !important; overflow:visible !important; padding:6px !important; border-radius:30px;
+      background:rgba(255,255,255,.58); -webkit-backdrop-filter:blur(20px) saturate(1.7); backdrop-filter:blur(20px) saturate(1.7);
+      border:1px solid rgba(255,255,255,.75); box-shadow:0 12px 32px rgba(28,80,140,.18), inset 0 1px 0 rgba(255,255,255,.9);}
+    .rb-app[data-dark="1"] .rb-nav{background:rgba(22,30,42,.62); border-color:rgba(255,255,255,.1); box-shadow:0 12px 32px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);}
+    .rb-nav > button{flex:1 1 0 !important; min-width:0 !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:2px !important;
+      padding:7px 2px 6px !important; margin:0 !important; border:none !important; border-radius:24px !important; background:transparent !important; box-shadow:none !important;
+      position:relative !important; font-size:11px !important; font-weight:600 !important;}
+    .rb-nav > button.rb-navOn{background:rgba(255,255,255,.85) !important; box-shadow:0 3px 12px rgba(28,80,140,.14) !important;}
+    .rb-app[data-dark="1"] .rb-nav > button.rb-navOn{background:rgba(255,255,255,.12) !important;}
+    .rb-nav .rb-navIc{font-size:22px !important; height:28px; display:flex; align-items:center; justify-content:center;}
     .rb-nav .rb-navLb{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-    .rb-nav .rb-navBadge{position:absolute !important; top:0 !important; right:auto !important; left:calc(50% + 9px) !important; margin:0 !important; min-width:18px !important; height:18px !important; font-size:10px !important; padding:0 5px !important; border:2px solid #fff;}
-    .rb-wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom)) !important;}
-    .rb-toast{bottom:calc(88px + env(safe-area-inset-bottom)) !important; max-width:calc(100vw - 32px); white-space:normal !important; text-align:center;}
+    .rb-nav .rb-navBadge{position:absolute !important; top:1px !important; right:auto !important; left:calc(50% + 7px) !important; margin:0 !important; min-width:18px !important; height:18px !important;
+      font-size:10px !important; padding:0 5px !important; border:2px solid #fff;}
+    .rb-wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom)) !important;}
+    .rb-toast{bottom:calc(100px + env(safe-area-inset-bottom)) !important; max-width:calc(100vw - 32px); white-space:normal !important; text-align:center;}
+
+    /* iPhone บังคับช่องวันที่/เวลาให้กว้างเกินที่มี จนซ้อนกัน: ให้ยืดหดตามกล่อง และวางคนละแถว */
+    .rb-dtRow > div{flex:1 1 100% !important;}
+    input[type="date"], input[type="time"]{min-width:0 !important; width:100%; -webkit-appearance:none; appearance:none; display:block;}
+    input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value{text-align:left;}
 
     /* ปุ่มสถานะ: 3 ช่องต่อแถว กะทัดรัด (เดิมโดนกฎ 1 คอลัมน์ ทำให้เรียงยาวลงมา 6 ปุ่ม) */
     .rb-wrap .rb-stGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important;}
@@ -1412,8 +1433,8 @@ function App() {
     <div style={t.app} className="rb-app" data-dark={dark?"1":"0"}>
       {/* ===== SIDEBAR ===== */}
       <aside style={t.side} className="rb-side">
-        <div style={t.sideLogo}><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
-        <div style={t.brandCard} className="rb-hideM">
+        <div style={t.sideLogo} className="rb-hideM"><img src={LOGO} alt="RAYONGBOARD" style={t.logoImg}/></div>
+        <div style={t.brandCard} className="rb-brand">
           <span style={t.brandBlob}><Mascot size={54} mount="#D6EAFF" mountLine="#5B9BE0"/><i style={t.brandSpark}>✨</i></span>
           <div style={{minWidth:0}}>
             <div style={t.sideTitle}>CCTV</div>
@@ -1471,7 +1492,7 @@ function App() {
                       <span style={{fontSize:20}}>{stOf(s).emoji}</span>{s}</button>;
                   })}
                 </div>
-                <div style={{display:"flex", gap:12, marginTop:2, flexWrap:"wrap"}}>{/* จอแคบ: เวลาตกลงไปอยู่ใต้วันที่ */}
+                <div style={{display:"flex", gap:12, marginTop:2, flexWrap:"wrap"}} className="rb-dtRow">{/* จอแคบ: เวลาตกลงไปอยู่ใต้วันที่ */}
                   <div style={{flex:1, minWidth:150}}><div style={t.label}>📅 วันที่</div><input type="date" value={dateVal} onChange={e=>setDateVal(e.target.value)} style={t.input}/></div>
                   <div style={{flex:1, minWidth:150}}>
                     <div style={t.label}>🕐 เวลา <span style={{color:t.dim, fontWeight:500}}>(เว้นว่างได้)</span></div>
