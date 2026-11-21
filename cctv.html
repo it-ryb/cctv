@@ -2,6 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="googlebot" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
@@ -2116,14 +2118,9 @@ function App() {
                           <div style={t.accName}>{a.name}</div>
                           <div style={t.accMeta}>@{u}<span onClick={()=>askPrompt(`แผนก/ตำแหน่งของ ${a.name}`, a.dept||"", (d)=>setAccounts({...accounts, [u]:{...a, dept:d.trim()}}))} className="tap" style={t.deptBadge} title="แตะเพื่อแก้แผนก">{a.dept||"+ แผนก"}</span></div>
                         </div>
-                        {(()=>{ const rr = ROLES.find(r=>r.key===a.role) || ROLES[0]; return (
-                        <span style={{...(a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:(a.role==="viewer"?t.roleViewer:t.roleStaff))), ...t.rolePill, ...(u==="admin"?{opacity:.6}:{})}}>
-                          <Emo e={rr.icon}/><span>{rr.name}</span>{u!=="admin" && <span style={{opacity:.55, fontSize:10}}>▾</span>}
-                          <select value={a.role} disabled={u==="admin"} onChange={e=>setRole(u, e.target.value)} style={t.roleSelHidden} aria-label="สิทธิ์"
-                                  title={u==="admin" ? "บัญชีผู้ดูแลหลัก เปลี่ยนสิทธิ์ไม่ได้" : "เลือกสิทธิ์"}>
-                            {ROLES.map(r=><option key={r.key} value={r.key}>{r.name}</option>)}
-                          </select>
-                        </span>); })()}
+                        <RolePicker t={t} value={a.role} disabled={u==="admin"} onChange={(r)=>setRole(u, r)}
+                          pillStyle={{...(a.role==="admin"?t.roleAdmin:(a.role==="vendor"?t.roleVendor:(a.role==="viewer"?t.roleViewer:t.roleStaff))), ...t.rolePill, ...(u==="admin"?{opacity:.6, cursor:"default"}:{})}}
+                          title={u==="admin" ? "บัญชีผู้ดูแลหลัก เปลี่ยนสิทธิ์ไม่ได้" : "เปลี่ยนสิทธิ์"}/>
                         <button onClick={()=>setPwOpen({...pwOpen, [u]:!pwOpen[u]})} className="tap" style={pwOpen[u]?t.pwKeyOn:t.pwKey} title="เปลี่ยนรหัสผ่าน"><Emo e="🔑"/></button>
                         <button onClick={()=>delAccount(u)} className="tap" style={{...t.staffDel, opacity:u==="admin"?.35:1}}><Emo e="🗑"/></button>
                       </div>
@@ -2521,6 +2518,47 @@ function Name({ text }) {
   return <>{parts.map((w,i)=><React.Fragment key={i}>{i>0?" ":""}<span style={{whiteSpace:"nowrap"}}>{w}</span></React.Fragment>)}</>;
 }
 // เลือกแผนกจากรายการ (ไม่ใช่ช่องพิมพ์ที่กรองตามคำที่ค้างอยู่ ซึ่งทำให้เห็นแค่ตัวเลือกเดียว)
+// เมนูเลือกสิทธิ์แบบทำเอง (เมนูของเบราว์เซอร์ใส่ไอคอน/คำอธิบายไม่ได้ และหน้าตาไม่เข้ากับเว็บ)
+function RolePicker({ t, value, disabled, onChange, pillStyle, title }) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
+  const ref = React.useRef(null);
+  // วางเมนูให้อยู่ในจอเสมอ: ชิดขวาของป้ายก่อน ถ้าล้นก็เลื่อนเข้ามา
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect(), vw = window.innerWidth || 1024;
+      const w = Math.min(270, vw - 24);
+      const abs = Math.max(12, Math.min(r.right - w, vw - 12 - w));
+      setMenuPos({ left: abs - r.left, width: w });
+    }
+    setOpen(o => !o);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close); document.addEventListener("touchstart", close); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const cur = ROLES.find(r => r.key === value) || ROLES[0];
+  return (
+    <span ref={ref} style={{position:"relative", flexShrink:0}}>
+      <button type="button" data-role-pill="1" disabled={disabled} onClick={toggle} className="tap" style={{...pillStyle, fontFamily:"inherit"}} title={title} aria-haspopup="listbox" aria-expanded={open}>
+        <Emo e={cur.icon}/><span>{cur.name}</span>{!disabled && <span style={{opacity:.55, fontSize:10, transform:open?"rotate(180deg)":"none", transition:"transform .15s"}}>▾</span>}
+      </button>
+      {open && <div role="listbox" style={menuPos ? {...t.roleMenu, right:"auto", left:menuPos.left, width:menuPos.width} : t.roleMenu}>
+        <div style={t.roleMenuHead}>เลือกสิทธิ์</div>
+        {ROLES.map(r => { const on = r.key === value; return (
+          <button key={r.key} type="button" role="option" aria-selected={on} data-role={r.key} className="tap"
+                  onClick={() => { setOpen(false); if (!on) onChange(r.key); }} style={on ? t.roleOptOn : t.roleOpt}>
+            <span style={t.roleOptIc}><Emo e={r.icon}/></span>
+            <span style={{flex:1, minWidth:0}}><span style={t.roleOptName}>{r.name}</span><span style={t.roleOptDesc}>{r.desc}</span></span>
+            {on && <span style={t.roleOptCheck}>✓</span>}
+          </button>); })}
+      </div>}
+    </span>
+  );
+}
 function DeptPicker({ value, onChange, style }) {
   const [other, setOther] = React.useState(!!value && !DEPARTMENTS.includes(value));
   return (
@@ -2580,7 +2618,7 @@ const EMO_ICONS = {
   "✅": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 12.3l3 3 6-6.3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
   "🔴": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"3.5\" rx=\"1.75\" fill=\"#fff\" stroke=\"#E5484D\" stroke-width=\"1.6\"/><path d=\"M4.5 7.5h15v3a7.5 7.5 0 0 1-15 0z\" fill=\"#FFE0E2\" stroke=\"#E5484D\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M8.6 12.2q1 .9 2 0M13.4 12.2q1 .9 2 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.9\" stroke-linecap=\"round\"/><path d=\"M11.2 15.2q.8.5 1.6 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.8\" stroke-linecap=\"round\"/><ellipse cx=\"7.6\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><ellipse cx=\"16.4\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><text x=\"18.5\" y=\"21.5\" font-size=\"5.5\" font-weight=\"700\" fill=\"#E5484D\" font-family=\"sans-serif\">z</text>",
   "📺": "<path d=\"M9 3.5l3 3 3-3\" fill=\"none\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"3\" y=\"6.5\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#FFE3EC\" stroke=\"#E0558A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 13.5l2-2 2 2.5 2-3 2 2.5 2.5-2\" fill=\"none\" stroke=\"#E0558A\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
-  "🎥": "<rect x=\"3\" y=\"9\" width=\"12\" height=\"9\" rx=\"3\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M15 12l5-2.5v8L15 15z\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"9\" cy=\"13.5\" r=\"2\" fill=\"#fff\" stroke=\"#8B6FD6\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5 6.5a8 8 0 0 1 9-1.5\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M13.2 3.6l1.2 1.5-1.8.6\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
+  "🎥": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"3.5\" rx=\"1.75\" fill=\"#fff\" stroke=\"#8B6FD6\" stroke-width=\"1.6\"/><path d=\"M4.5 7.5h15v3a7.5 7.5 0 0 1-15 0z\" fill=\"#ECE5FC\" stroke=\"#8B6FD6\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><circle cx=\"10.6\" cy=\"11.8\" r=\"1.05\" fill=\"#33405C\"/><circle cx=\"15.2\" cy=\"11.8\" r=\"1.05\" fill=\"#33405C\"/><circle cx=\"10.95\" cy=\"11.4\" r=\".35\" fill=\"#fff\"/><circle cx=\"15.55\" cy=\"11.4\" r=\".35\" fill=\"#fff\"/><path d=\"M12.2 14.6q.8.7 1.6 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\".8\" stroke-linecap=\"round\"/><ellipse cx=\"7.6\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><ellipse cx=\"16.4\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><path d=\"M17.5 20.3a7 7 0 0 0 3.6-4.3\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M19.4 15.5l1.9.3.4 1.9\" fill=\"none\" stroke=\"#8B6FD6\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
   "🔌": "<path d=\"M9 3v4M15 3v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 16v2.5q0 3 3 3h3\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
   "⚠": "<path d=\"M12 3.5q1 0 1.6 1l7.4 13q.9 1.9-1.3 2.5H4.3q-2.2-.6-1.3-2.5l7.4-13q.6-1 1.6-1z\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M12 9v4.5\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"16.8\" r=\"1.2\" fill=\"#D9981A\"/>",
   "❓": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#EEF0F4\" stroke=\"#7A8494\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3q-1 .5-1 1.7\" fill=\"none\" stroke=\"#7A8494\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"16.8\" r=\"1.1\" fill=\"#7A8494\"/>",
@@ -2603,7 +2641,7 @@ const EMO_ICONS = {
   "🔐": "<path d=\"M8 11V8a4 4 0 0 1 8 0v3\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"4.5\" y=\"10.5\" width=\"15\" height=\"11\" rx=\"3.5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"15.5\" r=\"1.5\" fill=\"#D9981A\"/><path d=\"M12 16v2\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"1.6\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
   "🔑": "<circle cx=\"8\" cy=\"9\" r=\"5\" fill=\"#FFF1C2\" stroke=\"#D9981A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"8\" cy=\"9\" r=\"1.6\" fill=\"#fff\" stroke=\"#D9981A\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M11.5 12.5l8 8M16.5 17.5l2-2M18.8 19.8l1.6-1.6\" fill=\"none\" stroke=\"#D9981A\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
   "💬": "<path d=\"M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-8l-5 3.5V18H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"8\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/><circle cx=\"12\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/><circle cx=\"16\" cy=\"11\" r=\"1.2\" fill=\"#4C8FE0\"/>",
-  "📹": "<path d=\"M5 16v5M3 21h4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M5 16l3-2.5\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"1.8\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"6\" y=\"5\" width=\"15\" height=\"9\" rx=\"4.5\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"9.5\" r=\"2.4\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"17\" cy=\"9.5\" r=\"1.1\" fill=\"#33405C\"/><circle cx=\"10\" cy=\"9\" r=\".7\" fill=\"#33405C\"/><circle cx=\"12.6\" cy=\"9\" r=\".7\" fill=\"#33405C\"/>",
+  "📹": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"3.5\" rx=\"1.75\" fill=\"#fff\" stroke=\"#4C8FE0\" stroke-width=\"1.6\"/><path d=\"M4.5 7.5h15v3a7.5 7.5 0 0 1-15 0z\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><circle cx=\"9.6\" cy=\"11.8\" r=\"1.05\" fill=\"#33405C\"/><circle cx=\"14.4\" cy=\"11.8\" r=\"1.05\" fill=\"#33405C\"/><circle cx=\"9.95\" cy=\"11.4\" r=\".35\" fill=\"#fff\"/><circle cx=\"14.75\" cy=\"11.4\" r=\".35\" fill=\"#fff\"/><path d=\"M11.2 14.6q.8.7 1.6 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\".8\" stroke-linecap=\"round\"/><ellipse cx=\"7.6\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><ellipse cx=\"16.4\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/>",
   "🚪": "<rect x=\"5\" y=\"2.5\" width=\"14\" height=\"19\" rx=\"2.5\" fill=\"#F8E4CC\" stroke=\"#B9773A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><rect x=\"8\" y=\"5.5\" width=\"8\" height=\"6\" rx=\"1.5\" fill=\"none\" stroke=\"#B9773A\" stroke-width=\"1.3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"15.3\" cy=\"14.5\" r=\"1.1\" fill=\"#B9773A\"/>",
   "📅": "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16.5\" rx=\"4\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9.5h18\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 2.5v4M16 2.5v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"10.64\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><circle cx=\"13.36\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><ellipse cx=\"9.60\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"14.40\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.36 14.76 Q12.00 15.40 12.64 14.76\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.60\" stroke-linecap=\"round\"/>",
   "🗓": "<rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16.5\" rx=\"4\" fill=\"#DCEBFF\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M3 9.5h18\" stroke=\"#4C8FE0\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M8 2.5v4M16 2.5v4\" fill=\"none\" stroke=\"#4C8FE0\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><circle cx=\"10.64\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><circle cx=\"13.36\" cy=\"13.80\" r=\"0.60\" fill=\"#33405C\"/><ellipse cx=\"9.60\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><ellipse cx=\"14.40\" cy=\"15.00\" rx=\"0.80\" ry=\"0.48\" fill=\"#FF9DB8\" opacity=\".9\"/><path d=\"M11.36 14.76 Q12.00 15.40 12.64 14.76\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.60\" stroke-linecap=\"round\"/>",
@@ -3018,7 +3056,14 @@ function mk(dark){
     iosStep:{display:"flex", alignItems:"flex-start", gap:10, fontSize:14, lineHeight:1.6, margin:"10px 0"},
     iosNo:{width:24, height:24, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12.5, color:"#fff", background:G},
     rolePill:{position:"relative", display:"inline-flex", alignItems:"center", gap:5, flexShrink:0, cursor:"pointer"},
-    roleSelHidden:{position:"absolute", inset:0, width:"100%", height:"100%", opacity:0, cursor:"pointer", fontSize:16, border:0, appearance:"none", WebkitAppearance:"none"},
+    roleMenu:{position:"absolute", right:0, top:"calc(100% + 6px)", zIndex:60, width:270, maxWidth:"calc(100vw - 40px)", background:surf, border:`1px solid ${border}`, borderRadius:16, padding:6, boxShadow:dark?"0 14px 36px rgba(0,0,0,.55)":"0 14px 36px rgba(60,48,20,.16)", animation:"fade .12s"},
+    roleMenuHead:{fontSize:11.5, fontWeight:700, color:dim, padding:"6px 10px 4px"},
+    roleOpt:{display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", padding:"9px 10px", border:"1px solid transparent", borderRadius:11, background:"transparent", color:text, fontFamily:"inherit", cursor:"pointer"},
+    roleOptOn:{display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", padding:"9px 10px", border:`1px solid ${hexA("#0B6FC4",.3,dark)}`, borderRadius:11, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", cursor:"pointer"},
+    roleOptIc:{width:32, height:32, borderRadius:10, background:surf2, border:`1px solid ${border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, flexShrink:0},
+    roleOptName:{display:"block", fontSize:13.5, fontWeight:700},
+    roleOptDesc:{display:"block", fontSize:11.5, color:dim, lineHeight:1.35, marginTop:1},
+    roleOptCheck:{color:"#0B6FC4", fontWeight:800, fontSize:14, flexShrink:0},
     roleHint:{fontSize:12, color:dim, marginTop:9, lineHeight:1.5},
     pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
     roleViewer:{padding:"5px 11px", borderRadius:9, border:`1px solid ${hexA("#8B5CF6",.3,dark)}`, background:hexA("#8B5CF6",dark?.14:.1,dark), color:"#8B5CF6", fontSize:12, fontWeight:700},
