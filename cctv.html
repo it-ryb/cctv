@@ -1651,21 +1651,15 @@ function App() {
                 <span style={{color:t.dim, fontSize:13}}>ถึง</span>
                 <input type="date" value={histTo} onChange={e=>setHistTo(e.target.value)} style={histTo?t.selectOn:t.select} title="ถึงวันที่"/>
               </>)}
-              {histMode==="month" && <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={mFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>}
+              {histMode==="month" && <Pick t={t} value={mFilter} onChange={setMFilter} style={mFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกเดือน"], ...months.map(m=>[m, `${TH_M[+m.slice(5)-1]} ${+m.slice(0,4)+543}`])]}/>}
 
               <div style={t.filterDiv} className="rb-hideM"/>
 
-              <select value={sFilter} onChange={e=>setSFilter(e.target.value)} style={sFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกอาการที่แจ้ง</option><option value="กล้องดับ">กล้องดับ</option><option value="ภาพผิดปกติ">ภาพผิดปกติ</option><option value="ปรับมุมกล้อง">ปรับมุมกล้อง</option><option value="ถอดกล้อง">ถอดกล้อง</option><option value="เหตุการณ์อื่น">เหตุการณ์อื่น</option><option value="ปกติ">ปกติ</option></select>
-              <select value={fFilter} onChange={e=>setFFilter(e.target.value)} style={fFilter!=="all"?t.selectOn:t.select}>
-                <option value="all">ทุกงานซ่อม</option>
-                <option value="open">ยังไม่เสร็จ</option>
-                <option value="wait_repair">รอซ่อม</option>
-                <option value="wait_install">รอติดตั้งกลับ</option>
-                <option value="doing">กำลังดำเนินการ</option>
-                <option value="done">เสร็จแล้ว</option>
-              </select>
-              <select value={zFilter} onChange={e=>setZFilter(e.target.value)} style={zFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกพื้นที่</option>{ZONES.map(z=><option key={z} value={z}>{z}</option>)}</select>
-              <select value={byFilter} onChange={e=>setByFilter(e.target.value)} style={byFilter!=="all"?t.selectOn:t.select}><option value="all">ทุกผู้รายงาน</option>{byOpts.map(r=><option key={r} value={r}>{r}</option>)}</select>
+              <Pick t={t} value={sFilter} onChange={setSFilter} style={sFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกอาการที่แจ้ง"], ...["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","ถอดกล้อง","เหตุการณ์อื่น","ปกติ"].map(k=>[k,k,stOf(k).emoji])]}/>
+              <Pick t={t} value={fFilter} onChange={setFFilter} style={fFilter!=="all"?t.selectOn:t.select}
+                    options={[["all","ทุกงานซ่อม"],["open","ยังไม่เสร็จ","⏳"],["wait_repair","รอซ่อม","🔧"],["wait_install","รอติดตั้งกลับ","🔌"],["doing","กำลังดำเนินการ","🔵"],["done","เสร็จแล้ว","✅"]]}/>
+              <Pick t={t} value={zFilter} onChange={setZFilter} style={zFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกพื้นที่"], ...ZONES.map(z=>[z,z,ZONE_EMOJI[z]])]}/>
+              <Pick t={t} value={byFilter} onChange={setByFilter} style={byFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกผู้รายงาน"], ...byOpts.map(r=>[r,r])]}/>
               <input value={camQ} onChange={e=>setCamQ(e.target.value)} placeholder="ค้นหาชื่อกล้อง" style={{...(camQ?t.selectOn:t.select), width:170, fontFamily:camQ?mono:"inherit"}}/>
 
               {jobMode && selectableIds.length>0 && (<>
@@ -1689,8 +1683,10 @@ function App() {
                   </div>
                   <div style={{flex:"1 1 150px"}}>
                     <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
-                    <input list="fixbylist2" value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input}/>
-                    <datalist id="fixbylist2">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+                    <input value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input} autoComplete="off"/>
+                    <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
+                      {FIX_BY.map(v=><button key={v} onClick={()=>setJobBy(v)} className="tap" style={jobBy===v?t.chipOn:t.chip}>{v}</button>)}
+                    </div>
                   </div>
                   <div style={{flex:"2 1 220px"}}>
                     <div style={t.label}><Emo e="📝"/> หมายเหตุ (ต่อท้ายของเดิม)</div>
@@ -1808,12 +1804,8 @@ function App() {
                     <button onClick={()=>setListMode("card")} className="tap" style={asCards?t.dashTgOn:t.dashTg}>การ์ด</button>
                     <button onClick={()=>setListMode("table")} className="tap" style={!asCards?t.dashTgOn:t.dashTg}>ตาราง</button>
                   </div>
-                  <select value={pageSize} onChange={e=>setPageSize(+e.target.value)} style={{...t.select, padding:"9px 12px"}}>
-                    <option value={20}>20 ต่อหน้า</option>
-                    <option value={50}>50 ต่อหน้า</option>
-                    <option value={100}>100 ต่อหน้า</option>
-                    <option value={0}>ดูทั้งหมด</option>
-                  </select>
+                  <Pick t={t} value={pageSize} onChange={v=>setPageSize(+v)} style={{...t.select, padding:"9px 12px"}} minWidth={150}
+                        options={[[20,"20 ต่อหน้า"],[50,"50 ต่อหน้า"],[100,"100 ต่อหน้า"],[0,"ดูทั้งหมด"]]}/>
                 </div>
               </div>
             )}
@@ -1830,7 +1822,7 @@ function App() {
                   <button onClick={()=>setDashMode("day")} className="tap" style={dashMode==="day"?t.dashTgOn:t.dashTg}>รายวัน</button>
                 </div>
                 {dashMode==="month"
-                  ? <select value={mFilter} onChange={e=>setMFilter(e.target.value)} style={t.select}><option value="all">ทุกเดือน</option>{months.map(m=><option key={m} value={m}>{TH_M[+m.slice(5)-1]} {+m.slice(0,4)+543}</option>)}</select>
+                  ? <Pick t={t} value={mFilter} onChange={setMFilter} style={t.select} options={[["all","ทุกเดือน"], ...months.map(m=>[m, `${TH_M[+m.slice(5)-1]} ${+m.slice(0,4)+543}`])]}/>
                   : <input type="date" value={dayFilter} onChange={e=>setDayFilter(e.target.value)} style={t.select}/>
                 }
               </div>
@@ -2109,7 +2101,7 @@ function App() {
                     <input value={newAcc.user} onChange={e=>setNewAcc({...newAcc, user:e.target.value})} placeholder="ชื่อผู้ใช้ (เช่น somchai)" style={t.input}/>
                     <input value={newAcc.name} onChange={e=>setNewAcc({...newAcc, name:e.target.value})} placeholder="ชื่อ-นามสกุล" style={t.input}/>
                     <input value={newAcc.pass} onChange={e=>setNewAcc({...newAcc, pass:e.target.value})} placeholder="รหัสผ่าน" style={t.input}/>
-                    <DeptPicker key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
+                    <DeptPicker t={t} key={"dp"+accFormKey} value={newAcc.dept} onChange={v=>setNewAcc({...newAcc, dept:v})} style={t.input}/>
                     <div style={{gridColumn:"1 / -1"}}>
                       <div style={{...t.label, marginBottom:6}}>สิทธิ์</div>
                       <div style={t.roleGrid} className="rb-roleGrid">
@@ -2205,7 +2197,7 @@ function App() {
         <Modal><div style={t.modalBg} onClick={()=>setPromptBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}><Emo e="✏"/> {promptBox.msg}</div>
-            <div style={{marginTop:12}}><DeptPicker value={promptBox.val} onChange={v=>setPromptBox(pb=>({...pb, val:v}))} style={t.input}/></div>
+            <div style={{marginTop:12}}><DeptPicker t={t} value={promptBox.val} onChange={v=>setPromptBox(pb=>({...pb, val:v}))} style={t.input}/></div>
             <div style={{display:"flex", gap:10, marginTop:16}}>
               <button onClick={()=>setPromptBox(null)} className="tap" style={{...t.dashExport, flex:1}}>ยกเลิก</button>
               <button onClick={()=>{const fn=promptBox.onOk;const v=promptBox.val;setPromptBox(null);if(fn)fn(v);}} className="tap" style={{...t.submit, marginTop:0, flex:1}}>บันทึก</button>
@@ -2266,8 +2258,7 @@ function App() {
             </div>
             <div style={{marginTop:12}}>
               <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
-              <input list="fixbylist" value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
-              <datalist id="fixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+              <input value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                 {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
               </div>
@@ -2383,9 +2374,8 @@ function App() {
               </div>
               <div style={{flex:1, minWidth:150}}>
                 <div style={t.label}><Emo e="🕐"/> กะ</div>
-                <select value={editBox.shift} onChange={e=>setEditBox({...editBox, shift:e.target.value})} style={{...t.input, cursor:"pointer"}}>
-                  {SHIFTS.map(s=><option key={s.key} value={s.key}>{s.key} ({s.time})</option>)}
-                </select>
+                <Pick t={t} value={editBox.shift} onChange={v=>setEditBox({...editBox, shift:v})} style={{...t.input, width:"100%"}}
+                      options={SHIFTS.map(s=>[s.key, `${s.key} (${s.time})`])}/>
               </div>
             </div>
 
@@ -2400,14 +2390,12 @@ function App() {
               <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                 <div style={{flex:1, minWidth:150}}>
                   <div style={t.label}><Emo e="📍"/> พื้นที่</div>
-                  <select value={editBox.zone} onChange={e=>setEditBox({...editBox, zone:e.target.value, cam:""})} style={{...t.input, cursor:"pointer"}}>
-                    {ZONES.map(z=><option key={z} value={z}>{z}</option>)}
-                  </select>
+                  <Pick t={t} value={editBox.zone} onChange={v=>setEditBox({...editBox, zone:v, cam:""})} style={{...t.input, width:"100%"}}
+                        options={ZONES.map(z=>[z,z,ZONE_EMOJI[z]])}/>
                 </div>
                 <div style={{flex:1, minWidth:150}}>
                   <div style={t.label}><Emo e="📹"/> ชื่อกล้อง{needsFix(editBox.status) && <span style={{color:"#EF4444"}}> *</span>}</div>
-                  <input list="editcamlist" value={editBox.cam} onChange={e=>setEditBox({...editBox, cam:e.target.value})} placeholder="พิมพ์หรือเลือกชื่อกล้อง" style={{...t.input, fontFamily:mono}}/>
-                  <datalist id="editcamlist">{(CAMERAS[editBox.zone]||[]).map(c=><option key={c} value={c}/>)}</datalist>
+                  <CamCombo t={t} value={editBox.cam} onChange={v=>setEditBox({...editBox, cam:v})} cams={CAMERAS[editBox.zone]} placeholder="พิมพ์หรือเลือกชื่อกล้อง" style={{...t.input, fontFamily:mono}}/>
                 </div>
               </div>
 
@@ -2424,8 +2412,10 @@ function App() {
             </>)}
 
             <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
-            <input list="editbylist" value={editBox.by} onChange={e=>setEditBox({...editBox, by:e.target.value})} placeholder="ชื่อผู้รายงาน" style={t.input}/>
-            <datalist id="editbylist">{reporters.map(r=><option key={r} value={r}/>)}</datalist>
+            <input value={editBox.by} onChange={e=>setEditBox({...editBox, by:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
+            {reporters.length>0 && <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
+              {reporters.map(r=><button key={r} onClick={()=>setEditBox({...editBox, by:r})} className="tap" style={editBox.by===r?t.chipOn:t.chip}>{r}</button>)}
+            </div>}
 
             {needsFix(editBox.status) && (<>
               <div style={t.label}><Emo e="🛠"/> สถานะงาน</div>
@@ -2448,8 +2438,7 @@ function App() {
                   </div>
                   <div style={{flex:1, minWidth:140}}>
                     <div style={t.label}><Emo e="👷"/> ผู้แก้ไข</div>
-                    <input list="editfixbylist" value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="ช่างผู้รับเหมา (DD) / IT" style={t.input}/>
-                    <datalist id="editfixbylist">{FIX_BY.map(v=><option key={v} value={v}/>)}</datalist>
+                    <input value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
                     <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
                       {FIX_BY.map(v=><button key={v} onClick={()=>setEditBox({...editBox, fixBy:v})} className="tap" style={editBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
                     </div>
@@ -2579,16 +2568,97 @@ function RolePicker({ t, value, disabled, onChange, pillStyle, title }) {
     </span>
   );
 }
-function DeptPicker({ value, onChange, style }) {
+// เมนูเลือกแบบทำเอง ใช้แทนเมนูของเบราว์เซอร์ทั้งเว็บ (ของเบราว์เซอร์เป็นกล่องเทา ๆ ไม่เข้ากับเว็บ)
+// options: [[value, label, icon?], ...] · มี <select> ซ่อนไว้ข้างใน เพื่อให้ชุดทดสอบ/โปรแกรมอ่านจอใช้ได้เหมือนเดิม
+function usePopover() {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close); document.addEventListener("touchstart", close); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("touchstart", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  // วางเมนูให้อยู่ในจอเสมอ: ชิดซ้ายของช่องก่อน ถ้าล้นขวาก็เลื่อนเข้ามา · ถ้าข้างล่างไม่พอให้เปิดขึ้นบน
+  const place = (minW) => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect(), vw = window.innerWidth || 1024, vh = window.innerHeight || 800;
+    const w = Math.min(Math.max(r.width, minW || 0), vw - 24);
+    const abs = Math.max(12, Math.min(r.left, vw - 12 - w));
+    const below = vh - r.bottom, up = below < 260 && r.top > below;
+    setPos({ left: abs - r.left, width: w, up, maxH: Math.max(160, Math.min(340, (up ? r.top : below) - 24)) });
+  };
+  return { open, setOpen, pos, place, ref };
+}
+const Chevron = ({ open }) => <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style={{flex:"none", opacity:.6, transform:open?"rotate(180deg)":"none", transition:"transform .15s"}}><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+function Pick({ t, value, onChange, options, style, placeholder, title, minWidth, mono: isMono }) {
+  const pp = usePopover();
+  const [q, setQ] = useState("");
+  const opts = options.map(o => Array.isArray(o) ? { v:o[0], l:o[1], ic:o[2] } : o);
+  const cur = opts.find(o => String(o.v) === String(value));
+  const searchable = opts.length > 20;
+  const shown = searchable && q ? opts.filter(o => String(o.l).toLowerCase().includes(q.toLowerCase())) : opts;
+  const pick = (v) => { pp.setOpen(false); setQ(""); if (String(v) !== String(value)) onChange(v); };
+  return (
+    <span ref={pp.ref} style={{position:"relative", display:"inline-block", width:(style&&style.width)||undefined, flex:(style&&style.flex)||undefined, minWidth:0, maxWidth:"100%"}} className="rb-pick">
+      <button type="button" title={title} aria-haspopup="listbox" aria-expanded={pp.open} className="tap"
+              onClick={() => { if (!pp.open) pp.place(minWidth || 200); pp.setOpen(!pp.open); }}
+              style={{...style, width:"100%", display:"flex", alignItems:"center", gap:8, textAlign:"left", cursor:"pointer", fontFamily:isMono&&cur?t.monoFont:"inherit"}}>
+        {cur && cur.ic && <Emo e={cur.ic}/>}
+        <span style={{flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", opacity:cur?1:.55}}>{cur ? cur.l : (placeholder||"เลือก")}</span>
+        <Chevron open={pp.open}/>
+      </button>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{display:"none"}} aria-hidden="true" tabIndex={-1}>
+        {placeholder && <option value="">{placeholder}</option>}
+        {opts.map(o => <option key={String(o.v)} value={o.v}>{o.l}</option>)}
+      </select>
+      {pp.open && pp.pos && <div role="listbox" style={{...t.pickMenu, left:pp.pos.left, width:pp.pos.width, ...(pp.pos.up?{bottom:"calc(100% + 6px)"}:{top:"calc(100% + 6px)"})}}>
+        {searchable && <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="พิมพ์เพื่อค้นหา" style={t.pickSearch}/>}
+        <div style={{maxHeight:pp.pos.maxH, overflowY:"auto"}}>
+          {shown.map(o => { const on = String(o.v) === String(value); return (
+            <button key={String(o.v)} type="button" role="option" aria-selected={on} className="tap" onClick={() => pick(o.v)} style={on ? t.pickOptOn : t.pickOpt}>
+              {o.ic && <Emo e={o.ic}/>}
+              <span style={{flex:1, minWidth:0, fontFamily:isMono?t.monoFont:"inherit"}}>{o.l}</span>
+              {on && <span style={t.roleOptCheck}>✓</span>}
+            </button>); })}
+          {!shown.length && <div style={{padding:"12px", color:t.dimColor, fontSize:13, textAlign:"center"}}>ไม่พบ</div>}
+        </div>
+      </div>}
+    </span>
+  );
+}
+// ช่องชื่อกล้อง: พิมพ์ได้อิสระ และมีรายการกล้องในพื้นที่นั้นให้แตะเลือก (กรองตามที่พิมพ์)
+function CamCombo({ t, value, onChange, cams, placeholder, style }) {
+  const pp = usePopover();
+  const q = (value||"").toLowerCase();
+  const list = (cams||[]).filter(c => !q || c.toLowerCase().includes(q)).slice(0, 80);
+  const show = () => { if (!pp.open) { pp.place(220); pp.setOpen(true); } };
+  return (
+    <span ref={pp.ref} style={{position:"relative", display:"block"}}>
+      <input value={value} onChange={e=>{ onChange(e.target.value); show(); }} onFocus={show} placeholder={placeholder} style={{...style, paddingRight:38}} autoComplete="off"/>
+      <span style={{position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", pointerEvents:"none", color:t.dimColor, display:"flex"}}><Chevron open={pp.open}/></span>
+      {pp.open && pp.pos && (cams||[]).length>0 && <div role="listbox" style={{...t.pickMenu, left:pp.pos.left, width:pp.pos.width, ...(pp.pos.up?{bottom:"calc(100% + 6px)"}:{top:"calc(100% + 6px)"})}}>
+        <div style={t.roleMenuHead}>{q ? `ตรงกับ "${value}" ${list.length} ตัว` : `กล้องในพื้นที่นี้ ${(cams||[]).length} ตัว`}</div>
+        <div style={{maxHeight:pp.pos.maxH, overflowY:"auto"}}>
+          {list.map(c => { const on = c === value; return (
+            <button key={c} type="button" role="option" aria-selected={on} className="tap" onClick={()=>{ onChange(c); pp.setOpen(false); }} style={on ? t.pickOptOn : t.pickOpt}>
+              <Emo e="📹"/><span style={{flex:1, fontFamily:t.monoFont}}>{c}</span>{on && <span style={t.roleOptCheck}>✓</span>}
+            </button>); })}
+          {!list.length && <div style={{padding:"12px", color:t.dimColor, fontSize:13, textAlign:"center"}}>ไม่มีกล้องชื่อนี้ในพื้นที่ (พิมพ์ชื่อเองได้)</div>}
+        </div>
+      </div>}
+    </span>
+  );
+}
+function DeptPicker({ t, value, onChange, style }) {
   const [other, setOther] = React.useState(!!value && !DEPARTMENTS.includes(value));
   return (
     <div>
-      <select value={other ? "__other" : (value||"")} style={{...style, color: (value||other) ? undefined : "#9A937F"}}
-              onChange={e=>{ const v=e.target.value; if (v==="__other") { setOther(true); onChange(""); } else { setOther(false); onChange(v); } }}>
-        <option value="" disabled>เลือกแผนก</option>
-        {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
-        <option value="__other">อื่น ๆ (พิมพ์เอง)</option>
-      </select>
+      <Pick t={t} value={other ? "__other" : (value||"")} style={{...style, width:"100%"}} placeholder="เลือกแผนก"
+            options={[...DEPARTMENTS.map(d=>[d,d]), ["__other","อื่น ๆ (พิมพ์เอง)","✏"]]}
+            onChange={v=>{ if (v==="__other") { setOther(true); onChange(""); } else { setOther(false); onChange(v); } }}/>
       {other && <input autoFocus value={value||""} onChange={e=>onChange(e.target.value)} placeholder="พิมพ์ชื่อแผนก" style={{...style, marginTop:8}}/>}
     </div>
   );
@@ -2634,6 +2704,7 @@ function CuteEye({ open }) {
 }
 // ไอคอนเล็กชุดเดียวกับน้องกล้อง ใช้แทนอิโมจิบนหน้าจอ (ข้อความที่คัดลอกไปไลน์/Excel ยังเป็นอิโมจิเหมือนเดิม)
 const EMO_ICONS = {
+  "⏳": "<path d=\"M6 3h12M6 21h12\" stroke=\"#E8892E\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M7.5 3v2.5q0 3.5 4.5 6.5 4.5-3 4.5-6.5V3M7.5 21v-2.5q0-3.5 4.5-6.5 4.5 3 4.5 6.5V21\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M9.5 19.2q2.5-2.2 5 0z\" fill=\"#E8892E\"/>",
   "⬇": "<rect x=\"3.5\" y=\"2.5\" width=\"17\" height=\"19\" rx=\"3.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\"/><path d=\"M7 7.5h10M7 11h4\" stroke=\"#8ED3A8\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M14.5 10.5v7M11.5 14.8l3 3 3-3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
   "✅": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 12.3l3 3 6-6.3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
   "🔴": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"3.5\" rx=\"1.75\" fill=\"#fff\" stroke=\"#E5484D\" stroke-width=\"1.6\"/><path d=\"M4.5 7.5h15v3a7.5 7.5 0 0 1-15 0z\" fill=\"#FFE0E2\" stroke=\"#E5484D\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M8.6 12.2q1 .9 2 0M13.4 12.2q1 .9 2 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.9\" stroke-linecap=\"round\"/><path d=\"M11.2 15.2q.8.5 1.6 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\"0.8\" stroke-linecap=\"round\"/><ellipse cx=\"7.6\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><ellipse cx=\"16.4\" cy=\"14\" rx=\"1\" ry=\".6\" fill=\"#FF9DB8\"/><text x=\"18.5\" y=\"21.5\" font-size=\"5.5\" font-weight=\"700\" fill=\"#E5484D\" font-family=\"sans-serif\">z</text>",
@@ -3079,6 +3150,12 @@ function mk(dark){
     roleMenu:{position:"absolute", right:0, top:"calc(100% + 6px)", zIndex:60, width:270, maxWidth:"calc(100vw - 40px)", background:surf, border:`1px solid ${border}`, borderRadius:16, padding:6, boxShadow:dark?"0 14px 36px rgba(0,0,0,.55)":"0 14px 36px rgba(60,48,20,.16)", animation:"fade .12s"},
     confirmTitle:{fontFamily:head, fontSize:18, fontWeight:700, textAlign:"center", color:"#EF4444", marginBottom:8},
     confirmTypeLabel:{fontSize:13, color:dim, textAlign:"center", marginBottom:6},
+    pickMenu:{position:"absolute", zIndex:70, background:surf, border:`1px solid ${border}`, borderRadius:14, padding:6, boxShadow:dark?"0 14px 36px rgba(0,0,0,.55)":"0 14px 36px rgba(60,48,20,.16)", animation:"fade .12s", textAlign:"left"},
+    pickOpt:{display:"flex", alignItems:"center", gap:8, width:"100%", textAlign:"left", padding:"9px 11px", border:"1px solid transparent", borderRadius:10, background:"transparent", color:text, fontFamily:"inherit", fontSize:14, cursor:"pointer"},
+    pickOptOn:{display:"flex", alignItems:"center", gap:8, width:"100%", textAlign:"left", padding:"9px 11px", border:`1px solid ${hexA("#0B6FC4",.3,dark)}`, borderRadius:10, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", fontSize:14, fontWeight:600, cursor:"pointer"},
+    pickSearch:{width:"100%", boxSizing:"border-box", padding:"9px 11px", marginBottom:6, borderRadius:10, border:`1px solid ${border}`, background:inputBg, color:text, fontFamily:"inherit", fontSize:14, outline:"none"},
+    monoFont:mono,
+    dimColor:dim,
     roleGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
     roleTile:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:`1px solid ${border}`, borderRadius:13, background:inputBg, color:text, fontFamily:"inherit", cursor:"pointer"},
     roleTileOn:{display:"flex", alignItems:"flex-start", gap:10, textAlign:"left", padding:"10px 11px", border:"1.5px solid #0B6FC4", borderRadius:13, background:hexA("#0B6FC4",dark?.16:.08,dark), color:text, fontFamily:"inherit", cursor:"pointer", boxShadow:`0 0 0 3px ${hexA("#0B6FC4",.12,dark)}`},
