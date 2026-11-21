@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FFFCEF">
 <title>CCTV RAYONGBOARD</title>
+<!-- เว็บแอป: ติดตั้งลงหน้าจอโฮม/คอมได้ ไฟล์เหล่านี้ต้องอยู่โฟลเดอร์เดียวกับ cctv.html -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CCTV RYB">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+  // เก็บสัญญาณ "ติดตั้งได้" ไว้ก่อน เพราะอาจมาก่อนหน้าแอปโหลดเสร็จ
+  window.__rbInstall = null;
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__rbInstall = e; window.dispatchEvent(new Event('rb-install')); });
+  window.addEventListener('appinstalled', function(){ window.__rbInstall = null; window.dispatchEvent(new Event('rb-install')); });
+  // ตัวช่วยออฟไลน์ ทำงานเฉพาะตอนเปิดผ่าน https (เช่น GitHub Pages) เปิดเป็นไฟล์ในเครื่องจะข้ามไป
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -344,6 +362,33 @@ function App() {
   const [pageSize, setPageSize] = useState(20); // จำนวนรายการต่อหน้า (0 = ทั้งหมด)
   const [page, setPage] = useState(1);
   const t = dark ? T.dark : T.light;
+  // ── ติดตั้งเป็นแอป ──
+  const isStandalone = (typeof window!=="undefined") && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+  const [canInstall, setCanInstall] = useState(!!window.__rbInstall);
+  const [iosHelp, setIosHelp] = useState(false);
+  useEffect(() => {
+    const f = () => setCanInstall(!!window.__rbInstall);
+    window.addEventListener("rb-install", f);
+    return () => window.removeEventListener("rb-install", f);
+  }, []);
+  const installApp = async () => {
+    const ev = window.__rbInstall;
+    if (ev) { ev.prompt(); try { await ev.userChoice; } catch(e){} window.__rbInstall = null; setCanInstall(false); return; }
+    if (isIOS) setIosHelp(true); // iPhone ไม่มีปุ่มติดตั้งอัตโนมัติ ต้องบอกวิธีเพิ่มลงหน้าจอโฮม
+  };
+  const showInstall = !isStandalone && (canInstall || isIOS);
+  const iosHelpBox = iosHelp && (
+    <Modal><div style={t.modalBg} onClick={()=>setIosHelp(false)}>
+      <div style={{...t.modalCard, maxWidth:380}} onClick={e=>e.stopPropagation()}>
+        <div style={t.panelTitle}>📲 ติดตั้งแอปบน iPhone</div>
+        <div style={t.iosStep}><b style={t.iosNo}>1</b><span>เปิดหน้านี้ด้วย <b>Safari</b></span></div>
+        <div style={t.iosStep}><b style={t.iosNo}>2</b><span>กดปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น) แถบล่างของจอ</span></div>
+        <div style={t.iosStep}><b style={t.iosNo}>3</b><span>เลือก <b>เพิ่มไปยังหน้าจอโฮม</b> แล้วกด <b>เพิ่ม</b></span></div>
+        <button onClick={()=>setIosHelp(false)} className="tap" style={{...t.dBtnMain, width:"100%", marginTop:16}}>👍 เข้าใจแล้ว</button>
+      </div>
+    </div></Modal>
+  );
 
   useEffect(() => {
     trimImageCache(); // เครื่องที่มีสำเนารูปค้างเกินเพดาน ให้คืนพื้นที่ทันทีตอนเปิด
@@ -1309,8 +1354,10 @@ function App() {
 
           <button onClick={doLogin} className="tap" style={t.loginBtn}>เข้าสู่ระบบ ✨</button>
           <div style={t.loginHelp}>💬 ลืมรหัสผ่าน ติดต่อทีมไอทีได้เลย</div>
+          {showInstall && <button onClick={installApp} className="tap" style={t.installBtn}>📲 ติดตั้งเป็นแอปในเครื่องนี้</button>}
         </div>
       </div>
+      {iosHelpBox}
     </div>
   );
 
@@ -1368,6 +1415,7 @@ function App() {
             <div style={t.userRole}>{isAdmin?"ผู้ดูแลระบบ":(isVendor?"ผู้รับเหมา":(isViewer?"ผู้ดูรายงาน":"พนักงาน"))}</div>
           </div>
         </div>
+        {showInstall && <button onClick={installApp} className="tap" style={{...t.installBtn, marginTop:0, marginBottom:8}}>📲 ติดตั้งแอป</button>}
         <button onClick={doLogout} className="tap" style={t.logoutBtn}>🚪 ออกจากระบบ</button>
         <div style={t.sideFoot} className="rb-hideM">RAYONGBOARD · Rayong</div>
       </aside>
@@ -2394,6 +2442,7 @@ function App() {
         </div></Modal>
       )}
       <button onClick={()=>setDark(!dark)} className="tap" style={t.themeToggle} title={dark?"โหมดสว่าง":"โหมดมืด"}>{dark?"☀️":"🌙"}</button>
+      {iosHelpBox}
       {toast && <div style={t.toast}>{toast}</div>}
     </div>
   );
@@ -2804,6 +2853,9 @@ function mk(dark){
     accAddToggleOn:{padding:"9px 15px", borderRadius:11, border:`1px solid ${border}`, background:surf, color:dim, fontSize:13.5, fontWeight:600, whiteSpace:"nowrap"},
     pwKey:{padding:"7px 10px", borderRadius:9, border:`1px solid ${border}`, background:surf, fontSize:13, flexShrink:0},
     pwKeyOn:{padding:"7px 10px", borderRadius:9, border:`1px solid ${accent}`, background:hexA(accent,dark?.16:.1,dark), fontSize:13, flexShrink:0},
+    installBtn:{width:"100%", marginTop:12, padding:"11px", borderRadius:999, border:`1.5px dashed ${hexA(accent,.45,dark)}`, background:hexA(accent,dark?.1:.06,dark), color:accentTxt, fontSize:13.5, fontWeight:600},
+    iosStep:{display:"flex", alignItems:"flex-start", gap:10, fontSize:14, lineHeight:1.6, margin:"10px 0"},
+    iosNo:{width:24, height:24, borderRadius:"50%", flexShrink:0, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:12.5, color:"#fff", background:G},
     roleSel:{appearance:"none", WebkitAppearance:"none", cursor:"pointer", flexShrink:0, maxWidth:150},
     roleHint:{fontSize:12, color:dim, marginTop:9, lineHeight:1.5},
     pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
