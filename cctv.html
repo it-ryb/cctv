@@ -95,10 +95,12 @@
     .rb-side .rb-brand > div > div:nth-child(2){font-size:9.5px !important; letter-spacing:1.4px !important; margin-top:2px !important;}
     .rb-side .rb-brand > div > div:nth-child(3){display:none !important;}
     .rb-side > div[style*="flex: 1"]{flex:1 !important;}
-    .rb-logout{margin:0 52px 0 auto !important; padding:9px 12px !important; border-radius:999px !important; font-size:16px !important; line-height:1 !important;
+    .rb-logout{margin:0 0 0 auto !important; padding:9px 12px !important; border-radius:999px !important; font-size:16px !important; line-height:1 !important;
       background:rgba(255,255,255,.7) !important; border:1px solid rgba(239,68,68,.25) !important;}
     .rb-logoutTx{display:none;}
-    .rb-theme{position:fixed !important; z-index:61 !important; top:calc(9px + env(safe-area-inset-top)) !important; right:14px !important; width:40px !important; height:40px !important; border-radius:999px !important;}
+    /* มือถือ: ปุ่มโหมดมืดย้ายเข้าไปอยู่ในแถบบนข้างปุ่มออก ไม่ลอยแยก */
+    .rb-theme{display:none !important;}
+    .rb-themeIn{display:flex !important; flex-shrink:0; width:40px; height:40px; border-radius:999px !important; align-items:center; justify-content:center; font-size:18px;}
 
     /* แถบล่าง: การ์ดใสลอยแบบ LINE โค้งมน เห็นพื้นหลังจาง ๆ */
     .rb-nav{position:fixed !important; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:60; flex:none !important; flex-direction:row !important;
@@ -1480,6 +1482,7 @@ function App() {
         </div>
         {showInstall && <button onClick={installApp} className="tap rb-hideM" style={{...t.installBtn, marginTop:0, marginBottom:8}}><Emo e="📲"/> ติดตั้งแอป</button>}
         <button onClick={doLogout} className="tap rb-logout" style={t.logoutBtn} title="ออกจากระบบ"><Emo e="🚪"/><span className="rb-logoutTx"> ออกจากระบบ</span></button>
+        <button onClick={()=>setDark(!dark)} className="tap rb-themeIn" style={{...t.themeToggle, position:"static", display:"none", boxShadow:"none"}} title={dark?"โหมดสว่าง":"โหมดมืด"}><Emo e={dark?"☀️":"🌙"}/></button>
         <div style={t.sideFoot} className="rb-hideM">RAYONGBOARD · Rayong</div>
       </aside>
 
