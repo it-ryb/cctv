@@ -2458,14 +2458,20 @@ function App() {
           <div style={t.modalCard} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}><Emo e="📥"/> นำเข้ากล้องดับหลายตัว</div>
             <div style={t.pwHint}>วางชื่อกล้องทีละบรรทัด</div>
-            <div style={{display:"flex", gap:10, marginBottom:12, flexWrap:"wrap"}}>
+            <div style={{display:"flex", gap:10, marginBottom:12, flexWrap:"wrap", alignItems:"flex-start"}}>
               <div style={{flex:1, minWidth:140}}>
                 <div style={t.label}><Emo e="📅"/> วันที่</div>
                 <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)} style={t.input}/>
               </div>
-              <div style={{flex:1, minWidth:140}}>
+              <div style={{flex:"1 1 100%"}}>
                 <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
-                <div style={{...t.input, display:"flex", alignItems:"center", color:by?t.text:t.dim}}>{by||"— เลือกในหน้าบันทึกก่อน —"}</div>
+                <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+                  {(() => { const mine = auth && accounts[auth.user] && accounts[auth.user].reporter;
+                    // ผู้ดูแลนำเข้าแทนคนอื่นได้ (เช่น พนักงานส่งรายชื่อมาทางไลน์) · บัญชีอื่นที่ผูกชื่อไว้ เห็นแค่ชื่อตัวเอง
+                    const list = mine ? (isAdmin ? [mine, ...reporters.filter(r=>r!==mine)] : [mine]) : reporters;
+                    return list.map(r=><button key={r} type="button" onClick={()=>setBy(r)} className="tap" style={by===r?t.chipOn:t.chip}>{r}{r===mine && list.length>1 ? " (ฉัน)" : ""}</button>); })()}
+                </div>
+                {!by && <div style={{...t.reqNote, marginTop:6}}><Emo e="⚠"/> แตะเลือกชื่อผู้รายงานก่อน</div>}
               </div>
             </div>
             <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)} placeholder={"RM_SR6_014\nRP_OF_001\n..."} style={t.summaryArea}/>
