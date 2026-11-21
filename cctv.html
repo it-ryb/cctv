@@ -56,6 +56,7 @@
     /* iPhone ซูมหน้าเองเวลาแตะช่องที่ตัวหนังสือเล็กกว่า 16px แล้วค้างอยู่ จึงให้ช่องกรอกบนมือถือเป็น 16px */
     input,select,textarea{font-size:16px !important;}
     .rb-roleGrid{grid-template-columns:1fr !important;}
+    .rb-stepGrid4{grid-template-columns:1fr 1fr !important;}
     .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
@@ -1683,10 +1684,7 @@ function App() {
                   </div>
                   <div style={{flex:"1 1 150px"}}>
                     <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
-                    <input value={jobBy} onChange={e=>setJobBy(e.target.value)} placeholder={myName||"IT"} style={t.input} autoComplete="off"/>
-                    <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
-                      {FIX_BY.map(v=><button key={v} onClick={()=>setJobBy(v)} className="tap" style={jobBy===v?t.chipOn:t.chip}>{v}</button>)}
-                    </div>
+                    <NamePick t={t} value={jobBy} onChange={setJobBy} options={FIX_BY}/>
                   </div>
                   <div style={{flex:"2 1 220px"}}>
                     <div style={t.label}><Emo e="📝"/> หมายเหตุ (ต่อท้ายของเดิม)</div>
@@ -2207,8 +2205,7 @@ function App() {
       )}
       {fixBox && (() => { const nextStep = fixBox.fix===DOING ? DONE : (fixBox.fix===DONE ? DONE : DOING); return (
         <Modal><div style={t.modalBg} onClick={()=>setFixBox(null)}>
-          <div style={{...t.modalCard, maxWidth:430, maxHeight:"90vh", overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-            {(() => null)()}
+          <div style={{...t.modalCard, maxWidth:680, maxHeight:"90vh", overflowY:"auto", padding:28}} onClick={e=>e.stopPropagation()}>
             <div style={t.panelTitle}><Emo e="🛠"/> อัปเดตสถานะงาน</div>
 
             <div style={t.jobHead}>
@@ -2227,7 +2224,7 @@ function App() {
             </div>
 
             <div style={t.pwHint}>{fixBox.locked ? "งานปิดแล้ว · ย้อนสถานะที่นี่ไม่ได้" : "เลือกสถานะงาน"}</div>
-            <div style={t.stepGrid}>
+            <div style={{...t.stepGrid, gridTemplateColumns:"repeat(4, 1fr)"}} className="rb-stepGrid4">
               {FIX_STEPS.map(st=>{
                 // ขั้นถัดไปตามธรรมชาติของงาน: รอ → กำลังทำ → ปิดงาน
                 const on = fixBox.fix===st.key;
@@ -2248,7 +2245,8 @@ function App() {
             {fixBox.locked && <div style={{...t.pwHint, marginTop:10, marginBottom:0}}>ย้อนสถานะได้ที่ปุ่ม ✏️</div>}
             {fixBox.fix===DONE ? (<>
 
-            <div style={{marginTop:4}}>
+            <div style={{display:"flex", gap:16, flexWrap:"wrap", alignItems:"flex-start"}}>
+            <div style={{marginTop:4, flex:"1 1 260px", minWidth:0}}>
               <div style={t.label}><Emo e="📅"/> วันที่งานเสร็จ</div>
               <input type="date" value={fixBox.fixDate} onChange={e=>setFixBox({...fixBox, fixDate:e.target.value})} style={t.input}/>
               <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
@@ -2256,12 +2254,10 @@ function App() {
                 <button onClick={()=>{const d=new Date(); d.setDate(d.getDate()-1); setFixBox({...fixBox, fixDate:d.toISOString().slice(0,10)});}} className="tap" style={t.chip}>เมื่อวาน</button>
               </div>
             </div>
-            <div style={{marginTop:12}}>
+            <div style={{marginTop:4, flex:"1 1 260px", minWidth:0}}>
               <div style={t.label}><Emo e="👷"/> ผู้ดำเนินการ</div>
-              <input value={fixBox.fixBy} onChange={e=>setFixBox({...fixBox, fixBy:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
-              <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
-                {FIX_BY.map(v=><button key={v} onClick={()=>setFixBox({...fixBox, fixBy:v})} className="tap" style={fixBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
-              </div>
+              <NamePick t={t} value={fixBox.fixBy} onChange={v=>setFixBox({...fixBox, fixBy:v})} options={FIX_BY}/>
+            </div>
             </div>
             <div style={t.label}><Emo e="📷"/> รูปก่อน / หลัง</div>
             <div style={t.baGrid}>
@@ -2276,7 +2272,7 @@ function App() {
                 {fixBox.imgFix
                   ? <><img src={fixBox.imgFix} style={t.baImg} onClick={()=>setPreview(fixBox.imgFix)}/>
                       <button onClick={()=>setFixBox({...fixBox, imgFix:""})} style={{...t.imgDel, position:"static", marginTop:6}}>✕ ลบรูป</button></>
-                  : <div style={t.baPick}><input type="file" accept="image/*" onChange={pickFixImg} style={t.fileInput}/></div>}
+                  : <label style={{...t.upload, padding:"16px 10px", border:"none", background:"transparent"}}><span style={{fontSize:22}}><Emo e="📸"/></span><span>แตะเพื่อถ่าย / เลือกรูป</span><input type="file" accept="image/*" onChange={pickFixImg} style={{display:"none"}}/></label>}
               </div>
             </div>
             </>) : (
@@ -2412,10 +2408,7 @@ function App() {
             </>)}
 
             <div style={t.label}><Emo e="👤"/> ผู้รายงาน</div>
-            <input value={editBox.by} onChange={e=>setEditBox({...editBox, by:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
-            {reporters.length>0 && <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
-              {reporters.map(r=><button key={r} onClick={()=>setEditBox({...editBox, by:r})} className="tap" style={editBox.by===r?t.chipOn:t.chip}>{r}</button>)}
-            </div>}
+            <NamePick t={t} value={editBox.by} onChange={v=>setEditBox({...editBox, by:v})} options={reporters} placeholder="ชื่อผู้รายงาน"/>
 
             {needsFix(editBox.status) && (<>
               <div style={t.label}><Emo e="🛠"/> สถานะงาน</div>
@@ -2438,10 +2431,7 @@ function App() {
                   </div>
                   <div style={{flex:1, minWidth:140}}>
                     <div style={t.label}><Emo e="👷"/> ผู้แก้ไข</div>
-                    <input value={editBox.fixBy} onChange={e=>setEditBox({...editBox, fixBy:e.target.value})} placeholder="พิมพ์ชื่อ หรือแตะเลือกด้านล่าง" style={t.input} autoComplete="off"/>
-                    <div style={{display:"flex", gap:8, marginTop:8, flexWrap:"wrap"}}>
-                      {FIX_BY.map(v=><button key={v} onClick={()=>setEditBox({...editBox, fixBy:v})} className="tap" style={editBox.fixBy===v?t.chipOn:t.chip}>{v}</button>)}
-                    </div>
+                    <NamePick t={t} value={editBox.fixBy} onChange={v=>setEditBox({...editBox, fixBy:v})} options={FIX_BY}/>
                   </div>
                 </div>
               )}
@@ -2453,11 +2443,7 @@ function App() {
               <div style={t.label}><Emo e="📷"/> รูปแนบ</div>
               {editBox.img
                 ? <div style={t.imgWrap}><img src={editBox.img} style={t.imgPrev} onClick={()=>setPreview(editBox.img)}/><button onClick={()=>setEditBox({...editBox, img:""})} style={t.imgDel}>✕ ลบรูป</button></div>
-                : <div style={t.uploadBox}>
-                    <div style={{fontSize:22, marginBottom:6}}><Emo e="📸"/></div>
-                    <input type="file" accept="image/*" onChange={pickEditImg} style={t.fileInput}/>
-                    <div style={{fontSize:12, color:t.dim, marginTop:8}}>ไฟล์ JPG หรือ PNG</div>
-                  </div>}
+                : <label style={t.upload}><span style={{fontSize:24}}><Emo e="📸"/></span><span>แตะเพื่อถ่าย / เลือกรูป</span><span style={{fontSize:11.5, opacity:.8}}>ไฟล์ JPG หรือ PNG</span><input type="file" accept="image/*" onChange={pickEditImg} style={{display:"none"}}/></label>}
             </>)}
 
             <div style={{display:"flex", gap:10, marginTop:18}}>
@@ -2650,6 +2636,31 @@ function CamCombo({ t, value, onChange, cams, placeholder, style }) {
         </div>
       </div>}
     </span>
+  );
+}
+// เลือกชื่อคน: ตัวเลือกน้อยเป็นปุ่มแตะ + "อื่น ๆ" (พิมพ์เอง) · ถ้าเกิน 8 ชื่อเปลี่ยนเป็นเมนูมีช่องค้นหา
+function NamePick({ t, value, onChange, options, placeholder }) {
+  const opts = options || [];
+  const known = !value || opts.includes(value);
+  const [typing, setTyping] = useState(!known);
+  const custom = typing || !known;
+  const otherInput = custom && <input autoFocus={typing && known} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"พิมพ์ชื่อ"} style={{...t.input, marginTop:8}} autoComplete="off"/>;
+  if (opts.length > 8) return (
+    <div>
+      <Pick t={t} value={custom ? "__other" : (value||"")} placeholder="เลือกชื่อ" style={{...t.input, width:"100%"}}
+            options={[...opts.map(n=>[n,n]), ["__other","อื่น ๆ (พิมพ์เอง)","✏"]]}
+            onChange={v=>{ if (v==="__other") { setTyping(true); onChange(""); } else { setTyping(false); onChange(v); } }}/>
+      {otherInput}
+    </div>
+  );
+  return (
+    <div>
+      <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+        {opts.map(n=><button key={n} type="button" onClick={()=>{ setTyping(false); onChange(n); }} className="tap" style={!custom && value===n ? t.chipOn : t.chip}>{n}</button>)}
+        <button type="button" onClick={()=>{ if (!custom) { setTyping(true); onChange(""); } }} className="tap" style={custom ? t.chipOn : t.chip}><Emo e="✏"/> อื่น ๆ</button>
+      </div>
+      {otherInput}
+    </div>
   );
 }
 function DeptPicker({ t, value, onChange, style }) {
