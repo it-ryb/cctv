@@ -1487,7 +1487,8 @@ function App() {
   const BAD_LOGIN = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
   // ย้ายบัญชีแบบเก่า (รหัสผ่านเก็บในฐานข้อมูล) เข้า Firebase Authentication ตอนเจ้าของล็อกอินครั้งแรก
   // ทำได้เฉพาะช่วงที่กฎ Firestore ยังเปิดอยู่ หลังปิดกฎแล้วทางนี้จะอ่านข้อมูลเก่าไม่ได้เอง
-  const migrateLegacy = async (u, pass) => {
+  // existingUid: มีบัญชีใน Firebase แล้วแต่ยังไม่มีสิทธิ์ (ย้ายค้างครึ่งทาง) → เขียนสิทธิ์ให้ต่อ ไม่ต้องสร้างใหม่
+  const migrateLegacy = async (u, pass, existingUid) => {
     const legacyAcc = await window.__fb.get("accounts");
     const legacyPw = await window.__fb.get("passwords");
     const rec = legacyAcc && legacyAcc[u];
@@ -1496,10 +1497,15 @@ function App() {
     if (pass.length < 6) return { ok:false, msg:"รหัสผ่านเดิมสั้นกว่า 6 ตัว ระบบใหม่ใช้ไม่ได้ ให้ผู้ดูแลลบบัญชีแล้วสร้างใหม่" };
     acctMigrating.current = true;
     try {
-      const c = await window.__fb.signUpSelf(u, pass);
+      const c = existingUid ? { ok:true, uid:existingUid } : await window.__fb.signUpSelf(u, pass);
       if (!c.ok) return { ok:false, msg: c.code === "auth/email-already-in-use" ? BAD_LOGIN : (AUTH_ERR[c.code] || "ย้ายบัญชีไม่สำเร็จ ("+c.code+")") };
       const w = await window.__fb.setRole(c.uid, { user:u, role:rec.role, name:rec.name || u });
-      if (!w.ok) { await window.__fb.signOut(); return { ok:false, msg:"บันทึกสิทธิ์ไม่สำเร็จ ("+w.code+")" }; }
+      if (!w.ok) {
+        await window.__fb.signOut();
+        return { ok:false, msg: /permission/.test(w.code||"")
+          ? "กฎของ Firestore ยังไม่อนุญาตให้บันทึกสิทธิ์ (permission-denied) · ผู้ดูแลต้องเพิ่มกฎช่วงย้ายบัญชีก่อน แล้วล็อกอินใหม่ได้เลย"
+          : "บันทึกสิทธิ์ไม่สำเร็จ ("+w.code+")" };
+      }
       // จดว่าบัญชีนี้ย้ายแล้ว · ยังไม่ลบรหัสเก่าตรงนี้ เผื่อต้องย้อนกลับไปใช้แอปเวอร์ชันเดิม
       // (ผู้ดูแลกด "ลบรหัสผ่านแบบเก่า" ทีเดียวตอนทุกบัญชีย้ายครบแล้ว)
       const acc2 = { ...legacyAcc, [u]: { ...rec, uid:c.uid } };
@@ -1522,11 +1528,19 @@ function App() {
     }
     if (loginBusy) return;
     setLoginBusy(true); setLoginErr("");
+    // ระหว่างกดล็อกอิน ให้ฟังก์ชันนี้คุมเอง (onAuth ไม่ต้องแทรก) จะได้ซ่อมบัญชีที่ย้ายค้างได้
+    acctMigrating.current = true;
     try {
-      loginPending.current = true;
       const r = await window.__fb.signIn(u, loginPass);
-      if (r.ok) { setLoginUser(""); setLoginPass(""); return; }   // onAuth จะอ่านสิทธิ์แล้วพาเข้าแอปเอง
-      loginPending.current = false;
+      if (r.ok) {
+        const role = await window.__fb.getRole(r.uid);
+        if (role && role.role) { setLoginUser(""); setLoginPass(""); await applyFbUser({ uid:r.uid }, true); return; }
+        // มีบัญชีใน Firebase แต่ไม่มีสิทธิ์ → ลองย้ายต่อจากข้อมูลเดิม (เช่น ครั้งก่อนบันทึกสิทธิ์ไม่ผ่าน)
+        const m = await migrateLegacy(u, loginPass, r.uid);
+        if (m.ok) { setLoginUser(""); setLoginPass(""); await applyFbUser({ uid:m.uid }, true); }
+        else { await window.__fb.signOut(); setLoginErr(m.msg === BAD_LOGIN ? (role && role.error ? "อ่านสิทธิ์ของบัญชีไม่ได้ ("+role.error+")" : "บัญชีนี้ถูกปิดการใช้งาน ติดต่อผู้ดูแลระบบ") : m.msg); }
+        return;
+      }
       if (["auth/invalid-credential","auth/user-not-found","auth/wrong-password","auth/invalid-login-credentials","auth/invalid-email"].includes(r.code)) {
         const m = await migrateLegacy(u, loginPass);
         if (m.ok) { setLoginUser(""); setLoginPass(""); await applyFbUser({ uid:m.uid }, true); }
@@ -1534,7 +1548,7 @@ function App() {
         return;
       }
       setLoginErr(AUTH_ERR[r.code] || ("เข้าสู่ระบบไม่สำเร็จ (" + r.code + ")"));
-    } finally { setLoginBusy(false); }
+    } finally { acctMigrating.current = false; setLoginBusy(false); }
   };
   const doLogout = () => {
     if (isCloud()) window.__fb.signOut();
