@@ -1378,10 +1378,17 @@ function App() {
     const left = Object.entries(accounts).filter(([,a]) => !a.uid).map(([u])=>u);
     askConfirm((left.length ? `ยังมี ${left.length} บัญชีที่ยังไม่ย้าย (${left.join(", ")})\nถ้าลบตอนนี้ บัญชีเหล่านี้ต้องลบแล้วสร้างใหม่\n\n` : "")
       + "ลบรหัสผ่านแบบเก่าทั้งหมดออกจากฐานข้อมูล?\nหลังจากนี้ล็อกอินได้ทางระบบใหม่เท่านั้น", async () => {
-      await window.__fb.remove("passwords");
-      const a = {}; Object.entries(accounts).forEach(([u, v]) => { const c = {...v}; delete c.pass; a[u] = c; });
-      setAccounts(a); setLegacyPwLeft(false);
-      say("ลบรหัสผ่านแบบเก่าแล้ว · ขั้นต่อไป: เปลี่ยนกฎ Firestore", 4000);
+      const r1 = await window.__fb.remove("passwords");
+      // อ่านข้อมูลบัญชีล่าสุดจากคลาวด์ เอารหัสผ่านออก แล้วเขียนกลับตรง ๆ (ไม่รอรอบซิงก์)
+      const cloudAcc = (await window.__fb.get("accounts")) || accounts;
+      const a = {}; Object.entries(cloudAcc).forEach(([u, v]) => { const c = {...v}; delete c.pass; a[u] = c; });
+      await window.__fb.save("accounts", a);
+      setAccounts(a);
+      const leftPw = await window.__fb.get("passwords");
+      const stillPw = !!(leftPw && Object.keys(leftPw).length);
+      setLegacyPwLeft(stillPw);
+      if (!r1.ok || stillPw) say("ลบไม่สำเร็จ (" + (r1.code || "ยังมีข้อมูลค้าง") + ") ลองกดอีกครั้ง", 5000);
+      else say("ลบรหัสผ่านแบบเก่าแล้ว · ขั้นต่อไป: เปลี่ยนกฎ Firestore", 4000);
     }, "ยืนยันลบ", { title:"ลบรหัสผ่านแบบเก่า" });
   };
   const saveMyPw = async () => {
@@ -2383,6 +2390,7 @@ function App() {
                       <div style={t.migTitle}><Emo e="🔐"/> ย้ายเข้าระบบล็อกอินใหม่ · {list.length-left.length}/{list.length} บัญชี</div>
                       {left.length > 0 && <div style={t.migLine}><Emo e="⏳"/> ยังไม่ย้าย: {left.map(([u])=>u).join(", ")} — ให้แต่ละคนล็อกอินด้วยรหัสเดิม 1 ครั้ง ระบบจะย้ายให้เอง</div>}
                       <div style={t.migLine}><Emo e="🌐"/> IP กล้องในฐานข้อมูล: <b>{ipN}</b> ตัว{ipN ? "" : " — ยังไม่มี! กู้คืนจากไฟล์สำรอง IP ก่อนปิดกฎ"}</div>
+                      {(hasOld || legacyPwLeft) && <div style={t.migLine}><Emo e="⚠"/> ยังมีรหัสผ่านแบบเก่าค้างใน: {[legacyPwLeft && "ตารางรหัสผ่าน", hasOld && "ข้อมูลบัญชี ("+list.filter(([,a])=>a.pass).map(([u])=>u).join(", ")+")"].filter(Boolean).join(" และ ")}</div>}
                       <div style={t.migLine}><Emo e="💡"/> ครบทุกบัญชีแล้ว → กดลบรหัสผ่านแบบเก่า → แล้วค่อยเปลี่ยนกฎ Firestore</div>
                       <button onClick={purgeLegacyPw} className="tap" style={{...t.exportBtn, marginTop:10}}><Emo e="🗑"/> ลบรหัสผ่านแบบเก่าออกจากฐานข้อมูล</button>
                     </div>
