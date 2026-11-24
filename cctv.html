@@ -536,6 +536,17 @@ function App() {
     if (fromLogin) setNav(r.role==="vendor" || r.role==="viewer" ? "history" : "record");
   };
   const loginPending = React.useRef(false);
+  // เข้าแอปหรือเปลี่ยนหน้าแล้วให้เริ่มที่บนสุดเสมอ
+  // (iPhone เลื่อนหน้าลงตอนแป้นพิมพ์เด้งที่หน้าเข้าสู่ระบบ แล้วค้างตำแหน่งนั้นไว้หลังเข้าแอป)
+  const authUser = auth && auth.user;
+  useEffect(() => {
+    if (!authUser) return;
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch(e){}
+    const top = () => { try { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch(e){} };
+    top();
+    const t1 = setTimeout(top, 120), t2 = setTimeout(top, 450);   // รอแป้นพิมพ์ปิดและหน้าจอขยายกลับ
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [authUser, nav]);
   useEffect(() => {
     let unsub = null, done = false;
     const start = () => {
