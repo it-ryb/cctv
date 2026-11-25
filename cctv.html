@@ -404,6 +404,16 @@ function App() {
   const [loginBusy, setLoginBusy] = useState(false);
   const [myPw, setMyPw] = useState(null);          // หน้าต่างเปลี่ยนรหัสผ่านของตัวเอง
   const [showDuty, setShowDuty] = useState(false); // ประกาศหน้าที่พนักงาน CCTV กะดึก (เด้งตอนพนักงานล็อกอิน)
+  // รหัสของ "คืนนี้": กะดึก 23:00–07:00 → หลัง 23:00 ใช้วันนี้, ก่อน 07:00 ใช้เมื่อวาน, นอกช่วงนี้ = ไม่ใช่กะดึก
+  const nightKey = () => {
+    const d = new Date(), h = d.getHours();
+    const local = (x) => new Date(x.getTime() - x.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    if (h >= 23) return local(d);
+    if (h < 7) return local(new Date(d.getTime() - 86400000));
+    return null;
+  };
+  const DUTY_KEY = "cctv_duty_ack";
+  const ackDuty = () => { setShowDuty(false); const k = nightKey(); if (k) { try { localStorage.setItem(DUTY_KEY, k); } catch(e){} } };
   const [myPwErr, setMyPwErr] = useState("");
   const acctMigrating = React.useRef(false);
   const [pwEdit, setPwEdit] = useState({});
@@ -541,6 +551,21 @@ function App() {
     if (fromLogin && r.role === "staff") setShowDuty(true);
   };
   const loginPending = React.useRef(false);
+  const authRole = auth && auth.role;
+  useEffect(() => {
+    if (authRole !== "staff") return;
+    const check = () => {
+      const k = nightKey(); if (!k) return;
+      let acked = null; try { acked = localStorage.getItem(DUTY_KEY); } catch(e){}
+      if (acked !== k) setShowDuty(true);
+    };
+    check();
+    const iv = setInterval(check, 5 * 60 * 1000);              // เช็กทุก 5 นาที (ถึง 23:00 ก็เด้ง)
+    if (iv && iv.unref) iv.unref();                             // (เฉพาะตอนรันชุดทดสอบใน Node ไม่ให้ค้าง)
+    const onVis = () => { if (document.visibilityState === "visible") check(); };  // กลับมาเปิดแอปก็เช็ก
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [authRole]);
   // เข้าแอปหรือเปลี่ยนหน้าแล้วให้เริ่มที่บนสุดเสมอ
   // (iPhone เลื่อนหน้าลงตอนแป้นพิมพ์เด้งที่หน้าเข้าสู่ระบบ แล้วค้างตำแหน่งนั้นไว้หลังเข้าแอป)
   const authUser = auth && auth.user;
@@ -2827,7 +2852,7 @@ function App() {
               <div style={t.dutySecHead("#1F64B8")}><Emo e="📝"/> 1. บันทึกในแอป CCTV RAYONGBOARD</div>
               <div style={t.dutyBody}>
                 <div style={t.dutyLine}><Emo e="⚠"/> พบเหตุ <b>บันทึกเลย</b> ไม่รอท้ายกะ</div>
-                <div style={{...t.dutyLine, color:"#DC2626", fontWeight:700}}><Emo e="📅"/> เช็กวันที่ทุกครั้งก่อนบันทึก!</div>
+                <div style={{...t.dutyLine, color:"#DC2626", fontWeight:700}}><Emo e="📅"/> ตรวจสอบวันที่ทุกครั้งก่อนบันทึก!</div>
                 <div style={t.dutyBox}>
                   <div style={{fontWeight:700, marginBottom:8}}><Emo e="📷"/> กรอกให้ครบ 4 ช่อง <span style={{fontWeight:500, color:t.dimColor}}>· ตัวอย่าง</span></div>
                   <div style={t.dutyGrid} className="rb-dutyGrid">
@@ -2860,7 +2885,7 @@ function App() {
               </div>
             </div>
 
-            <button onClick={()=>setShowDuty(false)} className="tap" style={{...t.submit, marginTop:4}}>✓ รับทราบ เริ่มงาน</button>
+            <button onClick={ackDuty} className="tap" style={{...t.submit, marginTop:4}}>✓ รับทราบ เริ่มงาน</button>
           </div>
         </div></Modal>
       )}
