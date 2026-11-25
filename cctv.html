@@ -58,6 +58,9 @@
     .rb-roleGrid{grid-template-columns:1fr !important;}
     .rb-stepGrid4{grid-template-columns:1fr 1fr !important;}
     .rb-maGrid{grid-template-columns:1fr 1fr !important;}
+    .rb-dutyGrid{grid-template-columns:1fr !important;}
+    .rb-dutyOpen{margin-right:0 !important;}
+    .rb-dutyMascot{display:none !important;}
     .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
@@ -400,6 +403,7 @@ function App() {
   const [passwords, setPasswords] = useState({}); // ใช้เฉพาะโหมดในเครื่อง ไม่ส่งขึ้นคลาวด์แล้ว
   const [loginBusy, setLoginBusy] = useState(false);
   const [myPw, setMyPw] = useState(null);          // หน้าต่างเปลี่ยนรหัสผ่านของตัวเอง
+  const [showDuty, setShowDuty] = useState(false); // ประกาศหน้าที่พนักงาน CCTV กะดึก (เด้งตอนพนักงานล็อกอิน)
   const [myPwErr, setMyPwErr] = useState("");
   const acctMigrating = React.useRef(false);
   const [pwEdit, setPwEdit] = useState({});
@@ -534,6 +538,7 @@ function App() {
     }
     setAuth({ user: r.user, role: r.role, name: r.name || r.user, uid: user.uid });
     if (fromLogin) setNav(r.role==="vendor" || r.role==="viewer" ? "history" : "record");
+    if (fromLogin && r.role === "staff") setShowDuty(true);
   };
   const loginPending = React.useRef(false);
   // เข้าแอปหรือเปลี่ยนหน้าแล้วให้เริ่มที่บนสุดเสมอ
@@ -1542,6 +1547,7 @@ function App() {
       setAuth(a); try { sessionStorage.setItem(AUTH_KEY, JSON.stringify(a)); } catch(e){}
       setLoginUser(""); setLoginPass(""); setLoginErr("");
       setNav(rec.role==="vendor" || rec.role==="viewer" ? "history" : "record");
+      if (rec.role === "staff") setShowDuty(true);
       return;
     }
     if (loginBusy) return;
@@ -1736,6 +1742,7 @@ function App() {
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
               <div><div style={t.h1}><span style={t.h1Icon("#16A34A")}><PageIcon kind="record"/></span>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
+              {(auth.role === "staff" || isAdmin) && <button onClick={()=>setShowDuty(true)} className="tap rb-dutyOpen" style={t.dutyOpenBtn} title="ดูหน้าที่พนักงาน CCTV กะดึก"><Emo e="📋"/> หน้าที่กะดึก</button>}
             </div>
             <div style={t.recGrid} className="rb-recGrid">
               {/* ฟอร์มซ้าย */}
@@ -2494,7 +2501,7 @@ function App() {
 
 
       {confirmBox && (
-        <Modal><div style={{...t.modalBg, zIndex:60}} onClick={()=>setConfirmBox(null)}>
+        <Modal><div style={{...t.modalBg, zIndex:110}} onClick={()=>setConfirmBox(null)}>
           <div style={{...t.modalCard, maxWidth:400}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:34, textAlign:"center", marginBottom:10}}><Emo e="⚠"/></div>
             <div style={t.confirmTitle}>{confirmBox.title || "ยืนยันก่อนดำเนินการ"}</div>
@@ -2798,6 +2805,62 @@ function App() {
               <button onClick={bulkImport} className="tap" style={{...t.submit, marginTop:0}}><Emo e="📥"/> บันทึกกล้องดับทั้งหมด</button>
               <button onClick={()=>setShowBulk(false)} className="tap" style={{...t.dashExport, flex:"none"}}>ปิด</button>
             </div>
+          </div>
+        </div></Modal>
+      )}
+      {showDuty && (<Modal>
+        <div style={t.modalBg}>
+          <div style={t.dutyCard} onClick={e=>e.stopPropagation()} role="dialog" aria-label="หน้าที่พนักงาน CCTV กะดึก">
+            <div style={t.dutyHero}>
+              <div style={{minWidth:0, flex:1}}>
+                <div style={t.dutyKicker}><Emo e="📹"/> CCTV RAYONGBOARD</div>
+                <div style={t.dutyTitle}>หน้าที่พนักงาน<br/><span style={{color:"#FFD97A"}}>CCTV กะดึก 🌙</span></div>
+                <div style={t.dutyHeroSub}><Emo e="✅"/> ทำครบทุกคืน ก่อนออกกะ</div>
+              </div>
+              <div style={{position:"relative", flexShrink:0}} className="rb-dutyMascot">
+                <div style={t.dutyBubble}>คืนนี้ฝากด้วยนะ!</div>
+                <Mascot size={92} mount="#D6EAFF" mountLine="#5B9BE0"/>
+              </div>
+            </div>
+
+            <div style={t.dutySec("#1F64B8")}>
+              <div style={t.dutySecHead("#1F64B8")}><Emo e="📝"/> 1. บันทึกในแอป CCTV RAYONGBOARD</div>
+              <div style={t.dutyBody}>
+                <div style={t.dutyLine}><Emo e="⚠"/> พบเหตุ <b>บันทึกเลย</b> ไม่รอท้ายกะ</div>
+                <div style={{...t.dutyLine, color:"#DC2626", fontWeight:700}}><Emo e="📅"/> เช็กวันที่ทุกครั้งก่อนบันทึก!</div>
+                <div style={t.dutyBox}>
+                  <div style={{fontWeight:700, marginBottom:8}}><Emo e="📷"/> กรอกให้ครบ 4 ช่อง <span style={{fontWeight:500, color:t.dimColor}}>· ตัวอย่าง</span></div>
+                  <div style={t.dutyGrid} className="rb-dutyGrid">
+                    {[["📹","กล้อง / บริเวณ","RP · กำแพงหลังบ่อน้ำ"],["⏰","วันที่ - เวลา","25/11/2569 · 02:15 น."],["📝","สถานะ / รายละเอียด","กล้องดับ · ภาพไม่ขึ้นตั้งแต่ 02:10"],["📷","แนบรูป","ภาพหน้าจอกล้องตอนเกิดเหตุ"]].map(([ic,k,v])=>(
+                      <div key={k} style={t.dutyField}><div style={t.dutyFieldK}><Emo e={ic}/> {k}</div><div style={t.dutyFieldV}>{v}</div></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={t.dutySec("#1A7F4E")}>
+              <div style={t.dutySecHead("#1A7F4E")}><Emo e="📥"/> 2. ส่งสรุปประจำวัน</div>
+              <div style={t.dutyBody}>
+                <div style={t.dutyLine}><Emo e="⏰"/> ก่อน <b>07:00 น.</b> กด "คัดลอกสรุปวันที่…" ในหน้าบันทึก</div>
+                <div style={t.dutyLine}><Emo e="👁"/> ต้อง<b>ไม่ขึ้น</b> "ยังไม่มีการบันทึก"</div>
+                <div style={t.dutyLine}><Emo e="📋"/> กด <b>คัดลอก</b> → ส่งเข้า <b>กลุ่ม LINE</b></div>
+              </div>
+            </div>
+
+            <div style={t.dutySec("#B5530F")}>
+              <div style={t.dutySecHead("#B5530F")}><Emo e="🧹"/> 3. ห้องต้องเรียบร้อย</div>
+              <div style={t.dutyBody}>
+                <div style={t.dutyLine}>🚫 ห้ามคนนอกเข้า · ห้ามแชร์ภาพหน้าจอ · ห้ามหลับ · ห้ามทิ้งจอ</div>
+                <div style={t.dutyLine}>🫧 ห้องสะอาดตลอดกะ · ของเป็นระเบียบ · ไม่วางอาหารใกล้อุปกรณ์</div>
+                <div style={t.dutyChips}>
+                  <b style={{color:"#B5530F", marginRight:2}}>✨ ก่อนออกกะ</b>
+                  {["🗑️ เก็บขยะ","🧽 เช็ดโต๊ะ-จอ","💧 ทิ้งน้ำเครื่องดูดความชื้น","🪑 จัดเก้าอี้","🔋 ชาร์จวิทยุ"].map(x=><span key={x} style={t.dutyChip}>{x}</span>)}
+                </div>
+              </div>
+            </div>
+
+            <button onClick={()=>setShowDuty(false)} className="tap" style={{...t.submit, marginTop:4}}>✓ รับทราบ เริ่มงาน</button>
           </div>
         </div></Modal>
       )}
@@ -3423,7 +3486,7 @@ function mk(dark){
     ipText:{fontSize:11, fontWeight:400, color:dim, fontFamily:mono, marginTop:2},
     zoneBadge:{display:"inline-flex", alignItems:"center", gap:4, fontSize:12.5, fontWeight:600, padding:"4px 10px", borderRadius:8, whiteSpace:"nowrap"},
     miniEmpty:{textAlign:"center", padding:"40px 20px", color:dim, fontSize:14, lineHeight:1.6},
-    modalBg:{position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:50, padding:20},
+    modalBg:{position:"fixed", inset:0, background:"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100, padding:20},
     modalCard:{background:surf, borderRadius:18, padding:24, maxWidth:480, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,.3)"},
     copiedBanner:{fontSize:13.5, fontWeight:600, color:"#16A34A", background:hexA("#16A34A",dark?.14:.1,dark), border:`1px solid ${hexA("#16A34A",.25,dark)}`, borderRadius:10, padding:"10px 14px", marginBottom:12},
     summaryArea:{width:"100%", height:220, padding:14, borderRadius:12, border:`1px solid ${border}`, background:surf2, color:text, fontSize:13.5, fontFamily:mono, lineHeight:1.6, resize:"none", outline:"none"},
@@ -3497,8 +3560,8 @@ function mk(dark){
     userName:{fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"},
     userRole:{fontSize:11, color:dim, marginTop:1},
     logoutBtn:{padding:"11px", borderRadius:11, border:`1px solid ${hexA("#EF4444",.25,dark)}`, background:hexA("#EF4444",dark?.08:.06,dark), color:"#EF4444", fontSize:13, fontWeight:600, marginBottom:12},
-    modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:90, padding:"30px 30px 84px"},
-    previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:91},
+    modal:{position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:140, padding:"30px 30px 84px"},
+    previewClose:{position:"fixed", bottom:26, left:"50%", transform:"translateX(-50%)", padding:"12px 26px", borderRadius:12, border:"1px solid rgba(255,255,255,.28)", background:"rgba(255,255,255,.14)", color:"#fff", fontSize:15, fontWeight:700, zIndex:141},
     modalImg:{maxWidth:"90%", maxHeight:"90%", borderRadius:12},
     accHead:{display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:6},
     accCount:{fontSize:12, fontWeight:600, color:dim, background:surf2, border:`1px solid ${border}`, borderRadius:20, padding:"1px 9px", marginLeft:4, verticalAlign:"middle"},
@@ -3536,6 +3599,24 @@ function mk(dark){
     migTitle:{fontWeight:700, fontSize:14, marginBottom:6, display:"flex", alignItems:"center", gap:6},
     migLine:{fontSize:12.5, color:text, lineHeight:1.6, marginTop:3},
     myPwBtn:{width:34, height:34, borderRadius:10, border:`1px solid ${border}`, background:surf, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, cursor:"pointer", flexShrink:0},
+    dutyOpenBtn:{display:"inline-flex", alignItems:"center", gap:6, padding:"9px 14px", borderRadius:12, border:`1px solid ${border}`, background:surf, color:text, fontFamily:"inherit", fontSize:13.5, fontWeight:600, cursor:"pointer", flexShrink:0, alignSelf:"flex-start", marginRight:64},
+    dutyCard:{background:surf, borderRadius:22, width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto", padding:16, boxShadow:"0 24px 60px rgba(0,0,0,.3)", display:"flex", flexDirection:"column", gap:12},
+    dutyHero:{background:"#16284A", borderRadius:18, padding:"18px 18px 16px", color:"#fff", display:"flex", alignItems:"center", gap:12},
+    dutyKicker:{display:"inline-flex", alignItems:"center", gap:6, fontSize:11, fontWeight:700, letterSpacing:1.2, background:"rgba(255,255,255,.1)", borderRadius:999, padding:"4px 10px", color:"#CFE0F7"},
+    dutyTitle:{fontFamily:head, fontSize:26, fontWeight:700, lineHeight:1.25, marginTop:8},
+    dutyHeroSub:{fontSize:13, marginTop:8, color:"#DDE6F3", display:"flex", alignItems:"center", gap:6},
+    dutyBubble:{position:"absolute", top:-14, right:52, background:"#fff", color:"#16284A", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:12, whiteSpace:"nowrap"},
+    dutySec:(c)=>({border:`2px solid ${c}`, borderRadius:16, overflow:"hidden", flexShrink:0}),
+    dutySecHead:(c)=>({background:c, color:"#fff", fontFamily:head, fontWeight:700, fontSize:16.5, padding:"10px 14px", display:"flex", alignItems:"center", gap:8}),
+    dutyBody:{padding:"12px 14px", display:"flex", flexDirection:"column", gap:8},
+    dutyLine:{fontSize:14, lineHeight:1.55, display:"flex", alignItems:"flex-start", gap:7, flexWrap:"wrap"},
+    dutyBox:{background:hexA("#1F64B8",dark?.14:.06,dark), borderRadius:12, padding:"10px 12px", fontSize:13.5},
+    dutyGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
+    dutyField:{background:surf, border:`1px solid ${hexA("#1F64B8",.25,dark)}`, borderRadius:10, padding:"8px 10px", minWidth:0},
+    dutyFieldK:{fontSize:11.5, color:dim, fontWeight:600, display:"flex", alignItems:"center", gap:5},
+    dutyFieldV:{fontSize:13.5, fontWeight:600, marginTop:3},
+    dutyChips:{display:"flex", flexWrap:"wrap", gap:6, alignItems:"center", background:hexA("#B5530F",dark?.14:.06,dark), borderRadius:12, padding:"10px 12px", fontSize:13},
+    dutyChip:{background:surf, border:`1px solid ${hexA("#B5530F",.3,dark)}`, borderRadius:999, padding:"4px 10px", whiteSpace:"nowrap"},
     accWarn:{marginTop:8, fontSize:12, color:"#D97706", fontWeight:600, display:"flex", alignItems:"center", gap:5},
     accInfo:{marginTop:10, fontSize:12.5, lineHeight:1.6, color:text, background:surf2, border:`1px dashed ${border}`, borderRadius:11, padding:"10px 12px"},
     roleGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
@@ -3552,7 +3633,7 @@ function mk(dark){
     pwEye:{padding:"0 12px", borderRadius:11, border:`1px solid ${border}`, background:surf2, color:dim, fontSize:15, flexShrink:0},
     roleViewer:{padding:"5px 11px", borderRadius:9, border:`1px solid ${hexA("#8B5CF6",.3,dark)}`, background:hexA("#8B5CF6",dark?.14:.1,dark), color:"#8B5CF6", fontSize:12, fontWeight:700},
     stDone:{fontSize:10.5, color:"#16A34A", fontWeight:700, marginTop:5},
-    toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1A1811", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:60, whiteSpace:"nowrap"},
+    toast:{position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:dark?"#E6EAF0":"#1A1811", color:dark?"#0B0F14":"#fff", padding:"13px 24px", borderRadius:13, fontSize:14, fontWeight:600, boxShadow:"0 8px 30px rgba(0,0,0,.4)", zIndex:150, whiteSpace:"nowrap"},
   };
 }
 function hexA(c,a,dark){ const n=c.replace("#",""); const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
