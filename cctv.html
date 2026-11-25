@@ -59,6 +59,8 @@
     .rb-stepGrid4{grid-template-columns:1fr 1fr !important;}
     .rb-maGrid{grid-template-columns:1fr 1fr !important;}
     .rb-dutyGrid{grid-template-columns:1fr !important;}
+    .rb-dutyCols{grid-template-columns:1fr !important;}
+    .rb-dutyTitle{font-size:21px !important;}
     .rb-dutyOpen{margin-right:0 !important;}
     .rb-dutyMascot{display:none !important;}
     .rb-lbFull{display:none;} .rb-lbShort{display:inline;}
@@ -403,17 +405,17 @@ function App() {
   const [passwords, setPasswords] = useState({}); // ใช้เฉพาะโหมดในเครื่อง ไม่ส่งขึ้นคลาวด์แล้ว
   const [loginBusy, setLoginBusy] = useState(false);
   const [myPw, setMyPw] = useState(null);          // หน้าต่างเปลี่ยนรหัสผ่านของตัวเอง
-  const [showDuty, setShowDuty] = useState(false); // ประกาศหน้าที่พนักงาน CCTV กะดึก (เด้งตอนพนักงานล็อกอิน)
-  // รหัสของ "คืนนี้": กะดึก 23:00–07:00 → หลัง 23:00 ใช้วันนี้, ก่อน 07:00 ใช้เมื่อวาน, นอกช่วงนี้ = ไม่ใช่กะดึก
-  const nightKey = () => {
+  const [showDuty, setShowDuty] = useState(false); // ประกาศหน้าที่พนักงาน CCTV (เด้งตอนล็อกอิน และตอนเริ่มทุกกะ)
+  // กะตอนนี้: เช้า 07–15 · บ่าย 15–23 · ดึก 23–07 (ก่อน 07:00 นับเป็นกะดึกของเมื่อวาน)
+  const curShift = () => {
     const d = new Date(), h = d.getHours();
     const local = (x) => new Date(x.getTime() - x.getTimezoneOffset()*60000).toISOString().slice(0,10);
-    if (h >= 23) return local(d);
-    if (h < 7) return local(new Date(d.getTime() - 86400000));
-    return null;
+    if (h >= 7 && h < 15) return { key: local(d)+"_เช้า", name:"เช้า", icon:"☀️", bubble:"วันนี้ฝากด้วยนะ!" };
+    if (h >= 15 && h < 23) return { key: local(d)+"_บ่าย", name:"บ่าย", icon:"🌤️", bubble:"เย็นนี้ฝากด้วยนะ!" };
+    return { key: local(h >= 23 ? d : new Date(d.getTime() - 86400000))+"_ดึก", name:"ดึก", icon:"🌙", bubble:"คืนนี้ฝากด้วยนะ!" };
   };
   const DUTY_KEY = "cctv_duty_ack";
-  const ackDuty = () => { setShowDuty(false); const k = nightKey(); if (k) { try { localStorage.setItem(DUTY_KEY, k); } catch(e){} } };
+  const ackDuty = () => { setShowDuty(false); try { localStorage.setItem(DUTY_KEY, curShift().key); } catch(e){} };
   const [myPwErr, setMyPwErr] = useState("");
   const acctMigrating = React.useRef(false);
   const [pwEdit, setPwEdit] = useState({});
@@ -555,12 +557,12 @@ function App() {
   useEffect(() => {
     if (authRole !== "staff") return;
     const check = () => {
-      const k = nightKey(); if (!k) return;
+      const k = curShift().key;
       let acked = null; try { acked = localStorage.getItem(DUTY_KEY); } catch(e){}
       if (acked !== k) setShowDuty(true);
     };
     check();
-    const iv = setInterval(check, 5 * 60 * 1000);              // เช็กทุก 5 นาที (ถึง 23:00 ก็เด้ง)
+    const iv = setInterval(check, 5 * 60 * 1000);              // เช็กทุก 5 นาที (ถึง 07:00 / 15:00 / 23:00 ก็เด้ง)
     if (iv && iv.unref) iv.unref();                             // (เฉพาะตอนรันชุดทดสอบใน Node ไม่ให้ค้าง)
     const onVis = () => { if (document.visibilityState === "visible") check(); };  // กลับมาเปิดแอปก็เช็ก
     document.addEventListener("visibilitychange", onVis);
@@ -1767,7 +1769,7 @@ function App() {
           <div style={t.wrap} className="rb-wrap">
             <div style={t.pageHead}>
               <div><div style={t.h1}><span style={t.h1Icon("#16A34A")}><PageIcon kind="record"/></span>บันทึกเหตุการณ์</div><div style={t.h1sub}>{fmtTH(todayISO())}</div></div>
-              {(auth.role === "staff" || isAdmin) && <button onClick={()=>setShowDuty(true)} className="tap rb-dutyOpen" style={t.dutyOpenBtn} title="ดูหน้าที่พนักงาน CCTV กะดึก"><Emo e="📋"/> หน้าที่กะดึก</button>}
+              {(auth.role === "staff" || isAdmin) && <button onClick={()=>setShowDuty(true)} className="tap rb-dutyOpen" style={t.dutyOpenBtn} title="ดูหน้าที่พนักงาน CCTV"><Emo e="📋"/> หน้าที่พนักงาน</button>}
             </div>
             <div style={t.recGrid} className="rb-recGrid">
               {/* ฟอร์มซ้าย */}
@@ -2835,58 +2837,70 @@ function App() {
       )}
       {showDuty && (<Modal>
         <div style={t.modalBg}>
-          <div style={t.dutyCard} onClick={e=>e.stopPropagation()} role="dialog" aria-label="หน้าที่พนักงาน CCTV กะดึก">
+          {(() => { const sh = curShift(); return (
+          <div style={t.dutyCard} onClick={e=>e.stopPropagation()} role="dialog" aria-label="หน้าที่พนักงาน CCTV">
+            {/* หัวประกาศ: พาสเทลฟ้า-ม่วง น้องกล้องทักทาย */}
             <div style={t.dutyHero}>
+              <span style={{...t.dutySpark, top:14, right:200}} className="rb-dutyMascot">✨</span>
+              <span style={{...t.dutySpark, bottom:12, right:26, fontSize:14}}>⭐</span>
+              <span style={{...t.dutySpark, top:18, right:24, fontSize:13}}>💙</span>
               <div style={{minWidth:0, flex:1}}>
                 <div style={t.dutyKicker}><Emo e="📹"/> CCTV RAYONGBOARD</div>
-                <div style={t.dutyTitle}>หน้าที่พนักงาน<br/><span style={{color:"#FFD97A"}}>CCTV กะดึก 🌙</span></div>
-                <div style={t.dutyHeroSub}><Emo e="✅"/> ทำครบทุกคืน ก่อนออกกะ</div>
+                <div style={t.dutyTitle} className="rb-dutyTitle">หน้าที่พนักงาน <span style={t.dutyTitleAccent}>CCTV</span> 💪</div>
+                <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginTop:8}}>
+                  <span style={t.dutyShiftPill}>{sh.icon} ตอนนี้ กะ{sh.name}</span>
+                  <span style={t.dutyHeroSub}><Emo e="✅"/> ทำครบทุกกะ ก่อนออกกะนะ</span>
+                </div>
               </div>
-              <div style={{position:"relative", flexShrink:0}} className="rb-dutyMascot">
-                <div style={t.dutyBubble}>คืนนี้ฝากด้วยนะ!</div>
-                <Mascot size={92} mount="#D6EAFF" mountLine="#5B9BE0"/>
+              <div style={{position:"relative", flexShrink:0, paddingTop:22}} className="rb-dutyMascot">
+                <div style={t.dutyBubble}>{sh.bubble}<i style={t.dutyBubbleTail}/></div>
+                <Mascot size={96} mount="#D6EAFF" mountLine="#5B9BE0"/>
               </div>
             </div>
 
-            <div style={t.dutySec("#1F64B8")}>
-              <div style={t.dutySecHead("#1F64B8")}><Emo e="📝"/> 1. บันทึกในแอป CCTV RAYONGBOARD</div>
-              <div style={t.dutyBody}>
-                <div style={t.dutyLine}><Emo e="⚠"/> พบเหตุ <b>บันทึกเลย</b> ไม่รอท้ายกะ</div>
-                <div style={{...t.dutyLine, color:"#DC2626", fontWeight:700}}><Emo e="📅"/> ตรวจสอบวันที่ทุกครั้งก่อนบันทึก!</div>
-                <div style={t.dutyBox}>
-                  <div style={{fontWeight:700, marginBottom:8}}><Emo e="📷"/> กรอกให้ครบ 4 ช่อง <span style={{fontWeight:500, color:t.dimColor}}>· ตัวอย่าง</span></div>
-                  <div style={t.dutyGrid} className="rb-dutyGrid">
-                    {[["📹","กล้อง / บริเวณ","RP · กำแพงหลังบ่อน้ำ"],["⏰","วันที่ - เวลา","25/11/2569 · 02:15 น."],["📝","สถานะ / รายละเอียด","กล้องดับ · ภาพไม่ขึ้นตั้งแต่ 02:10"],["📷","แนบรูป","ภาพหน้าจอกล้องตอนเกิดเหตุ"]].map(([ic,k,v])=>(
-                      <div key={k} style={t.dutyField}><div style={t.dutyFieldK}><Emo e={ic}/> {k}</div><div style={t.dutyFieldV}>{v}</div></div>
-                    ))}
+            <div style={t.dutyCols} className="rb-dutyCols">
+            <div style={t.dutyCol}>
+            {/* 1. บันทึก */}
+            <div style={t.dutySec("#3B82F6")}>
+              <div style={t.dutySecHead}><span style={t.dutyNum("#3B82F6")}>1</span><span style={{color:"#2563EB"}}>บันทึกในแอปทันที</span> <Emo e="📝"/></div>
+              <div style={t.dutyLine}><span style={t.dutyDot("#3B82F6")}><Emo e="⚠"/></span><span>พบเหตุ <b>บันทึกเลย</b> ไม่รอท้ายกะ</span></div>
+              <div style={t.dutyLine}><span style={t.dutyDot("#EF4444")}><Emo e="📅"/></span><span style={{color:"#DC2626", fontWeight:700}}>ตรวจสอบวันที่ทุกครั้งก่อนบันทึก!</span></div>
+              <div style={t.dutyMiniHead}><Emo e="📷"/> กรอกให้ครบ 4 ช่อง <span style={{fontWeight:500, color:t.dimColor}}>· ตัวอย่าง</span></div>
+              <div style={t.dutyGrid} className="rb-dutyGrid">
+                {[["📹","กล้อง / บริเวณ","RP · กำแพงหลังบ่อน้ำ","#3B82F6"],["⏰","วันที่ - เวลา","25/11/2569 · 02:15 น.","#F59E0B"],["📝","สถานะ / รายละเอียด","กล้องดับ · ภาพไม่ขึ้นตั้งแต่ 02:10","#10B981"],["📷","แนบรูป","ภาพหน้าจอกล้องตอนเกิดเหตุ","#EC4899"]].map(([ic,k,v,c])=>(
+                  <div key={k} style={t.dutyField}>
+                    <span style={t.dutyFieldIc(c)}><Emo e={ic}/></span>
+                    <div style={{minWidth:0}}><div style={t.dutyFieldK}>{k}</div><div style={t.dutyFieldV}>{v}</div></div>
                   </div>
-                </div>
+                ))}
+              </div>
+              <div style={t.dutyTip}><span style={{fontSize:18}}>🐾</span><span>ภาพไม่ชัด / ไม่แน่ใจว่าเป็นเหตุผิดปกติไหม <b>บันทึกไว้ก่อน</b> แล้วแจ้งทีมไอทีได้เลยนะ</span></div>
+            </div>
+            </div>
+            <div style={t.dutyCol}>
+            {/* 2. ส่งสรุป */}
+            <div style={t.dutySec("#10B981")}>
+              <div style={t.dutySecHead}><span style={t.dutyNum("#10B981")}>2</span><span style={{color:"#059669"}}>ส่งสรุปประจำวัน</span> <span style={t.dutyTag}>🌙 กะดึก</span></div>
+              <div style={t.dutyLine}><span style={t.dutyDot("#F59E0B")}><Emo e="⏰"/></span><span>ก่อน <b>07:00 น.</b> กด "คัดลอกสรุปวันที่…"</span></div>
+              <div style={t.dutyLine}><span style={t.dutyDot("#8B5CF6")}><Emo e="👁"/></span><span>ต้อง<b>ไม่ขึ้น</b> "ยังไม่มีการบันทึก"</span></div>
+              <div style={t.dutyLine}><span style={t.dutyDot("#10B981")}><Emo e="📋"/></span><span>กด <b>คัดลอก</b> → ส่งเข้า <b style={{color:"#06C755"}}>กลุ่ม LINE</b></span></div>
+            </div>
+            {/* 3. ห้องเรียบร้อย */}
+            <div style={t.dutySec("#F97316")}>
+              <div style={t.dutySecHead}><span style={t.dutyNum("#F97316")}>3</span><span style={{color:"#EA580C"}}>ห้องต้องเรียบร้อย</span> <Emo e="🧹"/></div>
+              <div style={t.dutyRules}>
+                {["ห้ามคนนอกเข้า","ห้ามแชร์ภาพหน้าจอ","ห้ามหลับ","ห้ามทิ้งจอ"].map(x=><span key={x} style={t.dutyNo}>🚫 {x}</span>)}
+              </div>
+              <div style={{...t.dutyLine, fontSize:13}}><span style={t.dutyDot("#EC4899")}>🫧</span><span>ห้องสะอาด · ของเป็นระเบียบ · ไม่วางอาหารใกล้อุปกรณ์</span></div>
+              <div style={t.dutyChips}>
+                <b style={{color:"#EA580C", fontSize:12.5}}>✨ ก่อนออกกะ</b>
+                {["🗑️ เก็บขยะ","🧽 เช็ดโต๊ะ-จอ","💧 ทิ้งน้ำเครื่องดูดความชื้น","🪑 จัดเก้าอี้","🔋 ชาร์จวิทยุ"].map(x=><span key={x} style={t.dutyChip}>{x}</span>)}
               </div>
             </div>
-
-            <div style={t.dutySec("#1A7F4E")}>
-              <div style={t.dutySecHead("#1A7F4E")}><Emo e="📥"/> 2. ส่งสรุปประจำวัน</div>
-              <div style={t.dutyBody}>
-                <div style={t.dutyLine}><Emo e="⏰"/> ก่อน <b>07:00 น.</b> กด "คัดลอกสรุปวันที่…" ในหน้าบันทึก</div>
-                <div style={t.dutyLine}><Emo e="👁"/> ต้อง<b>ไม่ขึ้น</b> "ยังไม่มีการบันทึก"</div>
-                <div style={t.dutyLine}><Emo e="📋"/> กด <b>คัดลอก</b> → ส่งเข้า <b>กลุ่ม LINE</b></div>
-              </div>
             </div>
-
-            <div style={t.dutySec("#B5530F")}>
-              <div style={t.dutySecHead("#B5530F")}><Emo e="🧹"/> 3. ห้องต้องเรียบร้อย</div>
-              <div style={t.dutyBody}>
-                <div style={t.dutyLine}>🚫 ห้ามคนนอกเข้า · ห้ามแชร์ภาพหน้าจอ · ห้ามหลับ · ห้ามทิ้งจอ</div>
-                <div style={t.dutyLine}>🫧 ห้องสะอาดตลอดกะ · ของเป็นระเบียบ · ไม่วางอาหารใกล้อุปกรณ์</div>
-                <div style={t.dutyChips}>
-                  <b style={{color:"#B5530F", marginRight:2}}>✨ ก่อนออกกะ</b>
-                  {["🗑️ เก็บขยะ","🧽 เช็ดโต๊ะ-จอ","💧 ทิ้งน้ำเครื่องดูดความชื้น","🪑 จัดเก้าอี้","🔋 ชาร์จวิทยุ"].map(x=><span key={x} style={t.dutyChip}>{x}</span>)}
-                </div>
-              </div>
             </div>
-
-            <button onClick={ackDuty} className="tap" style={{...t.submit, marginTop:4}}>✓ รับทราบ เริ่มงาน</button>
-          </div>
+            <button onClick={ackDuty} className="tap" style={t.dutyOk}>รับทราบ เริ่มงานกันเลย! 💙</button>
+          </div>); })()}
         </div></Modal>
       )}
       {myPw && (<Modal>
@@ -3625,23 +3639,36 @@ function mk(dark){
     migLine:{fontSize:12.5, color:text, lineHeight:1.6, marginTop:3},
     myPwBtn:{width:34, height:34, borderRadius:10, border:`1px solid ${border}`, background:surf, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, cursor:"pointer", flexShrink:0},
     dutyOpenBtn:{display:"inline-flex", alignItems:"center", gap:6, padding:"9px 14px", borderRadius:12, border:`1px solid ${border}`, background:surf, color:text, fontFamily:"inherit", fontSize:13.5, fontWeight:600, cursor:"pointer", flexShrink:0, alignSelf:"flex-start", marginRight:64},
-    dutyCard:{background:surf, borderRadius:22, width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto", padding:16, boxShadow:"0 24px 60px rgba(0,0,0,.3)", display:"flex", flexDirection:"column", gap:12},
-    dutyHero:{background:"#16284A", borderRadius:18, padding:"18px 18px 16px", color:"#fff", display:"flex", alignItems:"center", gap:12},
-    dutyKicker:{display:"inline-flex", alignItems:"center", gap:6, fontSize:11, fontWeight:700, letterSpacing:1.2, background:"rgba(255,255,255,.1)", borderRadius:999, padding:"4px 10px", color:"#CFE0F7"},
-    dutyTitle:{fontFamily:head, fontSize:26, fontWeight:700, lineHeight:1.25, marginTop:8},
-    dutyHeroSub:{fontSize:13, marginTop:8, color:"#DDE6F3", display:"flex", alignItems:"center", gap:6},
-    dutyBubble:{position:"absolute", top:-14, right:52, background:"#fff", color:"#16284A", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:12, whiteSpace:"nowrap"},
-    dutySec:(c)=>({border:`2px solid ${c}`, borderRadius:16, overflow:"hidden", flexShrink:0}),
-    dutySecHead:(c)=>({background:c, color:"#fff", fontFamily:head, fontWeight:700, fontSize:16.5, padding:"10px 14px", display:"flex", alignItems:"center", gap:8}),
-    dutyBody:{padding:"12px 14px", display:"flex", flexDirection:"column", gap:8},
-    dutyLine:{fontSize:14, lineHeight:1.55, display:"flex", alignItems:"flex-start", gap:7, flexWrap:"wrap"},
-    dutyBox:{background:hexA("#1F64B8",dark?.14:.06,dark), borderRadius:12, padding:"10px 12px", fontSize:13.5},
-    dutyGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
-    dutyField:{background:surf, border:`1px solid ${hexA("#1F64B8",.25,dark)}`, borderRadius:10, padding:"8px 10px", minWidth:0},
-    dutyFieldK:{fontSize:11.5, color:dim, fontWeight:600, display:"flex", alignItems:"center", gap:5},
-    dutyFieldV:{fontSize:13.5, fontWeight:600, marginTop:3},
-    dutyChips:{display:"flex", flexWrap:"wrap", gap:6, alignItems:"center", background:hexA("#B5530F",dark?.14:.06,dark), borderRadius:12, padding:"10px 12px", fontSize:13},
-    dutyChip:{background:surf, border:`1px solid ${hexA("#B5530F",.3,dark)}`, borderRadius:999, padding:"4px 10px", whiteSpace:"nowrap"},
+    dutyCols:{flexShrink:0, display:"grid", gridTemplateColumns:"1.12fr 1fr", gap:12, alignItems:"stretch"},
+    dutyCol:{display:"flex", flexDirection:"column", gap:12, minWidth:0},
+    dutyCard:{background:dark?surf:"#FFFDF8", borderRadius:26, width:"100%", maxWidth:1000, maxHeight:"94vh", overflowY:"auto", padding:14, boxShadow:"0 24px 60px rgba(30,40,80,.28)", display:"flex", flexDirection:"column", gap:12},
+    dutyHero:{flexShrink:0, position:"relative", overflow:"hidden", background:dark?"linear-gradient(135deg,#1E3355,#2E2552)":"linear-gradient(135deg,#DDEEFF 0%,#E9E4FF 60%,#FFE9F3 100%)", borderRadius:22, padding:"16px 22px", color:text, display:"flex", alignItems:"center", gap:14},
+    dutySpark:{position:"absolute", fontSize:18, opacity:.9, pointerEvents:"none"},
+    dutyKicker:{display:"inline-flex", alignItems:"center", gap:6, fontSize:10.5, fontWeight:700, letterSpacing:1.4, background:dark?"rgba(255,255,255,.1)":"rgba(255,255,255,.75)", borderRadius:999, padding:"4px 11px", color:dark?"#CFE0F7":"#3B5B8C"},
+    dutyTitle:{fontFamily:head, fontSize:26, fontWeight:700, lineHeight:1.25, marginTop:8, color:dark?"#F3F6FB":"#1D2B4F"},
+    dutyTitleAccent:{background:"linear-gradient(90deg,#2F7FE0,#8B5CF6)", WebkitBackgroundClip:"text", backgroundClip:"text", color:"transparent"},
+    dutyShiftPill:{display:"inline-flex", alignItems:"center", gap:4, fontSize:12.5, fontWeight:700, background:dark?"rgba(255,217,122,.16)":"#FFF4CC", color:dark?"#FFD97A":"#9A6B00", border:`1.5px solid ${dark?"rgba(255,217,122,.4)":"#FFE08A"}`, borderRadius:999, padding:"3px 12px"},
+    dutyHeroSub:{fontSize:12.5, color:dark?"#DDE6F3":"#4A5A7A", display:"inline-flex", alignItems:"center", gap:5, fontWeight:600},
+    dutyBubble:{position:"absolute", top:0, right:30, background:"#fff", color:"#1D2B4F", fontSize:11.5, fontWeight:700, padding:"5px 11px", borderRadius:14, whiteSpace:"nowrap", boxShadow:"0 4px 12px rgba(60,80,140,.15)"},
+    dutyBubbleTail:{position:"absolute", bottom:-5, left:22, width:10, height:10, background:"#fff", transform:"rotate(45deg)", borderRadius:2},
+    dutySec:(c)=>({background:hexA(c,dark?.12:.07,dark), border:`1.5px solid ${hexA(c,dark?.35:.28,dark)}`, borderRadius:20, padding:"12px 14px", display:"flex", flexDirection:"column", gap:7, flex:1}),
+    dutySecHead:{display:"flex", alignItems:"center", gap:8, fontFamily:head, fontWeight:700, fontSize:16, marginBottom:2},
+    dutyNum:(c)=>({width:26, height:26, borderRadius:"50%", background:c, color:"#fff", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:800, boxShadow:`0 3px 8px ${hexA(c,.4,dark)}`, flexShrink:0}),
+    dutyTag:{fontSize:11.5, fontWeight:700, background:dark?"rgba(255,255,255,.08)":"#fff", border:`1px solid ${border}`, borderRadius:999, padding:"2px 9px", color:dim},
+    dutyLine:{fontSize:13.5, lineHeight:1.5, display:"flex", alignItems:"center", gap:8},
+    dutyDot:(c)=>({width:26, height:26, borderRadius:9, background:hexA(c,dark?.22:.14,dark), display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0}),
+    dutyMiniHead:{fontSize:13, fontWeight:700, marginTop:2},
+    dutyGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:7},
+    dutyField:{background:dark?surf2:"#fff", borderRadius:14, padding:"8px 10px", minWidth:0, display:"flex", alignItems:"flex-start", gap:8, boxShadow:dark?"none":"0 2px 8px rgba(60,80,140,.07)", border:`1px solid ${dark?border:"rgba(60,80,140,.08)"}`},
+    dutyFieldIc:(c)=>({width:28, height:28, borderRadius:10, background:hexA(c,dark?.22:.13,dark), display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:15, flexShrink:0}),
+    dutyFieldK:{fontSize:11, color:dim, fontWeight:600},
+    dutyFieldV:{fontSize:13, fontWeight:600, marginTop:1, lineHeight:1.35},
+    dutyTip:{marginTop:"auto", display:"flex", alignItems:"center", gap:8, fontSize:12.5, lineHeight:1.5, color:dim, background:dark?"rgba(255,255,255,.04)":"rgba(255,255,255,.7)", border:`1.5px dashed ${hexA("#3B82F6",.3,dark)}`, borderRadius:14, padding:"8px 12px"},
+    dutyRules:{display:"flex", flexWrap:"wrap", gap:5},
+    dutyNo:{fontSize:12, fontWeight:600, background:dark?"rgba(239,68,68,.14)":"#FFECEC", color:dark?"#FCA5A5":"#D93636", borderRadius:999, padding:"3px 10px"},
+    dutyChips:{display:"flex", flexWrap:"wrap", gap:5, alignItems:"center", marginTop:2},
+    dutyChip:{background:dark?surf2:"#fff", borderRadius:999, padding:"4px 10px", whiteSpace:"nowrap", fontSize:12, boxShadow:dark?"none":"0 2px 6px rgba(234,88,12,.1)", border:`1px solid ${hexA("#F97316",.25,dark)}`},
+    dutyOk:{flexShrink:0, border:"none", borderRadius:16, padding:"13px", fontFamily:head, fontSize:16, fontWeight:700, color:"#fff", cursor:"pointer", background:"linear-gradient(90deg,#3B8CF0,#7C6CF0)", boxShadow:"0 8px 20px rgba(80,100,220,.3)"},
     accWarn:{marginTop:8, fontSize:12, color:"#D97706", fontWeight:600, display:"flex", alignItems:"center", gap:5},
     accInfo:{marginTop:10, fontSize:12.5, lineHeight:1.6, color:text, background:surf2, border:`1px dashed ${border}`, borderRadius:11, padding:"10px 12px"},
     roleGrid:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8},
