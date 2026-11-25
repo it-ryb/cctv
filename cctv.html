@@ -1175,10 +1175,11 @@ function App() {
   const buildSummary = (dArg) => {
     const d = dArg || (dashMode==="day" ? dayFilter : todayISO());
     const rows = logs.filter(l=>l.date===d);
-    let s = `📋 สรุปเวร CCTV ${fmtTH(d)}\n`;
-    s += `RAYONGBOARD\n`;
-    s += `━━━━━━━━━━━━━\n`;
-    if (rows.length===0) { s += `✅ ยังไม่มีการบันทึกของวันที่ ${fmtTH(d)}`; return s; }
+    const LINE = `━━━━━━━━━━\n`;
+    let s = `📋 สรุปเวร CCTV RAYONGBOARD\n`;
+    s += `📅 วันที่ ${fmtTH(d)}\n`;
+    s += LINE;
+    if (rows.length===0) { s += `⚠️ ยังไม่มีการบันทึกของวันนี้`; return s; }
 
     // รวมรายการของแต่ละคนไว้ด้วยกัน
     const groups = [], at = {};
@@ -1195,9 +1196,10 @@ function App() {
 
     groups.forEach((g, i) => {
       if (i) s += `\n`;
-      s += `👤 ${g.who}${g.shifts.length ? " · " + g.shifts.join(", ") : ""}\n`;
+      const shiftTx = g.shifts.map(k => SHIFTS.some(x=>x.key===k && x.grp==="cctv") ? "กะ" + k : k).join(", ");
+      s += `👤 ${g.who}${shiftTx ? " (" + shiftTx + ")" : ""}\n`;
       const abn = g.items.filter(l => l.status !== "ปกติ");
-      if (!abn.length) { s += `  ✅ ตรวจแล้ว ไม่พบความผิดปกติ\n`; return; }
+      if (!abn.length) { s += `  ✅ ไม่พบเหตุผิดปกติ\n`; return; }
       abn.forEach(l => {
         const em = stOf(l.status).emoji;
         const tm = l.time ? l.time + " " : "";
@@ -1212,13 +1214,15 @@ function App() {
       });
     });
 
-    s += `━━━━━━━━━━━━━\n`;
-    // บรรทัดรวมท้ายสุด ให้คนอ่านเห็นยอดรวมโดยไม่ต้องไล่นับเอง
+    // บรรทัดรวมท้ายสุด: มีเหตุผิดปกติ → บอกยอดแต่ละอาการ · ไม่มีเลย → บอกครั้งเดียวว่าปกติทั้งวัน (ไม่ซ้ำกับรายคน)
     const cnt = {};
     rows.forEach(l => { if (l.status && l.status !== "ปกติ") cnt[l.status] = (cnt[l.status]||0) + 1; });
     const parts = Object.keys(cnt).map(k => `${stOf(k).emoji} ${k} ${cnt[k]}`);
-    s += parts.length ? `รวม: ${parts.join(" · ")}` : `✅ ตรวจสอบแล้ว ไม่พบความผิดปกติ`;
-    if (myName) s += `\n📤 ส่งสรุปโดย: ${myName}`;
+    s += LINE;
+    s += parts.length ? `📊 รวมเหตุผิดปกติ: ${parts.join(" · ")}` : `📊 สรุป: ปกติทั้งวัน ✅`;
+    // ผู้ส่ง: ใส่เฉพาะบัญชีส่วนตัว (บัญชีกลางอย่าง mon ไม่ต้อง เพราะรายชื่อคนบันทึกอยู่ด้านบนแล้ว)
+    const me = auth && accounts[auth.user];
+    if (me && me.reporter) s += `\n📤 ส่งโดย: ${me.reporter}`;
     return s;
   };
   const copySummary = (dArg) => {
