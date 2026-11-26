@@ -306,6 +306,8 @@ const FIX_STEPS = [
 const FIX_ALIAS = { "รอแก้":WAIT_REPAIR, "กำลังแก้":DOING, "แก้แล้ว":DONE, "กำลังติดตั้ง":DOING, "ติดตั้งแล้ว":DONE };
 const normFix = (v) => FIX_ALIAS[v] || v;
 const fixDone = (l) => !!l && normFix(l.fix) === DONE;
+// จัดกลุ่มงานค้าง "ตอนนี้" ตามสภาพจริง: บันทึกเป็นกล้องดับแต่สถานะงานคือรอติดตั้งกลับ = ถอดออกไป ไม่ใช่ดับ
+const openBucket = (l) => { const f = normFix(l.fix); return f===WAIT_INSTALL ? "ถอดกล้อง" : f===WAIT_CLEAN ? "กล้องสกปรก" : l.status; };
 const defaultFix = (status) => status==="ถอดกล้อง" ? WAIT_INSTALL : status==="กล้องสกปรก" ? WAIT_CLEAN : WAIT_REPAIR;
 const FIX = { [WAIT_REPAIR]:"#F59E0B", [WAIT_INSTALL]:"#0EA5E9", [WAIT_CLEAN]:"#A0784F", [DOING]:"#14B8A6", [DONE]:"#22C55E",
               "รอแก้":"#F59E0B", "กำลังแก้":"#14B8A6", "แก้แล้ว":"#22C55E", "กำลังติดตั้ง":"#14B8A6", "ติดตั้งแล้ว":"#22C55E", "-":"#94A3B8" };
@@ -927,6 +929,7 @@ function App() {
       if (fFilter==="wait_repair") return f===WAIT_REPAIR;
       if (fFilter==="wait_install") return f===WAIT_INSTALL;
       if (fFilter==="wait_clean") return f===WAIT_CLEAN;
+      if (fFilter.startsWith("b:")) return f!==DONE && openBucket(l)===fFilter.slice(2);
       if (fFilter==="doing") return f===DOING;
       return true;
     });
@@ -1071,9 +1074,10 @@ function App() {
   const selectableIds = useMemo(() => view.filter(l=>needsFix(l.status) && !fixDone(l)).map(l=>l.id), [view]);
   // กล้องที่ยังมีปัญหาค้างอยู่ตอนนี้ แยกตามอาการ (นับจากบันทึกทั้งหมด ไม่ขึ้นกับเดือนที่เลือก)
   const OPEN_ORDER = ["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","กล้องสกปรก","ถอดกล้อง"];
+  const OPEN_SHORT = {"กล้องดับ":"กล้องดับ","ภาพผิดปกติ":"ภาพเพี้ยน","ปรับมุมกล้อง":"ปรับมุม","กล้องสกปรก":"สกปรก","ถอดกล้อง":"ถอดออก"};
   const openByStatus = useMemo(() => {
     const m = {}; OPEN_ORDER.forEach(k=>m[k]=new Set());
-    (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l)) { (m[l.status] = m[l.status] || new Set()).add(l.cam || ("#"+l.id)); } });
+    (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l)) { const k = openBucket(l); (m[k] = m[k] || new Set()).add(l.cam || ("#"+l.id)); } });
     const c = {}; Object.keys(m).forEach(k=>c[k]=m[k].size); return c;
   }, [logs]);
   const openCamSet = useMemo(() => {
@@ -2046,7 +2050,7 @@ function App() {
 
               <Pick t={t} value={sFilter} onChange={setSFilter} style={sFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกอาการที่แจ้ง"], ...["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","ถอดกล้อง","กล้องสกปรก","เหตุการณ์อื่น","ปกติ"].map(k=>[k,k,stOf(k).emoji])]}/>
               <Pick t={t} value={fFilter} onChange={setFFilter} style={fFilter!=="all"?t.selectOn:t.select}
-                    options={[["all","ทุกงานซ่อม"],["open","ยังไม่เสร็จ","⏳"],["wait_repair","รอซ่อม","🔧"],["wait_install","รอติดตั้งกลับ","🔌"],["wait_clean","รอทำความสะอาด","🧽"],["doing","กำลังดำเนินการ","🔵"],["done","เสร็จแล้ว","✅"]]}/>
+                    options={[...(fFilter.startsWith("b:") ? [[fFilter, `ค้างตอนนี้: ${OPEN_SHORT[fFilter.slice(2)]||fFilter.slice(2)}`, stOf(fFilter.slice(2)).emoji]] : []), ["all","ทุกงานซ่อม"],["open","ยังไม่เสร็จ","⏳"],["wait_repair","รอซ่อม","🔧"],["wait_install","รอติดตั้งกลับ","🔌"],["wait_clean","รอทำความสะอาด","🧽"],["doing","กำลังดำเนินการ","🔵"],["done","เสร็จแล้ว","✅"]]}/>
               <Pick t={t} value={zFilter} onChange={setZFilter} style={zFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกพื้นที่"], ...ZONES.map(z=>[z,z,ZONE_EMOJI[z]])]}/>
               <Pick t={t} value={byFilter} onChange={setByFilter} style={byFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกผู้รายงาน"], ...byOpts.map(r=>[r,r])]}/>
               <input value={camQ} onChange={e=>setCamQ(e.target.value)} placeholder="ค้นหาชื่อกล้อง" style={{...(camQ?t.selectOn:t.select), width:170, fontFamily:camQ?mono:"inherit"}}/>
@@ -2232,20 +2236,26 @@ function App() {
                       {openCamSet.size ? <>ตอนนี้มีปัญหา <b style={{color:t.text}}>{openCamSet.size}</b> ตัว</> : "ไม่มีกล้องค้างงาน"}
                     </div>
                     {/* แยกให้เห็นชัด ๆ ว่าตอนนี้ดับกี่ตัว ถอดกี่ตัว ฯลฯ กดแต่ละอันเพื่อดูรายชื่อกล้อง */}
-                    <div style={t.openRow}>
-                      {OPEN_ORDER.filter(k => k==="กล้องดับ" || openByStatus[k]).map(k => {
-                        const n = openByStatus[k] || 0, c = stOf(k).dot, down = k==="กล้องดับ";
-                        return (
-                          <span key={k} role="button" tabIndex={0} className="tap"
-                                onClick={e=>{ e.stopPropagation(); drillTo({status:k, fix:"open", now:true}); }}
-                                style={{...t.openPill, ...(down?t.openPillBig:null), color: n ? c : t.dim,
-                                        background: n ? hex(c, dark?.16:.1) : "transparent", borderColor: n ? hex(c, dark?.4:.35) : t.border}}
-                                title={`ดูรายการ${k}ที่ยังค้าง`}>
-                            <Emo e={stOf(k).emoji}/> {k} <b style={down?{fontSize:20}:null}>{n}</b> ตัว
-                          </span>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const ks = OPEN_ORDER.filter(k => k==="กล้องดับ" || openByStatus[k]);
+                      return (
+                        <div style={{...t.openRow, gridTemplateColumns:`repeat(${Math.min(ks.length,3)}, minmax(0,1fr))`}}>
+                          {ks.map(k => {
+                            const n = openByStatus[k] || 0, c = stOf(k).dot;
+                            return (
+                              <span key={k} role="button" tabIndex={0} className="tap"
+                                    onClick={e=>{ e.stopPropagation(); drillTo({fix:"b:"+k, now:true}); }}
+                                    style={{...t.openPill, color: n ? c : t.dim,
+                                            background: n ? hex(c, dark?.14:.08) : "transparent", borderColor: n ? hex(c, dark?.4:.3) : t.border}}
+                                    title={`ดูรายการ${k}ที่ยังค้าง`}>
+                                <span style={t.openPillTop}><Emo e={stOf(k).emoji}/> {OPEN_SHORT[k]||k}</span>
+                                <span style={t.openPillNum}>{n} <small style={t.openPillUnit}>ตัว</small></span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -3598,9 +3608,11 @@ function mk(dark){
     healthTrack:{height:7, borderRadius:7, background:hexA("#94A3B8",dark?.18:.14,dark), marginTop:14, overflow:"hidden"},
     healthFill:{height:"100%", borderRadius:7, background:"linear-gradient(90deg,#22C55E,#4ADE80)"},
     heroFoot:{fontSize:12, color:dim, marginTop:10},
-    openRow:{display:"flex", flexWrap:"wrap", gap:7, marginTop:10, alignItems:"center"},
-    openPill:{display:"inline-flex", alignItems:"center", gap:5, fontSize:12.5, fontWeight:600, border:"1px solid", borderRadius:999, padding:"4px 11px", cursor:"pointer", whiteSpace:"nowrap"},
-    openPillBig:{fontSize:14, padding:"6px 14px", fontWeight:700},
+    openRow:{display:"grid", gap:8, marginTop:12},
+    openPill:{display:"flex", flexDirection:"column", gap:2, minWidth:0, border:"1px solid", borderRadius:14, padding:"8px 11px", cursor:"pointer"},
+    openPillTop:{fontSize:12, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", display:"flex", alignItems:"center", gap:4},
+    openPillNum:{fontSize:22, fontWeight:800, lineHeight:1.15},
+    openPillUnit:{fontSize:11.5, fontWeight:600, opacity:.8},
     actTile:{background:surf, border:`1px solid ${border}`, borderLeft:"4px solid", borderRadius:16, padding:"18px 18px", textAlign:"left", boxShadow:shadow, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", justifyContent:"space-between"},
     actTop:{display:"flex", alignItems:"center", gap:7},
     actNum:{fontSize:34, fontWeight:800, lineHeight:1, margin:"10px 0 4px", letterSpacing:"-1px"},
