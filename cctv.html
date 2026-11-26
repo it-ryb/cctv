@@ -72,6 +72,7 @@
     .rb-showM{display:flex !important;}
     .rb-nav{flex-direction:row !important; flex:1 1 100% !important; min-width:0 !important; overflow-x:auto !important; flex-wrap:nowrap !important; scrollbar-width:none;}
     .rb-nav::-webkit-scrollbar{display:none;}
+    .rb-navPill{display:none;}
     .rb-nav > *{flex:0 0 auto !important; white-space:nowrap !important;}
     .rb-app{overflow-x:clip !important;}
     html{overflow-x:hidden;}
@@ -118,8 +119,16 @@
     .rb-nav > button{flex:1 1 0 !important; min-width:0 !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; gap:2px !important;
       padding:7px 2px 6px !important; margin:0 !important; border:none !important; border-radius:24px !important; background:transparent !important; box-shadow:none !important;
       position:relative !important; font-size:11px !important; font-weight:600 !important;}
-    .rb-nav > button.rb-navOn{background:rgba(255,255,255,.85) !important; box-shadow:0 3px 12px rgba(28,80,140,.14) !important;}
-    .rb-app[data-dark="1"] .rb-nav > button.rb-navOn{background:rgba(255,255,255,.12) !important;}
+    /* ฟองไฮไลต์เลื่อนได้แบบ iOS: ปุ่มที่เลือกโปร่ง ให้ฟองด้านหลังเลื่อนตามแทน */
+    .rb-nav{touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+    .rb-nav > button.rb-navOn{background:transparent !important; box-shadow:none !important;}
+    .rb-nav > button{z-index:1; transition:transform .25s cubic-bezier(.34,1.5,.5,1) !important;}
+    .rb-nav.rb-navDrag > button.rb-navHover{transform:scale(1.08);}
+    .rb-navPill{display:block !important; position:absolute; top:6px; bottom:6px; left:0; width:0; border-radius:24px; z-index:0; pointer-events:none;
+      background:rgba(255,255,255,.88); box-shadow:0 3px 12px rgba(28,80,140,.14), inset 0 1px 0 rgba(255,255,255,.95); will-change:transform,width;}
+    .rb-nav.rb-navDrag .rb-navPill{background:rgba(255,255,255,.62); box-shadow:0 8px 24px rgba(28,80,140,.22), inset 0 0 0 1px rgba(255,255,255,.9);}
+    .rb-app[data-dark="1"] .rb-navPill{background:rgba(255,255,255,.13); box-shadow:0 3px 12px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.12);}
+    .rb-app[data-dark="1"] .rb-nav.rb-navDrag .rb-navPill{background:rgba(255,255,255,.2);}
     .rb-nav .rb-navIc{font-size:22px !important; height:30px; display:flex; align-items:center; justify-content:center;}
     .rb-nav .rb-navLb{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
     .rb-nav .rb-navBadge{position:absolute !important; top:1px !important; right:auto !important; left:calc(50% + 7px) !important; margin:0 !important; min-width:18px !important; height:18px !important;
@@ -439,6 +448,84 @@ function App() {
   const [editCam, setEditCam] = useState("");
   const [editCamVal, setEditCamVal] = useState("");
   const [nav, setNav] = useState("record");
+  // แถบล่างมือถือ: ฟองไฮไลต์เลื่อนตามแท็บ + กดค้างแล้วลากนิ้วเลือกแท็บได้แบบ iOS
+  const [navEl, setNavEl] = useState(null);
+  const navPillRef = React.useRef(null);
+  const navDrag = React.useRef({ on:false, moved:false, x0:0, sup:false });
+  const SPRING = "transform .45s cubic-bezier(.34,1.35,.5,1), width .45s cubic-bezier(.34,1.35,.5,1)";
+  const navPlace = (x, w, mode, scale) => {
+    const p = navPillRef.current; if (!p) return;
+    p.style.transition = mode === "spring" ? SPRING : mode === "follow" ? "transform .09s linear, width .2s ease" : "none";
+    p.style.width = w + "px";
+    p.style.transform = `translateX(${x}px)` + (scale ? ` scale(${scale})` : "");
+  };
+  const navSnapTo = (btn, mode) => { if (btn) navPlace(btn.offsetLeft, btn.offsetWidth, mode); };
+  const navFirst = React.useRef(true);
+  useEffect(() => {
+    if (!navEl) return;
+    navSnapTo(navEl.querySelector(":scope > button.rb-navOn"), navFirst.current ? "none" : "spring");
+    navFirst.current = false;
+  });
+  useEffect(() => {
+    if (!navEl) return;
+    navFirst.current = true;
+    const btns = () => Array.from(navEl.querySelectorAll(":scope > button"));
+    const btnAt = (x) => {
+      const bs = btns(); let best = null, bd = 1e9;
+      bs.forEach(b => { const r = b.getBoundingClientRect(); const d = x < r.left ? r.left - x : x > r.right ? x - r.right : 0; if (d < bd) { bd = d; best = b; } });
+      return best;
+    };
+    const hover = (b) => btns().forEach(x => x.classList.toggle("rb-navHover", x === b));
+    const follow = (cx) => {
+      const r = navEl.getBoundingClientRect(); const b = btnAt(cx); if (!b) return;
+      const w = b.offsetWidth; const pad = 6;
+      let x = cx - r.left - w / 2; x = Math.max(pad, Math.min(r.width - pad - w, x));
+      navPlace(x, w, "follow", 1.06); hover(b);
+    };
+    const d = navDrag.current;
+    const down = (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      d.on = true; d.moved = false; d.x0 = e.clientX; d.id = e.pointerId;
+      const b = btnAt(e.clientX);
+      // แตะปุ๊บ ฟองขยายนิดนึงบนแท็บที่แตะ ให้รู้ว่าลากได้
+      if (b && b.classList.contains("rb-navOn")) { navEl.classList.add("rb-navDrag"); follow(e.clientX); d.moved = true; d.fromOn = true; }
+      else d.fromOn = false;
+    };
+    const move = (e) => {
+      if (!d.on || e.pointerId !== d.id) return;
+      if (!d.moved && Math.abs(e.clientX - d.x0) < 8) return;
+      if (!d.moved || !navEl.classList.contains("rb-navDrag")) { d.moved = true; navEl.classList.add("rb-navDrag"); try { navEl.setPointerCapture(e.pointerId); } catch (_) {} }
+      try { if (!navEl.hasPointerCapture(e.pointerId)) navEl.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault(); follow(e.clientX);
+    };
+    const up = (e) => {
+      if (!d.on || e.pointerId !== d.id) return;
+      d.on = false;
+      const dragged = d.moved && Math.abs(e.clientX - d.x0) >= 8;
+      navEl.classList.remove("rb-navDrag"); hover(null);
+      if (d.moved) {
+        const b = btnAt(e.clientX);
+        if (b) { navSnapTo(b, "spring"); if (dragged) { d.sup = true; setTimeout(() => { d.sup = false; }, 450); setNav(b.dataset.k); } }
+        if (!dragged && !b) navSnapTo(navEl.querySelector(":scope > button.rb-navOn"), "spring");
+      }
+      d.moved = false;
+    };
+    const cancel = () => { d.on = false; d.moved = false; navEl.classList.remove("rb-navDrag"); hover(null); navSnapTo(navEl.querySelector(":scope > button.rb-navOn"), "spring"); };
+    const clickCap = (e) => { if (d.sup) { d.sup = false; e.stopPropagation(); e.preventDefault(); } };
+    const resize = () => navSnapTo(navEl.querySelector(":scope > button.rb-navOn"), "none");
+    navEl.addEventListener("pointerdown", down);
+    navEl.addEventListener("pointermove", move, { passive:false });
+    navEl.addEventListener("pointerup", up);
+    navEl.addEventListener("pointercancel", cancel);
+    navEl.addEventListener("click", clickCap, true);
+    window.addEventListener("resize", resize);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null; if (ro) ro.observe(navEl);
+    return () => {
+      navEl.removeEventListener("pointerdown", down); navEl.removeEventListener("pointermove", move);
+      navEl.removeEventListener("pointerup", up); navEl.removeEventListener("pointercancel", cancel);
+      navEl.removeEventListener("click", clickCap, true); window.removeEventListener("resize", resize); if (ro) ro.disconnect();
+    };
+  }, [navEl]);
   const [status, setStatus] = useState("ปกติ");
   const [zone, setZone] = useState(ZONES[0]);
   const [subGrp, setSubGrp] = useState("");
@@ -1732,9 +1819,10 @@ function App() {
           </div>
         </div>
 
-        <nav style={t.nav} className="rb-nav">
+        <nav style={t.nav} className="rb-nav" ref={setNavEl}>
+          <span className="rb-navPill" ref={navPillRef} aria-hidden="true"/>
           {NAV.map(([k,ic,label])=>(
-            <button key={k} onClick={()=>setNav(k)} className={"tap"+(nav===k?" rb-navOn":"")} style={nav===k?t.navOn:t.navBtn}>
+            <button key={k} data-k={k} onClick={()=>setNav(k)} className={"tap"+(nav===k?" rb-navOn":"")} style={nav===k?t.navOn:t.navBtn}>
               <span className="rb-navIc" style={{display:"inline-flex"}}><PageIcon kind={isVendor?"repair":k} size={26}/></span><span className="rb-navLb"><span className="rb-lbFull">{label}</span><span className="rb-lbShort">{({cams:"กล้อง", staff:"พนักงาน"})[k]||label}</span></span>
               {k==="history" && pendingFix>0 && <span className="rb-navBadge" style={t.navBadge} title={`งานซ่อมค้างอยู่ ${pendingFix} รายการ`}>{pendingFix}</span>}
             </button>
