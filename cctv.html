@@ -81,7 +81,13 @@
     .rb-camManGrid{grid-template-columns:minmax(0,1fr) !important;}
     .rb-wrap [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
     .rb-statGrid{grid-template-columns:1fr 1fr !important;}
-    .rb-heroGrid{grid-template-columns:1fr !important;}
+    .rb-heroGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:10px !important;}
+    .rb-heroGrid > :first-child{grid-column:1 / -1;}
+    .rb-heroGrid > button:not(:first-child){padding:12px 10px !important; border-radius:14px !important; min-width:0; gap:4px;}
+    .rb-heroGrid > button:not(:first-child) > div:first-child{flex-direction:column !important; align-items:flex-start !important; gap:3px !important;}
+    .rb-heroGrid > button:not(:first-child) > div:first-child > span:last-child{font-size:11.5px !important; white-space:nowrap; letter-spacing:-.2px;}
+    .rb-heroGrid > button:not(:first-child) > div:nth-child(2){font-size:30px !important; margin:4px 0 !important; line-height:1.1 !important;}
+    .rb-heroGrid > button:not(:first-child) > div:nth-child(3){font-size:11px !important; line-height:1.35 !important;}
     .rb-miniGrid{grid-template-columns:1fr 1fr !important;}
     .rb-wrap{padding:18px 16px 50px !important;}
     .rb-tableWrap{overflow-x:auto !important;}
@@ -145,6 +151,7 @@
     .rb-wrap .rb-stGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important;}
     .rb-wrap .rb-stGrid > button{padding:12px 4px !important; gap:4px !important; font-size:12.5px !important; border-radius:13px !important; min-height:0 !important;}
     .rb-wrap .rb-stGrid > button > span:first-child{font-size:22px !important;}
+    .rb-wrap .rb-stGrid > button.rb-stWide{padding:10px 4px !important; gap:8px !important;}
     .rb-wrap .rb-shGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:8px !important;}
     .rb-wrap .rb-shGrid > button{padding:10px 4px !important;}
     .rb-wrap .rb-shGrid:has(> button:nth-child(4)){grid-template-columns:repeat(2, minmax(0,1fr)) !important;}  /* 4 กะ (บัญชี IT) = 2×2 ไม่ให้ตัวสุดท้ายโดดเดี่ยว */
@@ -274,21 +281,24 @@ const STATUS = {
   "ภาพผิดปกติ": { emoji: "📺", dot: "#EC4899" },
   "ปรับมุมกล้อง": { emoji: "🎥", dot: "#8B5CF6" },
   "ถอดกล้อง": { emoji: "🔌", dot: "#0EA5E9" },
+  "กล้องสกปรก": { emoji: "🕸", dot: "#A0784F" },
   "เหตุการณ์อื่น": { emoji: "⚠️", dot: "#14B8A6" },
 };
 // รายการเก่าหรือข้อมูลเพี้ยนอาจมีสถานะที่ไม่อยู่ในรายการ ต้องไม่ทำให้ทั้งหน้าพัง
 const UNKNOWN_ST = { emoji: "❓", dot: "#94A3B8" };
 const stOf = (s) => STATUS[s] || UNKNOWN_ST;
-const needsFix = (s) => s==="กล้องดับ" || s==="ภาพผิดปกติ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง";
+const needsFix = (s) => s==="กล้องดับ" || s==="ภาพผิดปกติ" || s==="ปรับมุมกล้อง" || s==="ถอดกล้อง" || s==="กล้องสกปรก";
 // ขั้นตอนติดตามงาน — ถอดกล้องใช้คำว่า "ติดตั้งกลับ" แทน "ซ่อม"
 // สถานะงานชุดเดียว ใช้กับทุกประเภทงาน เลือกได้ว่ารอเพราะอะไร
 const WAIT_REPAIR  = "รอซ่อม";
 const WAIT_INSTALL = "รอติดตั้งกลับ";
+const WAIT_CLEAN   = "รอทำความสะอาด"; // หยากไย่ ฝุ่น แมลง หรือของบังหน้ากล้อง
 const DOING        = "กำลังดำเนินการ";
 const DONE         = "เสร็จแล้ว";
 const FIX_STEPS = [
   { key: WAIT_REPAIR,  emoji: "🔧", desc: "ต้องตามช่างมาซ่อม" },
   { key: WAIT_INSTALL, emoji: "🔌", desc: "รอหน้างานพร้อมก่อน" },
+  { key: WAIT_CLEAN,   emoji: "🧽", desc: "เช็ดเลนส์ ปัดหยากไย่" },
   { key: DOING,        emoji: "🔵", desc: "มีคนลงมือแล้ว" },
   { key: DONE,         emoji: "✅", desc: "ปิดงานเรียบร้อย" },
 ];
@@ -296,8 +306,8 @@ const FIX_STEPS = [
 const FIX_ALIAS = { "รอแก้":WAIT_REPAIR, "กำลังแก้":DOING, "แก้แล้ว":DONE, "กำลังติดตั้ง":DOING, "ติดตั้งแล้ว":DONE };
 const normFix = (v) => FIX_ALIAS[v] || v;
 const fixDone = (l) => !!l && normFix(l.fix) === DONE;
-const defaultFix = (status) => status==="ถอดกล้อง" ? WAIT_INSTALL : WAIT_REPAIR;
-const FIX = { [WAIT_REPAIR]:"#F59E0B", [WAIT_INSTALL]:"#0EA5E9", [DOING]:"#14B8A6", [DONE]:"#22C55E",
+const defaultFix = (status) => status==="ถอดกล้อง" ? WAIT_INSTALL : status==="กล้องสกปรก" ? WAIT_CLEAN : WAIT_REPAIR;
+const FIX = { [WAIT_REPAIR]:"#F59E0B", [WAIT_INSTALL]:"#0EA5E9", [WAIT_CLEAN]:"#A0784F", [DOING]:"#14B8A6", [DONE]:"#22C55E",
               "รอแก้":"#F59E0B", "กำลังแก้":"#14B8A6", "แก้แล้ว":"#22C55E", "กำลังติดตั้ง":"#14B8A6", "ติดตั้งแล้ว":"#22C55E", "-":"#94A3B8" };
 const SHIFTS = [
   { key: "เช้า", time: "07.00-15.00", grp: "cctv" },
@@ -916,6 +926,7 @@ function App() {
       if (fFilter==="open") return f!==DONE;
       if (fFilter==="wait_repair") return f===WAIT_REPAIR;
       if (fFilter==="wait_install") return f===WAIT_INSTALL;
+      if (fFilter==="wait_clean") return f===WAIT_CLEAN;
       if (fFilter==="doing") return f===DOING;
       return true;
     });
@@ -960,14 +971,14 @@ function App() {
     setTimeout(() => { migrating.current = false; }, 900);
   }, [logs, imgCache]);
 
-  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
+  const counts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"กล้องสกปรก":0,"เหตุการณ์อื่น":0}; view.forEach(l=>c[l.status]++); return c; }, [view]);
   const dashView = useMemo(() => {
     if(!logs) return [];
     if (dashMode==="day") return logs.filter(l=>l.date===dayFilter);
     if (mFilter!=="all") return logs.filter(l=>l.date.startsWith(mFilter));
     return logs;
   }, [logs, dashMode, dayFilter, mFilter]);
-  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
+  const dashCounts = useMemo(() => { const c={"ปกติ":0,"กล้องดับ":0,"ภาพผิดปกติ":0,"ปรับมุมกล้อง":0,"ถอดกล้อง":0,"กล้องสกปรก":0,"เหตุการณ์อื่น":0}; dashView.forEach(l=>c[l.status]++); return c; }, [dashView]);
   const dashPending = useMemo(()=> dashView.filter(l=>needsFix(l.status) && !fixDone(l)).length, [dashView]);
   // จำนวนการแจ้งต่อวัน ใช้วาดกราฟแท่งเล็กในแดชบอร์ด
   const trend = useMemo(() => {
@@ -1065,6 +1076,7 @@ function App() {
   }, [logs]);
   const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [dashView]);
   const dashInstall = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [dashView]);
+  const dashClean = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_CLEAN).length, [dashView]);
   // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
   const dashOpen = useMemo(() => {
     const c = {};
@@ -1075,6 +1087,7 @@ function App() {
   // แยกยอดค้าง: งานซ่อม (ต้องตามช่าง) กับ งานติดตั้งกลับ (รอหน้างานพร้อม)
   const pendingRepair = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [logs]);
   const pendingInstall = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [logs]);
+  const pendingClean = useMemo(()=> (logs||[]).filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_CLEAN).length, [logs]);
   const topCams = useMemo(() => { const m={}; dashView.filter(l=>l.status==="กล้องดับ"&&l.cam).forEach(l=>m[l.cam]=(m[l.cam]||0)+1); return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6); }, [dashView]);
   const zoneStats = useMemo(() => { const m={}; ZONES.forEach(z=>m[z]=0); dashView.filter(l=>l.status==="กล้องดับ"&&l.zone).forEach(l=>m[l.zone]=(m[l.zone]||0)+1); return m; }, [dashView]);
 
@@ -1185,9 +1198,9 @@ function App() {
       fixNote: fixBox.fixNote.trim(), // เก็บไว้ทุกสถานะ ใช้เป็นหมายเหตุรับงาน
       imgFix: imgFixVal,
     } : l));
-    const isRemove = fixBox.status==="ถอดกล้อง";
+    const isRemove = fixBox.status==="ถอดกล้อง", isClean = fixBox.status==="กล้องสกปรก";
     setFixBox(null);
-    setToast(done ? (isRemove ? "✅ บันทึกการติดตั้งกลับแล้ว" : "✅ บันทึกการซ่อมแล้ว") : `อัปเดตสถานะเป็น "${val}"`);
+    setToast(done ? (isRemove ? "✅ บันทึกการติดตั้งกลับแล้ว" : isClean ? "✅ บันทึกการทำความสะอาดแล้ว" : "✅ บันทึกการซ่อมแล้ว") : `อัปเดตสถานะเป็น "${val}"`);
     setTimeout(()=>setToast(""),2400);
   };
   const del = (id) => {
@@ -1835,6 +1848,7 @@ function App() {
           <div style={t.sideStat}><span><Emo e="✅"/> ใช้งานได้</span><b style={{color:"#22C55E"}}>{Math.max(0, totalCams - openCamSet.size)}</b></div>
           <div style={t.sideStat}><span><Emo e="🔧"/> รอซ่อม</span><b style={{color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</b></div>
           <div style={t.sideStat}><span><Emo e="🔌"/> รอติดตั้งกลับ</span><b style={{color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</b></div>
+          <div style={t.sideStat}><span><Emo e="🧽"/> รอทำความสะอาด</span><b style={{color:pendingClean?"#A0784F":t.dim}}>{pendingClean}</b></div>
           <div style={t.sideStat}><span><Emo e="📄"/> บันทึกรวม</span><b>{logs.length}</b></div>
           {syncErr && <div style={t.syncWarn} title={syncErr}><Emo e="⚠"/> {syncErr}</div>}
         </div>
@@ -1869,7 +1883,7 @@ function App() {
                 <div style={t.label}>สถานะ</div>
                 <div style={t.segRow} className="rb-stGrid">
                   {Object.keys(STATUS).map(s=>{ const on=status===s;
-                    return <button key={s} onClick={()=>setStatus(s)} className="tap" style={{...t.seg, borderColor:on?stOf(s).dot:t.border, background:on?hex(stOf(s).dot,dark?.14:.1):"transparent", color:on?stOf(s).dot:t.dim}}>
+                    return <button key={s} onClick={()=>setStatus(s)} className={"tap"+(s==="ปกติ"?" rb-stWide":"")} style={{...t.seg, ...(s==="ปกติ"?{gridColumn:"1 / -1", flexDirection:"row", justifyContent:"center", padding:"13px 8px", gap:10}:null), borderColor:on?stOf(s).dot:t.border, background:on?hex(stOf(s).dot,dark?.14:.1):"transparent", color:on?stOf(s).dot:t.dim}}>
                       <span style={{fontSize:24, lineHeight:1}}><Emo e={stOf(s).emoji}/></span>{s}</button>;
                   })}
                 </div>
@@ -2025,9 +2039,9 @@ function App() {
 
               <div style={t.filterDiv} className="rb-hideM"/>
 
-              <Pick t={t} value={sFilter} onChange={setSFilter} style={sFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกอาการที่แจ้ง"], ...["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","ถอดกล้อง","เหตุการณ์อื่น","ปกติ"].map(k=>[k,k,stOf(k).emoji])]}/>
+              <Pick t={t} value={sFilter} onChange={setSFilter} style={sFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกอาการที่แจ้ง"], ...["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","ถอดกล้อง","กล้องสกปรก","เหตุการณ์อื่น","ปกติ"].map(k=>[k,k,stOf(k).emoji])]}/>
               <Pick t={t} value={fFilter} onChange={setFFilter} style={fFilter!=="all"?t.selectOn:t.select}
-                    options={[["all","ทุกงานซ่อม"],["open","ยังไม่เสร็จ","⏳"],["wait_repair","รอซ่อม","🔧"],["wait_install","รอติดตั้งกลับ","🔌"],["doing","กำลังดำเนินการ","🔵"],["done","เสร็จแล้ว","✅"]]}/>
+                    options={[["all","ทุกงานซ่อม"],["open","ยังไม่เสร็จ","⏳"],["wait_repair","รอซ่อม","🔧"],["wait_install","รอติดตั้งกลับ","🔌"],["wait_clean","รอทำความสะอาด","🧽"],["doing","กำลังดำเนินการ","🔵"],["done","เสร็จแล้ว","✅"]]}/>
               <Pick t={t} value={zFilter} onChange={setZFilter} style={zFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกพื้นที่"], ...ZONES.map(z=>[z,z,ZONE_EMOJI[z]])]}/>
               <Pick t={t} value={byFilter} onChange={setByFilter} style={byFilter!=="all"?t.selectOn:t.select} options={[["all","ทุกผู้รายงาน"], ...byOpts.map(r=>[r,r])]}/>
               <input value={camQ} onChange={e=>setCamQ(e.target.value)} placeholder="ค้นหาชื่อกล้อง" style={{...(camQ?t.selectOn:t.select), width:170, fontFamily:camQ?mono:"inherit"}}/>
@@ -2228,6 +2242,13 @@ function App() {
                 <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🔌"/></span><span style={t.actLabel}>รอติดตั้งกลับ</span></div>
                 <div style={{...t.actNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
                 <div style={t.actDesc}>รอหน้างานพร้อม</div>
+              </button>
+
+              <button onClick={()=>drillTo({fix:"wait_clean"})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#A0784F", opacity:dashClean?1:.6}} title="กล้องสกปรก มีหยากไย่ ฝุ่น หรือของบังหน้ากล้อง">
+                <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🧽"/></span><span style={t.actLabel}>รอทำความสะอาด</span></div>
+                <div style={{...t.actNum, color:dashClean?"#A0784F":t.dim}}>{dashClean}</div>
+                <div style={t.actDesc}>หยากไย่ ฝุ่น</div>
               </button>
             </div>
 
@@ -3249,6 +3270,8 @@ function CuteEye({ open }) {
 }
 // ไอคอนเล็กชุดเดียวกับน้องกล้อง ใช้แทนอิโมจิบนหน้าจอ (ข้อความที่คัดลอกไปไลน์/Excel ยังเป็นอิโมจิเหมือนเดิม)
 const EMO_ICONS = {
+  "🕸": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"3.5\" rx=\"1.75\" fill=\"#fff\" stroke=\"#A0784F\" stroke-width=\"1.6\"/><path d=\"M4.5 7.5h15v3a7.5 7.5 0 0 1-15 0z\" fill=\"#F5EBDD\" stroke=\"#A0784F\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M8.4 11.3l1.6 1-1.6 1M15.6 11.3l-1.6 1 1.6 1\" fill=\"none\" stroke=\"#33405C\" stroke-width=\".9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M11 15.3q1-.6 2 0\" fill=\"none\" stroke=\"#33405C\" stroke-width=\".8\" stroke-linecap=\"round\"/><path d=\"M2.2 2.2L13.2 2.2M2.2 2.2L11.7 7.7M2.2 2.2L7.7 11.7M2.2 2.2L2.2 13.2M5.6 2.2Q4.7 2.9 5.1 3.9Q4.0 4.0 3.9 5.1Q2.9 4.7 2.2 5.6M8.6 2.2Q6.9 3.4 7.7 5.4Q5.6 5.6 5.4 7.7Q3.4 6.9 2.2 8.6M11.6 2.2Q9.0 4.0 10.3 6.9Q7.2 7.2 6.9 10.3Q4.0 9.0 2.2 11.6\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.5\" stroke-linecap=\"round\" opacity=\".85\"/><path d=\"M2.2 2.2L13.2 2.2M2.2 2.2L11.7 7.7M2.2 2.2L7.7 11.7M2.2 2.2L2.2 13.2M5.6 2.2Q4.7 2.9 5.1 3.9Q4.0 4.0 3.9 5.1Q2.9 4.7 2.2 5.6M8.6 2.2Q6.9 3.4 7.7 5.4Q5.6 5.6 5.4 7.7Q3.4 6.9 2.2 8.6M11.6 2.2Q9.0 4.0 10.3 6.9Q7.2 7.2 6.9 10.3Q4.0 9.0 2.2 11.6\" fill=\"none\" stroke=\"#8E94A6\" stroke-width=\".6\" stroke-linecap=\"round\"/><path d=\"M19.3 7.5v7.6\" stroke=\"#8E94A6\" stroke-width=\".6\"/><circle cx=\"19.3\" cy=\"16.2\" r=\"1.3\" fill=\"#4A4A58\"/><path d=\"M17.6 15.4l.6.4M21 15.4l-.6.4M17.6 17l.6-.3M21 17l-.6-.3\" stroke=\"#4A4A58\" stroke-width=\".6\" stroke-linecap=\"round\"/>",
+  "🧽": "<rect x=\"3.5\" y=\"9\" width=\"15\" height=\"10.5\" rx=\"3.2\" fill=\"#FFF1B8\" stroke=\"#D9A520\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M3.5 15h15\" stroke=\"#D9A520\" stroke-width=\"1.2\"/><rect x=\"4.3\" y=\"15.6\" width=\"13.4\" height=\"3.2\" rx=\"1.4\" fill=\"#9FD8A8\"/><circle cx=\"7.5\" cy=\"11.8\" r=\".7\" fill=\"#E9C25A\"/><circle cx=\"11\" cy=\"12.6\" r=\".55\" fill=\"#E9C25A\"/><circle cx=\"14.5\" cy=\"11.6\" r=\".7\" fill=\"#E9C25A\"/><circle cx=\"17.5\" cy=\"5.5\" r=\"2.4\" fill=\"#E6F4FF\" stroke=\"#7DB7EA\" stroke-width=\"1.1\"/><circle cx=\"13\" cy=\"4.2\" r=\"1.5\" fill=\"#E6F4FF\" stroke=\"#7DB7EA\" stroke-width=\"1\"/><circle cx=\"20.6\" cy=\"9.4\" r=\"1.1\" fill=\"#E6F4FF\" stroke=\"#7DB7EA\" stroke-width=\".9\"/><path d=\"M16.7 4.7q.5-.6 1.2-.5\" stroke=\"#fff\" stroke-width=\".7\" fill=\"none\" stroke-linecap=\"round\"/>",
   "⏳": "<path d=\"M6 3h12M6 21h12\" stroke=\"#E8892E\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M7.5 3v2.5q0 3.5 4.5 6.5 4.5-3 4.5-6.5V3M7.5 21v-2.5q0-3.5 4.5-6.5 4.5 3 4.5 6.5V21\" fill=\"#FFE9D2\" stroke=\"#E8892E\" stroke-width=\"1.7\" stroke-linejoin=\"round\"/><path d=\"M9.5 19.2q2.5-2.2 5 0z\" fill=\"#E8892E\"/>",
   "⬇": "<rect x=\"3.5\" y=\"2.5\" width=\"17\" height=\"19\" rx=\"3.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\"/><path d=\"M7 7.5h10M7 11h4\" stroke=\"#8ED3A8\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M14.5 10.5v7M11.5 14.8l3 3 3-3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
   "✅": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"5.5\" fill=\"#DDF6E6\" stroke=\"#3FAE6A\" stroke-width=\"1.7\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/><path d=\"M7.5 12.3l3 3 6-6.3\" fill=\"none\" stroke=\"#3FAE6A\" stroke-width=\"2.2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
@@ -3545,7 +3568,7 @@ function mk(dark){
     trendDay:{fontSize:10.5, color:dim, marginTop:6},
     trendFoot:{fontSize:11, color:dim, marginTop:10},
     rankBadge:{width:22, height:22, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11.5, fontWeight:800, flexShrink:0},
-    heroGrid:{display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:14, marginBottom:18},
+    heroGrid:{display:"grid", gridTemplateColumns:"1.7fr 1fr 1fr 1fr", gap:14, marginBottom:18},
     heroCard:{background:surf, border:`1px solid ${border}`, borderRadius:18, padding:"18px 22px", textAlign:"left", boxShadow:shadow, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", justifyContent:"space-between"},
     heroLabel:{fontSize:12.5, color:dim, fontWeight:600, letterSpacing:".2px"},
     heroRow:{display:"flex", alignItems:"baseline", gap:9, marginTop:6, flexWrap:"wrap"},
