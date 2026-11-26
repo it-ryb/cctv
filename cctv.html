@@ -1069,14 +1069,18 @@ function App() {
     setShowSummary(true);   // ต้องเปิดกล่องด้วย ไม่งั้นกดแล้วเหมือนไม่มีอะไรเกิดขึ้น
   };
   const selectableIds = useMemo(() => view.filter(l=>needsFix(l.status) && !fixDone(l)).map(l=>l.id), [view]);
+  // กล้องที่ยังมีปัญหาค้างอยู่ตอนนี้ แยกตามอาการ (นับจากบันทึกทั้งหมด ไม่ขึ้นกับเดือนที่เลือก)
+  const OPEN_ORDER = ["กล้องดับ","ภาพผิดปกติ","ปรับมุมกล้อง","กล้องสกปรก","ถอดกล้อง"];
+  const openByStatus = useMemo(() => {
+    const m = {}; OPEN_ORDER.forEach(k=>m[k]=new Set());
+    (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l)) { (m[l.status] = m[l.status] || new Set()).add(l.cam || ("#"+l.id)); } });
+    const c = {}; Object.keys(m).forEach(k=>c[k]=m[k].size); return c;
+  }, [logs]);
   const openCamSet = useMemo(() => {
     const set = new Set();
     (logs||[]).forEach(l => { if (needsFix(l.status) && !fixDone(l) && l.cam) set.add(l.cam); });
     return set;
   }, [logs]);
-  const dashRepair = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_REPAIR).length, [dashView]);
-  const dashInstall = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_INSTALL).length, [dashView]);
-  const dashClean = useMemo(()=> dashView.filter(l=>needsFix(l.status) && normFix(l.fix)===WAIT_CLEAN).length, [dashView]);
   // ยอด "ยังไม่เสร็จ" แยกตามสถานะ ใช้เป็นเลขหลักบนการ์ด
   const dashOpen = useMemo(() => {
     const c = {};
@@ -1263,9 +1267,10 @@ function App() {
     setToast("✏️ แก้ไขบันทึกแล้ว"); setTimeout(()=>setToast(""),2400);
   };
   // คลิกจากแดชบอร์ด → เปิดหน้าประวัติพร้อมกรองให้เลย
-  const drillTo = ({ status="all", fix="all", zone="all", cam="" }={}) => {
+  const drillTo = ({ status="all", fix="all", zone="all", cam="", now=false }={}) => {
     setSFilter(status); setFFilter(fix); setZFilter(zone); setByFilter("all");
-    if (dashMode==="day") { setHistMode("day"); setHistDay(dayFilter); }
+    if (now) { setHistMode("month"); setMFilter("all"); } // งานค้าง "ตอนนี้" ต้องดูทุกเดือน
+    else if (dashMode==="day") { setHistMode("day"); setHistDay(dayFilter); }
     else { setHistMode("month"); }
     setCamQ(cam);
     setPage(1);
@@ -2215,7 +2220,7 @@ function App() {
                 // ห้ามปัดขึ้นเป็น 100% ถ้ายังมีกล้องเสียอยู่ เพราะจะอ่านว่าไม่มีปัญหา
                 const pct = !totalCams ? 100 : (ok===totalCams ? 100 : Math.max(1, Math.floor((ok/totalCams)*100)));
                 return (
-                  <button onClick={()=>drillTo({fix:"open"})} className="tap" style={t.heroCard} title="ดูกล้องที่มีปัญหาทั้งหมด">
+                  <div role="button" tabIndex={0} onClick={()=>drillTo({fix:"open", now:true})} className="tap" style={t.heroCard} title="ดูกล้องที่มีปัญหาทั้งหมด">
                     <div style={t.heroLabel}>กล้องใช้งานได้ ณ ปัจจุบัน</div>
                     <div style={t.heroRow}>
                       <span style={t.heroNum}>{ok}</span>
@@ -2224,30 +2229,45 @@ function App() {
                     </div>
                     <div style={t.healthTrack}><div style={{...t.healthFill, width:`${pct}%`}}/></div>
                     <div style={t.heroFoot}>
-                      {openCamSet.size ? `มีปัญหา ${openCamSet.size} ตัว` : "ไม่มีกล้องค้างงาน"}
+                      {openCamSet.size ? <>ตอนนี้มีปัญหา <b style={{color:t.text}}>{openCamSet.size}</b> ตัว</> : "ไม่มีกล้องค้างงาน"}
                     </div>
-                  </button>
+                    {/* แยกให้เห็นชัด ๆ ว่าตอนนี้ดับกี่ตัว ถอดกี่ตัว ฯลฯ กดแต่ละอันเพื่อดูรายชื่อกล้อง */}
+                    <div style={t.openRow}>
+                      {OPEN_ORDER.filter(k => k==="กล้องดับ" || openByStatus[k]).map(k => {
+                        const n = openByStatus[k] || 0, c = stOf(k).dot, down = k==="กล้องดับ";
+                        return (
+                          <span key={k} role="button" tabIndex={0} className="tap"
+                                onClick={e=>{ e.stopPropagation(); drillTo({status:k, fix:"open", now:true}); }}
+                                style={{...t.openPill, ...(down?t.openPillBig:null), color: n ? c : t.dim,
+                                        background: n ? hex(c, dark?.16:.1) : "transparent", borderColor: n ? hex(c, dark?.4:.35) : t.border}}
+                                title={`ดูรายการ${k}ที่ยังค้าง`}>
+                            <Emo e={stOf(k).emoji}/> {k} <b style={down?{fontSize:20}:null}>{n}</b> ตัว
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })()}
 
-              <button onClick={()=>drillTo({fix:"wait_repair"})} className="tap"
-                      style={{...t.actTile, borderLeftColor:"#F59E0B", opacity:dashRepair?1:.6}} title="งานที่ต้องตามช่างมาซ่อม">
+              <button onClick={()=>drillTo({fix:"wait_repair", now:true})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#F59E0B", opacity:pendingRepair?1:.6}} title="งานที่ต้องตามช่างมาซ่อม">
                 <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🔧"/></span><span style={t.actLabel}>รอซ่อม</span></div>
-                <div style={{...t.actNum, color:dashRepair?"#F59E0B":t.dim}}>{dashRepair}</div>
+                <div style={{...t.actNum, color:pendingRepair?"#F59E0B":t.dim}}>{pendingRepair}</div>
                 <div style={t.actDesc}>ต้องตามช่าง</div>
               </button>
 
-              <button onClick={()=>drillTo({fix:"wait_install"})} className="tap"
-                      style={{...t.actTile, borderLeftColor:"#0EA5E9", opacity:dashInstall?1:.6}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
+              <button onClick={()=>drillTo({fix:"wait_install", now:true})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#0EA5E9", opacity:pendingInstall?1:.6}} title="กล้องที่ถอดไว้ รอติดตั้งกลับ">
                 <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🔌"/></span><span style={t.actLabel}>รอติดตั้งกลับ</span></div>
-                <div style={{...t.actNum, color:dashInstall?"#0EA5E9":t.dim}}>{dashInstall}</div>
+                <div style={{...t.actNum, color:pendingInstall?"#0EA5E9":t.dim}}>{pendingInstall}</div>
                 <div style={t.actDesc}>รอหน้างานพร้อม</div>
               </button>
 
-              <button onClick={()=>drillTo({fix:"wait_clean"})} className="tap"
-                      style={{...t.actTile, borderLeftColor:"#A0784F", opacity:dashClean?1:.6}} title="กล้องสกปรก มีหยากไย่ ฝุ่น หรือของบังหน้ากล้อง">
+              <button onClick={()=>drillTo({fix:"wait_clean", now:true})} className="tap"
+                      style={{...t.actTile, borderLeftColor:"#A0784F", opacity:pendingClean?1:.6}} title="กล้องสกปรก มีหยากไย่ ฝุ่น หรือของบังหน้ากล้อง">
                 <div style={t.actTop}><span style={{fontSize:16}}><Emo e="🧽"/></span><span style={t.actLabel}>รอทำความสะอาด</span></div>
-                <div style={{...t.actNum, color:dashClean?"#A0784F":t.dim}}>{dashClean}</div>
+                <div style={{...t.actNum, color:pendingClean?"#A0784F":t.dim}}>{pendingClean}</div>
                 <div style={t.actDesc}>หยากไย่ ฝุ่น</div>
               </button>
             </div>
@@ -3578,6 +3598,9 @@ function mk(dark){
     healthTrack:{height:7, borderRadius:7, background:hexA("#94A3B8",dark?.18:.14,dark), marginTop:14, overflow:"hidden"},
     healthFill:{height:"100%", borderRadius:7, background:"linear-gradient(90deg,#22C55E,#4ADE80)"},
     heroFoot:{fontSize:12, color:dim, marginTop:10},
+    openRow:{display:"flex", flexWrap:"wrap", gap:7, marginTop:10, alignItems:"center"},
+    openPill:{display:"inline-flex", alignItems:"center", gap:5, fontSize:12.5, fontWeight:600, border:"1px solid", borderRadius:999, padding:"4px 11px", cursor:"pointer", whiteSpace:"nowrap"},
+    openPillBig:{fontSize:14, padding:"6px 14px", fontWeight:700},
     actTile:{background:surf, border:`1px solid ${border}`, borderLeft:"4px solid", borderRadius:16, padding:"18px 18px", textAlign:"left", boxShadow:shadow, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", justifyContent:"space-between"},
     actTop:{display:"flex", alignItems:"center", gap:7},
     actNum:{fontSize:34, fontWeight:800, lineHeight:1, margin:"10px 0 4px", letterSpacing:"-1px"},
