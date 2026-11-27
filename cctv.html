@@ -906,7 +906,7 @@ function App() {
       ? { ...t.badge, background:hexA(t.dim,dark?.16:.1,dark), color:t.dim, borderColor:hexA(t.dim,.26,dark) }
       : { ...t.badge, background:hexA(c,dark?.18:.12,dark), color:c, borderColor:hexA(c,.32,dark) };
   };
-  const stTitle = (l) => fixDone(l) ? `อาการตอนที่แจ้ง · ซ่อมเสร็จแล้ว` : `อาการที่แจ้ง · ยังไม่ปิดงาน`;
+  const stTitle = (l) => l.movedTo ? `อาการตอนที่แจ้ง · อาการเปลี่ยนเป็น${l.movedTo.status} ย้ายไปงานใหม่แล้ว` : fixDone(l) ? `อาการตอนที่แจ้ง · ซ่อมเสร็จแล้ว` : `อาการที่แจ้ง · ยังไม่ปิดงาน`;
   const byOpts = useMemo(() => [...new Set((logs||[]).map(l=>l.by).filter(Boolean))].sort(), [logs]);
   const months = useMemo(() => { if(!logs) return []; return [...new Set(logs.map(l=>l.date.slice(0,7)))].sort().reverse(); }, [logs]); // เรียงเดือนใหม่ → เก่า
   const view = useMemo(() => {
@@ -1182,18 +1182,16 @@ function App() {
   const changeJobStatus = (job, ns) => {
     if (blockViewer()) return;
     if (!job || !needsFix(ns) || job.status===ns) return;
-    askConfirm(`${job.cam}: ${job.status} → ${ns}\n• ปิดงาน "${job.status}" เดิม (แจ้ง ${fmtTH(job.date)}) พร้อมหมายเหตุ\n• เปิดงานใหม่ "${ns}" วันที่ ${fmtTH(dateVal)}`, () => {
+    askConfirm(`${job.cam}: ${job.status} → ${ns}\n• งาน "${job.status}" เดิม (แจ้ง ${fmtTH(job.date)}) ย้ายไปรวมกับงานใหม่\n• เปิดงานใหม่ "${ns}" วันที่ ${fmtTH(dateVal)}`, () => {
       const id = Date.now();
       const reporter = by || "—";
       const imgVal = img ? saveImage(id, img) : "";
-      // งานเดิมยังไม่ได้แก้ → โอนเรื่องค้างไปไว้ในงานใหม่ ช่างจะได้ทำพร้อมกันตอนไปซ่อม ไม่หลุดหาย
-      const carry = `ยังค้าง${job.status==="กล้องสกปรก"?"ทำความสะอาด":`งาน${job.status}`}จากงานเดิม ทำพร้อมกัน`;
-      const closeNote = `ปิดงาน (ยังไม่ได้แก้): อาการเปลี่ยนเป็น${ns} ย้ายไปทำในงานใหม่ (${fmtTH(dateVal)}${timeVal?` ${timeVal} น.`:""} · ${reporter})`;
+      // เก็บเป็นลิงก์ถึงกัน (ไม่ยัดข้อความยาวลงรายละเอียด) แล้วให้หน้าจอแสดงเองแบบสั้น ๆ
+      // งานเดิมยังไม่ได้แก้ → ไม่ใช่ "เสร็จแล้ว" แต่เป็น "ย้ายไปงานใหม่" และงานใหม่จะเตือนให้ทำเรื่องเดิมไปด้วย
       const e = { id, date:dateVal, time:timeVal, shift, status:ns, zone:job.zone||zone, cam:job.cam, area:job.area||area,
-                  detail: [detail && detail.trim(), `ต่อจากงาน${job.status} (แจ้ง ${fmtTH(job.date)}) · ${carry}`].filter(Boolean).join(" · "),
-                  by:reporter, fix:defaultFix(ns), img:imgVal };
-      setLogs([e, ...logs.map(l => l.id===job.id ? {...l, fix:DONE, fixDate:dateVal, fixBy:reporter,
-                  fixNote:[l.fixNote, closeNote].filter(Boolean).join("\n")} : l)]);
+                  detail:(detail||"").trim(), by:reporter, fix:defaultFix(ns), img:imgVal,
+                  fromJob:{ id:job.id, status:job.status, date:job.date } };
+      setLogs([e, ...logs.map(l => l.id===job.id ? {...l, fix:DONE, fixDate:dateVal, movedTo:{ id, status:ns }} : l)]);
       setToast(`${stOf(ns).emoji} ${job.cam}: ปิดงาน${job.status} · เปิดงาน${ns}แล้ว`); setTimeout(()=>setToast(""),3200);
       setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg(""); setTimeVal(nowHM());
     }, "ยืนยัน");
@@ -1370,7 +1368,7 @@ function App() {
     const fname = `รายงานกล้อง_${lb}_2569.xlsx`;
     // ใช้ ExcelJS ถ้ามี (ฝังรูปได้) ไม่งั้น fallback เป็น SheetJS (ไม่มีรูป)
     if (typeof ExcelJS === "undefined") {
-      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "อาการที่แจ้ง":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":normFix(l.fix), "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุ / สาเหตุ":l.fixNote||"" }));
+      const rows = view.map((l,i)=>({ "ลำดับ":i+1, "วันที่":fmtTH(l.date),"เวลา":l.time||"", "กะ":l.shift, "อาการที่แจ้ง":l.status, "พื้นที่":l.zone, "ชื่อกล้อง":l.cam, "IP Address":l.cam?(ips[l.cam]||""):"", "บริเวณ / รูป":(l.area||"")+(l.img?" [มีรูปก่อนแก้]":"")+(l.imgFix?" [มีรูปหลังแก้]":""), "รายละเอียด":l.detail, "ผู้รายงาน":l.by, "การแก้ไข":l.movedTo?`ย้ายไปงาน${l.movedTo.status}`:normFix(l.fix), "วันที่ซ่อมเสร็จ":l.fixDate?fmtTH(l.fixDate):"", "ผู้แก้ไข":l.fixBy||"", "หมายเหตุ / สาเหตุ":l.fixNote||"" }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "รายงานกล้อง");
       XLSX.writeFile(wb, fname);
@@ -1393,7 +1391,7 @@ function App() {
       // ข้อมูล
       for (let i=0; i<view.length; i++) {
         const l = view[i];
-        const r = ws.addRow([ i+1, fmtTH(l.date), l.time||"", l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, normFix(l.fix), (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
+        const r = ws.addRow([ i+1, fmtTH(l.date), l.time||"", l.shift, l.status, l.zone, l.cam, (l.cam?(ips[l.cam]||""):""), l.area, l.detail, l.by, (l.movedTo?`ย้ายไปงาน${l.movedTo.status}`:normFix(l.fix)), (l.fixDate?fmtTH(l.fixDate):""), l.fixBy||"", l.fixNote||"", "" ]);
         r.alignment = { vertical:"middle", wrapText:true };
         // ฝังรูปถ้ามี
         const lImg = imgOf(l);
@@ -2138,6 +2136,7 @@ function App() {
                         {l.cam && ips[l.cam] && canSeeIp && <span style={t.jobIp}> · {ips[l.cam]}</span>}
                       </div>
                       {l.cam && l.detail && <div style={t.jobDetail}>{l.detail}</div>}
+                      <FromJob t={t} l={l}/>
 
                       {(before || after) && (
                         <div style={{display:"flex", gap:8, marginTop:9}}>
@@ -2147,7 +2146,7 @@ function App() {
                       )}
 
                       <div style={t.jobFoot} onClick={e=>e.stopPropagation()}>
-                        {needsFix(l.status)
+                        {l.movedTo ? <MovedTag t={t} l={l}/> : needsFix(l.status)
                           ? <FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[f], borderColor:FIX[f]}}>{fixDone(l)?"✓ "+f:f+(isViewer?"":" ▾")}</FixTag>
                           : <span style={{fontSize:12, color:t.dim}}>ไม่มีงานติดตาม</span>}
                         <div style={{display:"flex", gap:7, marginLeft:"auto"}}>
@@ -2155,7 +2154,7 @@ function App() {
                           {!isVendor && !isViewer && <button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}><Emo e="🗑"/></button>}
                         </div>
                       </div>
-                      {(l.fixDate||l.fixBy||l.fixNote) && (
+                      {!l.movedTo && (l.fixDate||l.fixBy||l.fixNote) && (
                         <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>
                           {l.fixDate && <span><Emo e="🗓"/> {fmtTH(l.fixDate)} </span>}
                           {l.fixBy && <span><Emo e="👷"/> <Name text={l.fixBy}/> </span>}
@@ -2190,12 +2189,12 @@ function App() {
                       </td>}
                       <td style={t.td}><div style={{fontWeight:600}}>{l.date.slice(8)} {TH_MS[+l.date.slice(5,7)-1]}</div><div style={{fontSize:11.5, color:t.dim}}>{+l.date.slice(0,4)+543}</div>{l.time && <div style={t.tdTime}><Emo e="🕐"/> {l.time}</div>}</td>
                       <td style={t.td}>{l.shift}</td>
-                      <td style={t.td}><span style={stBadge(l)} title={stTitle(l)}><Emo e={stOf(l.status).emoji}/> {l.status}</span>{fixDone(l) && <div style={t.stDone}>ซ่อมเสร็จแล้ว</div>}</td>
+                      <td style={t.td}><span style={stBadge(l)} title={stTitle(l)}><Emo e={stOf(l.status).emoji}/> {l.status}</span>{fixDone(l) && (l.movedTo ? <div style={{...t.stDone, color:t.dim}}>ย้ายไปงานใหม่</div> : <div style={t.stDone}>ซ่อมเสร็จแล้ว</div>)}</td>
                       <td style={t.td}>{l.zone?<span style={{...t.zoneBadge, background:hex(ZONE_COLOR[l.zone]||"#64748B",dark?.16:.12), color:ZONE_COLOR[l.zone]||"#64748B"}}><Emo e={ZONE_EMOJI[l.zone]||""}/> {l.zone}</span>:"—"}</td>
                       <td style={{...t.td, fontFamily:mono, fontWeight:600}}>{l.cam||"—"}{canSeeIp && l.cam && ips[l.cam] && <div style={t.ipText}>{ips[l.cam]}</div>}</td>
-                      <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
+                      <td style={t.td}><div>{l.area}</div>{l.detail && <div style={{color:t.dim, fontSize:12}}>{l.detail}</div>}<FromJob t={t} l={l}/>{l.img && (imgOf(l) ? <img src={imgOf(l)} style={t.tdImg} onClick={()=>setPreview(imgOf(l))}/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</td>
                       <td style={{...t.td, minWidth:92}}><Name text={l.by}/></td>
-                      <td style={t.td} onClick={e=>e.stopPropagation()}>{needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div><Emo e="🗓"/> {fmtTH(l.fixDate)}</div>}{l.fixBy && <div><Emo e="👷"/> <Name text={l.fixBy}/></div>}{l.fixNote && <div style={{color:t.dim}}><Emo e="📝"/> {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
+                      <td style={t.td} onClick={e=>e.stopPropagation()}>{l.movedTo ? <MovedTag t={t} l={l}/> : needsFix(l.status) ? <div><FixTag ro={isViewer} onClick={()=>openFix(l.id)} style={{...t.fixBtn, color:FIX[normFix(l.fix)], borderColor:FIX[normFix(l.fix)]}} title={fixDone(l) ? "จบงานแล้ว · แก้ได้เฉพาะวันที่/หมายเหตุ" : "เปลี่ยนสถานะ / แก้วันที่เสร็จ"}>{fixDone(l) ? "✓ "+normFix(l.fix) : normFix(l.fix)+(isViewer?"":" ▾")}</FixTag>{!fixDone(l) && <div style={{fontSize:11, color:ageInfo(l).warn?"#EF4444":t.dim, marginTop:4, fontWeight:600}}>{ageInfo(l).text}</div>}{(l.fixDate||l.fixBy||l.fixNote) && <div style={{...t.fixInfo, color: fixDone(l) ? "#16A34A" : t.dim}}>{l.fixDate && <div><Emo e="🗓"/> {fmtTH(l.fixDate)}</div>}{l.fixBy && <div><Emo e="👷"/> <Name text={l.fixBy}/></div>}{l.fixNote && <div style={{color:t.dim}}><Emo e="📝"/> {l.fixNote}</div>}{l.imgFix && (imgFixOf(l) ? <img src={imgFixOf(l)} style={{...t.tdImg, marginTop:6}} onClick={()=>setPreview(imgFixOf(l))} title="รูปหลังแก้ไข"/> : <div style={t.imgLoad}>กำลังโหลดรูป…</div>)}</div>}</div> : <span style={{color:t.dim}}>—</span>}</td>
                       <td style={{...t.td, ...t.stickyR, padding:"15px 10px"}} onClick={e=>e.stopPropagation()}>{isVendor || isViewer ? <span style={{color:t.dim}}>—</span> : <div style={t.actCol}><button onClick={()=>openEdit(l.id)} className="tap" style={t.editBtn} title="แก้ไขบันทึก"><Emo e="✏"/></button><button onClick={()=>del(l.id)} className={canDelete(l)?"tap":""} style={{...t.delBtn, opacity:canDelete(l)?1:.35}} title={canDelete(l)?"ลบบันทึก":"ลบได้เฉพาะบันทึกของตัวเอง"}><Emo e="🗑"/></button></div>}</td>
                     </tr>
                   ))}
@@ -2316,7 +2315,7 @@ function App() {
               const over = openAll.filter(maOver);
               const warranty = openAll.filter(l => MA.exclude.includes(l.zone));
               // ประมาณการเข้าหน้างาน: นับวันที่ช่าง DD ปิดงานภายในช่วงสัญญา (วันละ 1 ครั้ง)
-              const visitDays = new Set(logs.filter(l => fixDone(l) && l.fixDate && l.fixDate >= MA.start && l.fixDate <= MA.end
+              const visitDays = new Set(logs.filter(l => fixDone(l) && !l.movedTo && l.fixDate && l.fixDate >= MA.start && l.fixDate <= MA.end
                 && String(l.fixBy||"").includes(MA.vendorKey)).map(l => l.fixDate));
               const v = visitDays.size, extra = Math.max(0, v - MA.onsiteQuota);
               // รอบตรวจ 3 เดือน นับจากวันเริ่มสัญญา
@@ -3113,6 +3112,27 @@ function App() {
 }
 
 // ปุ่มสถานะงานซ่อม: ไม่มีสิทธิ์แก้ = แสดงเป็นป้ายธรรมดา ไม่ใช่ปุ่มที่กดแล้วโดนเตือน
+// งานที่ปิดเพราะอาการเปลี่ยน (ยังไม่ได้แก้) → ป้ายเทา ไม่ใช่ "เสร็จแล้ว"
+function MovedTag({ t, l }) {
+  return (
+    <div>
+      <span style={{...t.fixBtn, display:"inline-block", cursor:"default", color:t.dim, borderColor:t.border, background:"transparent"}}
+            title="ยังไม่ได้แก้ อาการเปลี่ยนเลยแจ้งเป็นงานใหม่แทน">↪ ย้ายงานแล้ว</span>
+      <div style={{fontSize:11, color:t.dim, marginTop:4, lineHeight:1.45}}>ไปงาน{l.movedTo.status}{l.fixDate && <><br/>{fmtTH(l.fixDate)}</>}</div>
+    </div>
+  );
+}
+// งานที่ต่อมาจากงานเดิม: บอกสั้น ๆ ว่าต่อจากอะไร และถ้าเดิมสกปรก ให้ช่างเช็ดด้วย
+function FromJob({ t, l }) {
+  if (!l.fromJob) return null;
+  const f = l.fromJob;
+  return (
+    <div style={{fontSize:11.5, color:t.dim, marginTop:3, lineHeight:1.5}}>
+      <div>↪ ต่อจากงาน{f.status} (แจ้ง {fmtTH(f.date)})</div>
+      {f.status==="กล้องสกปรก" && !fixDone(l) && <div style={{color:"#A0784F", fontWeight:600}}><Emo e="🧽"/> ทำความสะอาดด้วย</div>}
+    </div>
+  );
+}
 function FixTag({ ro, children, style, title, onClick }) {
   return ro
     ? <span style={{...style, display:"inline-block", cursor:"default"}}>{children}</span>
