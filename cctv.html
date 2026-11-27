@@ -57,9 +57,9 @@
     input,select,textarea{font-size:16px !important;}
     .rb-roleGrid{grid-template-columns:1fr !important;}
     .rb-stepGrid4{grid-template-columns:1fr 1fr !important;}
-    .rb-maGrid{grid-template-columns:1fr 1fr !important;}
-    .rb-dutyGrid{grid-template-columns:1fr !important;}
-    .rb-dutyCols{grid-template-columns:1fr !important;}
+    .rb-maGrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+    .rb-dutyGrid{grid-template-columns:minmax(0,1fr) !important;}
+    .rb-dutyCols{grid-template-columns:minmax(0,1fr) !important;}
     .rb-dutyTitle{font-size:21px !important;}
     .rb-dutyOpen{margin-right:0 !important;}
     .rb-dutyMascot{display:none !important;}
@@ -67,7 +67,7 @@
     .rb-app{flex-direction:column !important;}
     .rb-side{width:100% !important; height:auto !important; position:static !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; gap:10px !important; padding:14px 16px !important;}
     .rb-side .rb-hideM{display:none !important;}
-    .rb-loginBox{grid-template-columns:1fr !important; max-width:420px !important;}
+    .rb-loginBox{grid-template-columns:minmax(0,1fr) !important; max-width:420px !important;}
     .rb-loginSide{display:none !important;}
     .rb-showM{display:flex !important;}
     .rb-nav{flex-direction:row !important; flex:1 1 100% !important; min-width:0 !important; overflow-x:auto !important; flex-wrap:nowrap !important; scrollbar-width:none;}
@@ -76,11 +76,13 @@
     .rb-nav > *{flex:0 0 auto !important; white-space:nowrap !important;}
     .rb-app{overflow-x:clip !important;}
     html{overflow-x:hidden;}
-    .rb-recGrid{grid-template-columns:1fr !important;}
-    .rb-dashGrid{grid-template-columns:1fr !important;}
+    .rb-recGrid{grid-template-columns:minmax(0,1fr) !important;}
+    .rb-recGrid > *{min-width:0; max-width:100%;}
+    html, body{overflow-x:clip;} /* กันหน้าเลื่อนซ้ายขวาบนมือถือ */
+    .rb-dashGrid{grid-template-columns:minmax(0,1fr) !important;}
     .rb-camManGrid{grid-template-columns:minmax(0,1fr) !important;}
-    .rb-wrap [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important;}
-    .rb-statGrid{grid-template-columns:1fr 1fr !important;}
+    .rb-wrap [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:minmax(0,1fr) !important;}
+    .rb-statGrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
     .rb-heroGrid{grid-template-columns:repeat(3, minmax(0,1fr)) !important; gap:10px !important;}
     .rb-heroGrid > :first-child{grid-column:1 / -1;}
     .rb-heroGrid > button:not(:first-child){padding:12px 10px !important; border-radius:14px !important; min-width:0; gap:4px;}
@@ -88,7 +90,7 @@
     .rb-heroGrid > button:not(:first-child) > div:first-child > span:last-child{font-size:11.5px !important; white-space:nowrap; letter-spacing:-.2px;}
     .rb-heroGrid > button:not(:first-child) > div:nth-child(2){font-size:30px !important; margin:4px 0 !important; line-height:1.1 !important;}
     .rb-heroGrid > button:not(:first-child) > div:nth-child(3){font-size:11px !important; line-height:1.35 !important;}
-    .rb-miniGrid{grid-template-columns:1fr 1fr !important;}
+    .rb-miniGrid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
     .rb-wrap{padding:18px 16px 50px !important;}
     .rb-tableWrap{overflow-x:auto !important;}
 
@@ -3479,7 +3481,7 @@ function mk(dark){
     panelTitle:{fontFamily:head, fontSize:16.5, fontWeight:600, marginBottom:18},
     label:{fontSize:13, color:dim, fontWeight:600, margin:"18px 0 9px", letterSpacing:.1},
     dimLabel:{color:dim, fontWeight:400},
-    segRow:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:9},
+    segRow:{display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:9},
     seg:{padding:"18px 8px", borderRadius:15, border:"1.5px solid", fontSize:14, fontWeight:600, display:"flex", flexDirection:"column", alignItems:"center", gap:8},
     chipRow:{display:"flex", gap:7, flexWrap:"wrap"},
     chip:{padding:"11px 16px", borderRadius:12, border:`1px solid ${border}`, background:"transparent", color:dim, fontSize:14, fontWeight:500, display:"flex", alignItems:"center", gap:7},
@@ -3687,7 +3689,7 @@ function mk(dark){
     dashToggle:{display:"flex", gap:3, padding:3, borderRadius:11, background:dark?"rgba(255,255,255,.05)":"#F1ECDD", border:`1px solid ${border}`},
     dashTg:{padding:"8px 14px", borderRadius:8, border:"none", background:"transparent", color:dim, fontSize:13, fontWeight:600},
     dashTgOn:{padding:"8px 14px", borderRadius:8, border:"none", background:surf, color:accentTxt, fontSize:13, fontWeight:700, boxShadow:dark?"none":"0 1px 3px rgba(60,50,20,.1)"},
-    shiftGrid:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10},
+    shiftGrid:{display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:10},
     shiftCard:{padding:"14px 10px", borderRadius:13, border:`1px solid ${border}`, background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:5},
     shiftCardOn:{padding:"14px 10px", borderRadius:13, border:`1.5px solid ${accent}`, background:hexA(accent,dark?.14:.09,dark), display:"flex", flexDirection:"column", alignItems:"center", gap:5},
     shiftName:{fontSize:15, fontWeight:600, color:text},
