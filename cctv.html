@@ -1176,6 +1176,28 @@ function App() {
     setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg(""); setTimeVal(nowHM());
     setTimeout(()=>setToast(""), 2600);
   };
+  // กล้องมีงานค้างอยู่แล้ว แต่อาการเปลี่ยน (เช่น สกปรก → ดับ):
+  // ปิดงานเดิมพร้อมหมายเหตุ แล้วเปิดงานใหม่ตามอาการใหม่ → ประวัติเห็นทั้ง 2 อาการ ยอดแดชบอร์ดนับครบ
+  // กำหนด MA ของงานใหม่นับจากวันที่อาการใหม่เกิดจริง
+  const changeJobStatus = (job, ns) => {
+    if (blockViewer()) return;
+    if (!job || !needsFix(ns) || job.status===ns) return;
+    askConfirm(`${job.cam}: ${job.status} → ${ns}\n• ปิดงาน "${job.status}" เดิม (แจ้ง ${fmtTH(job.date)}) พร้อมหมายเหตุ\n• เปิดงานใหม่ "${ns}" วันที่ ${fmtTH(dateVal)}`, () => {
+      const id = Date.now();
+      const reporter = by || "—";
+      const imgVal = img ? saveImage(id, img) : "";
+      // งานเดิมยังไม่ได้แก้ → โอนเรื่องค้างไปไว้ในงานใหม่ ช่างจะได้ทำพร้อมกันตอนไปซ่อม ไม่หลุดหาย
+      const carry = `ยังค้าง${job.status==="กล้องสกปรก"?"ทำความสะอาด":`งาน${job.status}`}จากงานเดิม ทำพร้อมกัน`;
+      const closeNote = `ปิดงาน (ยังไม่ได้แก้): อาการเปลี่ยนเป็น${ns} ย้ายไปทำในงานใหม่ (${fmtTH(dateVal)}${timeVal?` ${timeVal} น.`:""} · ${reporter})`;
+      const e = { id, date:dateVal, time:timeVal, shift, status:ns, zone:job.zone||zone, cam:job.cam, area:job.area||area,
+                  detail: [detail && detail.trim(), `ต่อจากงาน${job.status} (แจ้ง ${fmtTH(job.date)}) · ${carry}`].filter(Boolean).join(" · "),
+                  by:reporter, fix:defaultFix(ns), img:imgVal };
+      setLogs([e, ...logs.map(l => l.id===job.id ? {...l, fix:DONE, fixDate:dateVal, fixBy:reporter,
+                  fixNote:[l.fixNote, closeNote].filter(Boolean).join("\n")} : l)]);
+      setToast(`${stOf(ns).emoji} ${job.cam}: ปิดงาน${job.status} · เปิดงาน${ns}แล้ว`); setTimeout(()=>setToast(""),3200);
+      setCam(""); setArea(""); setDetail(""); setCamQuery(""); setSubGrp(""); setImg(""); setTimeVal(nowHM());
+    }, "ยืนยัน");
+  };
   const openFix = (id) => {
     if (blockViewer()) return;
     const cur = logs.find(l=>l.id===id);
@@ -1994,6 +2016,9 @@ function App() {
                     })()}
                     {imgOf(dupJob) && <img src={imgOf(dupJob)} style={t.dupImg} onClick={()=>setPreview(imgOf(dupJob))}/>}
                     <div style={{display:"flex", gap:9, marginTop:10, flexWrap:"wrap"}}>
+                      {needsFix(status) && status!==dupJob.status &&
+                        <button onClick={()=>changeJobStatus(dupJob, status)} className="tap" style={{...t.dupBtn, background:stOf(status).dot, color:"#fff", borderColor:stOf(status).dot}}>
+                          <Emo e={stOf(status).emoji}/> อาการเปลี่ยนเป็น "{status}"</button>}
                       <button onClick={()=>openFix(dupJob.id)} className="tap" style={t.dupBtn}><Emo e="🛠"/> อัปเดตงานเดิม</button>
                       <button onClick={()=>{setNav("history"); setCamQ(cam); setFFilter("all");}} className="tap" style={t.dupBtn}><Emo e="📋"/> ดูประวัติกล้องนี้</button>
                     </div>
